@@ -52,10 +52,19 @@ export async function middleware(req: NextRequest) {
     },
   });
 
-  // getClaims() validates the JWT signature locally (cached JWKS) and refreshes the
-  // session if needed — no round trip to the Auth server on every request.
-  const { data } = await supabase.auth.getClaims();
-  const user = data?.claims?.sub ? data.claims : null;
+  // Detect session via getUser() or getClaims()
+  let user: any = null;
+  const { data: userData } = await supabase.auth.getUser();
+  if (userData?.user) {
+    user = userData.user;
+  } else {
+    try {
+      const { data } = await supabase.auth.getClaims();
+      if (data?.claims?.sub) {
+        user = data.claims;
+      }
+    } catch {}
+  }
 
   const { pathname } = req.nextUrl;
 
@@ -64,8 +73,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
+  // Public report token bypass: shared reports accessed with token=... don't require login
+  const isPublicReport = pathname.startsWith("/report") && req.nextUrl.searchParams.has("token");
+
   // Redirect unauthenticated users away from protected pages
-  if (!user && PROTECTED_ROUTES.some((r) => pathname.startsWith(r))) {
+  if (!user && !isPublicReport && PROTECTED_ROUTES.some((r) => pathname.startsWith(r))) {
     const redirectUrl = new URL("/login", req.url);
     redirectUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(redirectUrl);

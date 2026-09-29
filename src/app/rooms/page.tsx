@@ -17,7 +17,7 @@ export default async function RoomHistoryPage({
   const authUser = await getServerUser();
   if (!authUser) redirect("/login");
 
-  const currentUser = await fetchUserProfile(authUser.id);
+  const currentUser = await fetchUserProfile(authUser.id, authUser.email);
   if (!currentUser) redirect("/login");
 
   const { room: activeRoom = "kitchen", property: qsPropertyId } = await searchParams;

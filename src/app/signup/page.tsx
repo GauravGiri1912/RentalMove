@@ -55,46 +55,42 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const supabase = getSupabaseBrowserClient();
-
-      // 1. Create auth user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          data: { name, role }, // stored in auth.users.raw_user_meta_data
-        },
-      });
-
-      if (authError) {
-        setError(authError.message);
-        return;
-      }
-
-      if (!authData.user) {
-        setError("Signup failed. Please try again.");
-        return;
-      }
-
-      // 2. Create the user profile in the `users` table via our secure API
-      const profileRes = await fetch("/api/auth/profile", {
+      // 1. Call secure signup API that pre-confirms email and provisions user profile
+      const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: authData.user.id,
           name: name.trim(),
           email: email.trim().toLowerCase(),
+          password,
           role,
         }),
       });
 
-      if (!profileRes.ok) {
-        const profileErr = await profileRes.json();
-        console.error("Profile creation failed:", profileErr);
-        // Don't block the user — profile can be created on first login too
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Signup failed. Please try again.");
+        return;
       }
 
-      // Redirect to login with confirmation message
+      // 2. Automatically log the new user in for instant access
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        });
+
+        if (loginData?.session) {
+          window.location.href = "/";
+          return;
+        }
+      } catch (err) {
+        console.warn("Auto-login failed after signup, redirecting to login:", err);
+      }
+
+      // Fallback: Redirect to login with confirmation
       router.push("/login?registered=1");
     } catch (err: any) {
       setError(err?.message || "An unexpected error occurred.");

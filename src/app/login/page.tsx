@@ -38,16 +38,15 @@ function LoginForm() {
     }
   }, [searchParams]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performLogin = async (loginEmail: string, loginPass: string) => {
     setError(null);
     setIsLoading(true);
 
     try {
       const supabase = getSupabaseBrowserClient();
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
+        email: loginEmail.trim().toLowerCase(),
+        password: loginPass,
       });
 
       if (authError) {
@@ -60,14 +59,24 @@ function LoginForm() {
         return;
       }
 
-      // Redirect to the originally requested page or dashboard
-      router.replace(redirectTo);
-      router.refresh();
+      // Hard redirect to ensure new cookies are passed to edge middleware and server components
+      window.location.href = redirectTo;
     } catch (err: any) {
       setError(err?.message || "An unexpected error occurred.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performLogin(email, password);
+  };
+
+  const loginAsDemo = async (demoEmail: string, demoRole: "tenant" | "owner") => {
+    setEmail(demoEmail);
+    setPassword("DemoPassword123!");
+    await performLogin(demoEmail, "DemoPassword123!");
   };
 
   return (
@@ -96,6 +105,59 @@ function LoginForm() {
 
         {/* Card */}
         <div className="bg-card border border-border rounded-2xl p-8 shadow-md space-y-6">
+          {/* Quick Demo Logins */}
+          <div className="space-y-2.5">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Quick Demo Personas (1-Click)
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                id="demo-login-tenant-btn"
+                onClick={() => loginAsDemo("alex.tenant@rentalmove.demo", "tenant")}
+                disabled={isLoading}
+                className="flex flex-col items-start p-3 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 text-left transition-all group disabled:opacity-50"
+              >
+                <span className="text-[10px] font-bold text-primary uppercase tracking-wide">
+                  Tenant
+                </span>
+                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                  Alex Chen
+                </span>
+                <span className="text-[10px] text-muted-foreground truncate w-full">
+                  #381 Elmwood Ave
+                </span>
+              </button>
+
+              <button
+                type="button"
+                id="demo-login-owner-btn"
+                onClick={() => loginAsDemo("sarah.owner@rentalmove.demo", "owner")}
+                disabled={isLoading}
+                className="flex flex-col items-start p-3 rounded-xl border border-accent/30 bg-accent/5 hover:bg-accent/10 text-left transition-all group disabled:opacity-50"
+              >
+                <span className="text-[10px] font-bold text-accent uppercase tracking-wide">
+                  Owner
+                </span>
+                <span className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">
+                  Sarah Jenkins
+                </span>
+                <span className="text-[10px] text-muted-foreground truncate w-full">
+                  Portfolio Manager
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-3 bg-card text-muted-foreground">or sign in with email</span>
+            </div>
+          </div>
+
           {/* Success message */}
           {successMsg && (
             <div className="flex items-start gap-3 p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm text-emerald-700 dark:text-emerald-400">

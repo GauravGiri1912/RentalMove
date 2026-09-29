@@ -18,9 +18,11 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
  * Uses the authenticated user's JWT (from cookies), respects RLS.
  */
 export async function createSupabaseServerClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   const cookieStore = await cookies();
 
-  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createServerClient(url, key, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -47,7 +49,9 @@ export function createSupabaseAdminClient() {
   if (typeof window !== "undefined") {
     throw new Error("Admin client must never be used client-side.");
   }
-  return createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  return createAdminClient(url, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

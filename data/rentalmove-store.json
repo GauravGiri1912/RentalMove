@@ -94,6 +94,14 @@
       "type": "move_in",
       "captured_at": "2026-09-29T16:16:46.935Z",
       "status": "in_progress"
+    },
+    {
+      "id": "insp-1790700504885",
+      "created_at": "2026-09-29T16:48:24.885Z",
+      "property_id": "prop-381",
+      "type": "move_in",
+      "captured_at": "2026-09-29T16:48:24.713Z",
+      "status": "in_progress"
     }
   ],
   "assets": [
@@ -270,6 +278,22 @@
       "width": 1200,
       "height": 896,
       "captured_at": "2026-09-29T16:16:49.866Z",
+      "analysis_status": "queued",
+      "analysis_error": null
+    },
+    {
+      "id": "asset-1790700508194-59",
+      "created_at": "2026-09-29T16:48:28.194Z",
+      "inspection_id": "insp-2024-move-in",
+      "room_id": "room-kitchen",
+      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/u0lvtsx8xfh7ixhunt1e",
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790700507/properties/prop-381/insp-2024-move-in/kitchen/u0lvtsx8xfh7ixhunt1e.jpg",
+      "resource_type": "image",
+      "etag": "f44819ff75ae8a18b25c0ad564506be5",
+      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
+      "width": 1200,
+      "height": 896,
+      "captured_at": "2026-09-29T16:48:28.010Z",
       "analysis_status": "queued",
       "analysis_error": null
     }
@@ -600,6 +624,60 @@
       ],
       "review_status": "pending",
       "source": "ai"
+    },
+    {
+      "id": "obs-1790700511325-810",
+      "created_at": "2026-09-29T16:48:31.325Z",
+      "updated_at": "2026-09-29T16:48:31.325Z",
+      "asset_id": "asset-1790700508011-989",
+      "category": "scratch",
+      "sub_area": "cabinet_door",
+      "description": "Visible linear scratch on the upper section of the white cabinet door.",
+      "confidence": 0.85,
+      "bbox": [
+        0.25,
+        0,
+        0.45,
+        0.15
+      ],
+      "review_status": "pending",
+      "source": "ai"
+    },
+    {
+      "id": "obs-1790700511613-248",
+      "created_at": "2026-09-29T16:48:31.613Z",
+      "updated_at": "2026-09-29T16:48:31.613Z",
+      "asset_id": "asset-01",
+      "category": "scratch",
+      "sub_area": "cabinet",
+      "description": "Possible scratch on cabinet.",
+      "confidence": 0.89,
+      "bbox": [
+        0.1,
+        0.1,
+        0.3,
+        0.3
+      ],
+      "review_status": "pending",
+      "source": "ai"
+    },
+    {
+      "id": "obs-1790700511813-597",
+      "created_at": "2026-09-29T16:48:31.813Z",
+      "updated_at": "2026-09-29T16:48:31.813Z",
+      "asset_id": "asset-1790700508011-989",
+      "category": "mark",
+      "sub_area": "cabinet_door",
+      "description": "Observed faint scuff mark on the lower panel of the cabinet door.",
+      "confidence": 0.6,
+      "bbox": [
+        0.2,
+        0.55,
+        0.35,
+        0.7
+      ],
+      "review_status": "pending",
+      "source": "ai"
     }
   ],
   "comparisons": [
@@ -629,6 +707,25 @@
     {
       "id": "comp-1790698613203",
       "created_at": "2026-09-29T16:16:53.203Z",
+      "property_id": "prop-381",
+      "room_id": "room-kitchen",
+      "prior_asset_id": "asset-01",
+      "current_asset_id": "asset-02",
+      "summary": "Possible surface mark visible in current capture not evident in baseline.",
+      "changes": [
+        {
+          "description": "Surface mark on cabinet",
+          "confidence": 0.82
+        }
+      ],
+      "caveats": [
+        "Requires human verification"
+      ],
+      "model_version": "groq-vision-1"
+    },
+    {
+      "id": "comp-1790700512608",
+      "created_at": "2026-09-29T16:48:32.608Z",
       "property_id": "prop-381",
       "room_id": "room-kitchen",
       "prior_asset_id": "asset-01",

@@ -65,7 +65,7 @@ export default async function ReportPage({
       );
     }
 
-    const currentUser = await fetchUserProfile(authUser.id);
+    const currentUser = await fetchUserProfile(authUser.id, authUser.email);
     if (currentUser) {
       if (property_id) {
         activePropertyId = property_id;

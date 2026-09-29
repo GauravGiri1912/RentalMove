@@ -34,10 +34,10 @@ export default async function DashboardPage() {
   }
 
   // Get user profile (role, property assignments)
-  const currentUser = await fetchUserProfile(authUser.id);
+  const currentUser = await fetchUserProfile(authUser.id, authUser.email);
   if (!currentUser) {
-    // User is authenticated but has no profile — redirect to create one
-    redirect("/signup?step=profile");
+    // User is authenticated but has no profile — redirect to login
+    redirect("/login");
   }
 
   const db = getDatabase();
