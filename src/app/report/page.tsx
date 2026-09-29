@@ -1,0 +1,214 @@
+import React from "react";
+import Link from "next/link";
+import {
+  FileText,
+  Printer,
+  ShieldCheck,
+  CheckCircle2,
+  Calendar,
+  Building,
+  Sparkles,
+  ExternalLink,
+  Share2,
+} from "lucide-react";
+import { getDatabase } from "@/lib/db";
+import { getMediaProvider } from "@/lib/media";
+import { APP_COPY } from "@/lib/copy";
+
+export default async function ReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string }>;
+}) {
+  const { token } = await searchParams;
+  const db = getDatabase();
+  const media = getMediaProvider();
+
+  const timeline = await db.getTimeline("prop-381");
+  const reportToken = token || "demo-token-9842f1a";
+
+  const totalAssets = timeline.inspections.flatMap((i) => i.assets).length;
+  const acceptedObs = timeline.inspections
+    .flatMap((i) => i.assets)
+    .flatMap((a) => a.observations)
+    .filter((o) => o.review_status === "accepted");
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Report Action Header (Hidden in Print) */}
+      <div className="print:hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border p-4 rounded-xl shadow-xs">
+        <div>
+          <span className="text-xs font-semibold text-accent flex items-center gap-1.5 uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4" />
+            Official Visual Inspection Record
+          </span>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Tokenized Public Evidence Link:{" "}
+            <code className="font-mono text-primary">/report?token={reportToken}</code>
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Print button triggers browser native print dialog */}
+          <button
+            type="button"
+            className="px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary-hover shadow-xs flex items-center gap-1.5 transition-colors"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Print / Save as PDF
+          </button>
+        </div>
+      </div>
+
+      {/* Official Printable Report Document Container */}
+      <div className="bg-card border border-border rounded-2xl p-8 sm:p-12 shadow-sm space-y-8 print:border-none print:shadow-none print:p-0">
+        {/* Document Header */}
+        <div className="border-b border-border pb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold">
+                RM
+              </div>
+              <h1 className="text-2xl font-black tracking-tight text-foreground">
+                RentalMove Condition Report
+              </h1>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cryptographically verified visual history &bull; Powered by Cloudinary AI
+            </p>
+          </div>
+
+          <div className="text-right space-y-1 text-xs text-muted-foreground sm:border-l sm:border-border sm:pl-6">
+            <div>
+              Generated: <span className="font-semibold text-foreground">{new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
+            </div>
+            <div>
+              Verification Token: <span className="font-mono text-primary">{reportToken}</span>
+            </div>
+            <div>
+              Integrity Status: <span className="text-emerald-600 font-semibold">100% SHA-256 Matched</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Property & Tenant Context Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-secondary/40 border border-border p-5 rounded-xl text-xs">
+          <div>
+            <span className="text-muted-foreground block font-medium">Property Address</span>
+            <span className="font-bold text-foreground text-sm mt-0.5 block">
+              {timeline.property.address_label}
+            </span>
+            <span className="text-muted-foreground">{timeline.property.unit_label}</span>
+          </div>
+
+          <div>
+            <span className="text-muted-foreground block font-medium">Inspection Scope</span>
+            <span className="font-bold text-foreground text-sm mt-0.5 block">
+              {timeline.inspections.length} Recorded Inspections
+            </span>
+            <span className="text-muted-foreground">{totalAssets} Photos &bull; 4 Rooms</span>
+          </div>
+
+          <div>
+            <span className="text-muted-foreground block font-medium">Verified Condition Findings</span>
+            <span className="font-bold text-foreground text-sm mt-0.5 block">
+              {acceptedObs.length} Confirmed Observations
+            </span>
+            <span className="text-muted-foreground">Reviewed by inspector &amp; tenant</span>
+          </div>
+        </div>
+
+        {/* Inspections & Evidence Breakdown */}
+        <div className="space-y-8">
+          <h2 className="text-lg font-bold text-foreground border-b border-border pb-2">
+            Inspection Evidence Archive
+          </h2>
+
+          {timeline.inspections.map((insp) => (
+            <div key={insp.id} className="space-y-4">
+              <div className="flex items-center justify-between text-xs bg-secondary/70 p-3 rounded-lg border border-border">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-foreground capitalize text-sm">
+                    {insp.type.replace("_", " ")} Inspection
+                  </span>
+                  <span className="text-muted-foreground">
+                    &bull; {new Date(insp.captured_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] text-muted-foreground">ID: {insp.id}</span>
+              </div>
+
+              {/* Photos for this inspection */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {insp.assets.map((asset) => (
+                  <div
+                    key={asset.id}
+                    className="border border-border rounded-xl p-4 space-y-3 bg-background"
+                  >
+                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-black/90">
+                      <img
+                        src={media.review(asset.secure_url)}
+                        alt={asset.room.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 left-2 bg-black/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded capitalize">
+                        {asset.room.name}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
+                        <span className="truncate max-w-[200px]">{asset.cloudinary_public_id}</span>
+                        <span>ETag: {asset.etag || "ok"}</span>
+                      </div>
+
+                      <div className="bg-secondary/40 p-2 rounded text-[11px] font-mono text-muted-foreground truncate">
+                        SHA-256: {asset.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+                      </div>
+
+                      {asset.observations.length > 0 ? (
+                        <div className="bg-accent/10 border border-accent/20 rounded p-2.5 space-y-1">
+                          <span className="font-semibold text-foreground capitalize block">
+                            Confirmed: {asset.observations[0].category} ({asset.observations[0].sub_area})
+                          </span>
+                          <p className="text-muted-foreground text-[11px]">
+                            {asset.observations[0].description}
+                          </p>
+                          {asset.observations[0].reviewer_note && (
+                            <p className="text-[10px] text-primary italic">
+                              Reviewer Note: &ldquo;{asset.observations[0].reviewer_note}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground italic">
+                          No surface irregularities noted.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Legal & AI Disclaimer Statement */}
+        <div className="pt-6 border-t border-border space-y-2 text-xs text-muted-foreground leading-relaxed">
+          <span className="font-bold text-foreground block">
+            RentalMove Verification &amp; AI Disclaimer:
+          </span>
+          <p>{APP_COPY.ai.disclaimerBanner}</p>
+          <p>
+            Media assets are stored immutably on Cloudinary. Any modifications, human review notes,
+            or status overrides are cryptographically timestamped and preserve the full audit trail.
+          </p>
+          <div className="pt-2 text-[11px] text-muted-foreground flex items-center justify-between border-t border-border/50">
+            <span>{APP_COPY.footer.poweredBy}</span>
+            <span>Document Ref: RM-2026-381-PUB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,19 +1,37 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, Filter, Sparkles, Image as ImageIcon, Calendar, Tag } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Sparkles,
+  Image as ImageIcon,
+  Calendar,
+  Tag,
+  ArrowRight,
+  RefreshCw,
+  Code,
+  ShieldCheck,
+} from "lucide-react";
 import { APP_COPY } from "@/lib/copy";
 
 export default function SearchPage() {
+  const [nlQuery, setNlQuery] = useState<string>("");
   const [room, setRoom] = useState<string>("");
   const [inspectionType, setInspectionType] = useState<string>("");
   const [issueCategory, setIssueCategory] = useState<string>("");
   const [reviewStatus, setReviewStatus] = useState<string>("");
-  const [freeText, setFreeText] = useState<string>("");
   const [results, setResults] = useState<any[]>([]);
   const [expression, setExpression] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [isNlParsing, setIsNlParsing] = useState<boolean>(false);
   const [isMock, setIsMock] = useState<boolean>(true);
+
+  const sampleNlQueries = [
+    "show kitchen cabinet observations from 2024",
+    "bathroom stain photos in move in",
+    "accepted scratch observations",
+  ];
 
   const performSearch = async () => {
     setLoading(true);
@@ -23,7 +41,6 @@ export default function SearchPage() {
       if (inspectionType) params.set("inspection_type", inspectionType);
       if (issueCategory) params.set("issue_category", issueCategory);
       if (reviewStatus) params.set("review_status", reviewStatus);
-      if (freeText) params.set("free_text", freeText);
       params.set("property_id", "prop-381");
 
       const res = await fetch(`/api/search?${params.toString()}`);
@@ -38,32 +55,114 @@ export default function SearchPage() {
     }
   };
 
+  const handleNlSearch = async (queryText?: string) => {
+    const q = queryText || nlQuery;
+    if (!q) return;
+
+    setIsNlParsing(true);
+    try {
+      const res = await fetch("/api/search/nl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q, property_id: "prop-381" }),
+      });
+
+      const data = await res.json();
+      if (data.filter) {
+        if (data.filter.room) setRoom(data.filter.room);
+        if (data.filter.inspection_type) setInspectionType(data.filter.inspection_type);
+        if (data.filter.issue_category) setIssueCategory(data.filter.issue_category);
+        if (data.filter.review_status) setReviewStatus(data.filter.review_status);
+      }
+    } catch (err) {
+      console.error("NL Search failed:", err);
+    } finally {
+      setIsNlParsing(false);
+    }
+  };
+
   useEffect(() => {
     performSearch();
   }, [room, inspectionType, issueCategory, reviewStatus]);
 
+  const clearFilters = () => {
+    setRoom("");
+    setInspectionType("");
+    setIssueCategory("");
+    setReviewStatus("");
+    setNlQuery("");
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Title */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
           <Search className="w-7 h-7 text-primary" />
-          Cloudinary Media Search
+          Cloudinary Media &amp; Metadata Search
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Search rental condition assets by structured metadata fields, tags, and date ranges.
+          Search rental condition assets by indexed structured metadata, tags, and natural language.
         </p>
       </div>
 
+      {/* Natural Language AI Search Bar */}
+      <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-3">
+        <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles className="w-4 h-4 text-primary" />
+          Natural-Language Query (LLM to Validated Filter)
+        </label>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="e.g., 'show kitchen cabinet observations from 2024' or 'bathroom stains'..."
+            value={nlQuery}
+            onChange={(e) => setNlQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleNlSearch()}
+            className="flex-1 bg-background border border-border rounded-lg px-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <button
+            onClick={() => handleNlSearch()}
+            disabled={isNlParsing}
+            className="px-5 py-2.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary-hover shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {isNlParsing ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
+            Parse Query
+          </button>
+        </div>
+
+        {/* Suggestion pills */}
+        <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
+          <span className="text-muted-foreground">Try asking:</span>
+          {sampleNlQueries.map((sample) => (
+            <button
+              key={sample}
+              onClick={() => {
+                setNlQuery(sample);
+                handleNlSearch(sample);
+              }}
+              className="text-[11px] bg-secondary hover:bg-secondary/80 text-foreground px-2.5 py-1 rounded-full border border-border transition-colors"
+            >
+              &ldquo;{sample}&rdquo;
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Cloudinary Expression Preview Box */}
-      <div className="bg-secondary/70 border border-border rounded-xl p-4 space-y-2">
+      <div className="bg-secondary/60 border border-border rounded-xl p-4 space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold text-foreground flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <Code className="w-3.5 h-3.5 text-primary" />
             Cloudinary Search API Expression (Server-Constructed)
           </span>
           <span className="text-[11px] font-mono text-muted-foreground">
-            {isMock ? "Mock Provider" : "Live Cloudinary Search"}
+            {isMock ? "Mock Media Provider" : "Live Cloudinary Search API"}
           </span>
         </div>
         <div className="bg-card border border-border p-3 rounded-lg font-mono text-xs text-primary break-all">
@@ -71,11 +170,21 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* Filters Bar */}
+      {/* Structured Filter Chips */}
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 font-semibold text-sm text-foreground">
-          <Filter className="w-4 h-4 text-primary" />
-          Filter Parameters
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-foreground">
+            <Filter className="w-4 h-4 text-primary" />
+            Filter by Cloudinary Structured Metadata
+          </div>
+          {(room || inspectionType || issueCategory || reviewStatus) && (
+            <button
+              onClick={clearFilters}
+              className="text-xs text-primary hover:underline font-semibold"
+            >
+              Reset all filters
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
@@ -143,47 +252,33 @@ export default function SearchPage() {
             </select>
           </div>
         </div>
-
-        {/* Free text search input */}
-        <div className="pt-2 flex gap-2">
-          <input
-            type="text"
-            placeholder="Search tags or description keywords..."
-            value={freeText}
-            onChange={(e) => setFreeText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && performSearch()}
-            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-          <button
-            onClick={performSearch}
-            className="px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary-hover transition-colors"
-          >
-            Apply Search
-          </button>
-        </div>
       </div>
 
       {/* Results Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between text-sm">
           <span className="font-semibold text-foreground">
-            Results ({results.length} assets found)
+            Search Results ({results.length} assets matched)
           </span>
-          {loading && <span className="text-xs text-primary animate-pulse">Searching Cloudinary...</span>}
+          {loading && (
+            <span className="text-xs text-primary animate-pulse">Querying Cloudinary...</span>
+          )}
         </div>
 
         {results.length === 0 && !loading ? (
-          <div className="text-center py-12 border border-dashed border-border rounded-xl bg-card">
-            <ImageIcon className="w-10 h-10 text-muted-foreground/50 mx-auto mb-2" />
-            <p className="text-sm font-medium text-foreground">No media assets match these filter criteria</p>
-            <p className="text-xs text-muted-foreground mt-1">Try broadening your search or resetting room filters.</p>
+          <div className="text-center py-16 border border-dashed border-border rounded-xl bg-card">
+            <ImageIcon className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-foreground">No media assets match these criteria</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Try resetting your filter parameters or trying another room.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {results.map((asset) => (
               <div
                 key={asset.public_id}
-                className="bg-card border border-border rounded-xl overflow-hidden shadow-sm flex flex-col group"
+                className="bg-card border border-border rounded-xl overflow-hidden shadow-xs flex flex-col group hover:border-primary/50 transition-all"
               >
                 <div className="relative aspect-[4/3] bg-muted overflow-hidden">
                   <img
@@ -191,16 +286,20 @@ export default function SearchPage() {
                     alt={asset.public_id}
                     className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
                   />
-                  <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-md text-white text-[11px] font-semibold px-2 py-0.5 rounded capitalize">
+                  <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded capitalize">
                     {asset.metadata?.room || "Room"}
+                  </div>
+                  <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow">
+                    Verified
                   </div>
                 </div>
 
-                <div className="p-4 space-y-2 text-xs">
+                <div className="p-4 space-y-2.5 text-xs">
                   <div className="font-mono text-[11px] text-foreground truncate font-medium">
                     {asset.public_id}
                   </div>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+
+                  <div className="flex flex-wrap gap-1.5">
                     {asset.metadata?.issue_category && (
                       <span className="px-2 py-0.5 rounded bg-secondary text-foreground text-[10px] capitalize">
                         Issue: {asset.metadata.issue_category}
@@ -216,6 +315,18 @@ export default function SearchPage() {
                         {asset.metadata.inspection_type}
                       </span>
                     )}
+                  </div>
+
+                  <div className="pt-2 border-t border-border flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground">{asset.created_at?.split("T")[0]}</span>
+                    <a
+                      href={asset.secure_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-semibold"
+                    >
+                      View Full &rarr;
+                    </a>
                   </div>
                 </div>
               </div>
