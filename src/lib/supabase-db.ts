@@ -757,6 +757,21 @@ export class SupabaseDatabaseService implements DatabaseService {
     if (update.reviewed_by) patch.reviewed_by = update.reviewed_by;
 
     try {
+      if (update.category || update.description || update.sub_area) {
+        const { data: existing } = await this.client
+          .from("observations")
+          .select("category, description, sub_area")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (existing) {
+          patch.edited_from = {
+            category: existing.category,
+            description: existing.description,
+            sub_area: existing.sub_area,
+          };
+        }
+      }
       const { data, error } = await this.client
         .from("observations")
         .update(patch)

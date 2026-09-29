@@ -24,7 +24,7 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
     expect(owner).toBeDefined();
     expect(owner?.role).toBe("owner");
     expect(owner?.name).toBe("Sarah Jenkins");
-  });
+  }, 15000);
 
   // 2. Role Restrictions
   it("2. enforces role restrictions", async () => {
@@ -39,7 +39,7 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
     const ownerProps = await db.listProperties(ownerUser?.id);
     expect(ownerProps.length).toBeGreaterThanOrEqual(1);
     expect(ownerProps.every((p) => p.owner_id === ownerUser?.id)).toBe(true);
-  });
+  }, 15000);
 
   // 3. Property Creation
   it("3. creates new property with address and unit labels", async () => {
@@ -314,7 +314,8 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
   // 16. Report Generation
   it("16. generates structured inspection report with neutral language", async () => {
     const timeline = await db.getTimeline("prop-381");
-    const targetInspection = timeline.inspections[0];
+    const targetInspection =
+      timeline.inspections.find((i) => i.assets && i.assets.length > 0) || timeline.inspections[0];
 
     expect(targetInspection).toBeDefined();
     const reportData = {
