@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Camera,
   Layers,
@@ -15,84 +15,103 @@ import {
   History,
   FileText,
   Code,
-  User,
+  LogOut,
+  LogIn,
 } from "lucide-react";
 import { APP_COPY } from "@/lib/copy";
 import { UnderTheHoodDrawer, UnderTheHoodAsset } from "./UnderTheHoodDrawer";
+import { getSupabaseBrowserClient } from "@/lib/supabase-client";
+
+interface SessionUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "tenant" | "owner";
+  assigned_property_id?: string;
+  owned_properties?: string[];
+}
 
 export function Navbar() {
   const pathname = usePathname();
-  const [role, setRole] = useState<"tenant" | "owner">("tenant");
-  const [userName, setUserName] = useState<string>("Alex Chen (Tenant)");
+  const router = useRouter();
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeAsset, setActiveAsset] = useState<UnderTheHoodAsset | null>(null);
   const [availableAssets, setAvailableAssets] = useState<UnderTheHoodAsset[]>([]);
 
-  // Load session from server
   useEffect(() => {
+    // Load authenticated user from session
     fetch("/api/auth/session")
       .then((res) => res.json())
       .then((data) => {
-        if (data.user) {
-          setRole(data.user.role);
-          setUserName(`${data.user.name} (${data.user.role === "owner" ? "Owner" : "Tenant"})`);
-        }
-      })
-      .catch((err) => console.warn("Failed to load session:", err));
-
-    // Fetch real assets from DB timeline for the Under the Hood drawer
-    fetch("/api/properties/prop-381/timeline")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.inspections) {
-          const assets: UnderTheHoodAsset[] = data.inspections.flatMap((i: any) =>
-            i.assets.map((a: any) => ({
-              public_id: a.cloudinary_public_id,
-              secure_url: a.secure_url,
-              sha256: a.sha256,
-              etag: a.etag,
-              room: a.room?.name || a.room_guess || "Kitchen",
-              metadata: {
-                property_id: "prop-381",
-                inspection_id: a.inspection_id,
-                inspection_type: i.type,
-                room: a.room?.category || "kitchen",
-                sub_area: a.observations?.[0]?.sub_area || "general",
-                capture_date: i.captured_at?.split("T")[0] || "2024-06-01",
-                issue_category: a.observations?.[0]?.category || "none",
-                review_status: a.observations?.[0]?.review_status || "accepted",
-                ai_confidence: a.observations?.[0] ? Math.round(a.observations[0].confidence * 100) : 90,
-              },
-              tags: ["rentalmove", `room:${a.room?.category || "kitchen"}`, `insp:${i.type}`],
-            }))
-          );
-          setAvailableAssets(assets);
-          if (assets.length > 0) {
-            setActiveAsset(assets[0]);
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+          // Load timeline assets for Under the Hood drawer
+          const propertyId =
+            data.user.assigned_property_id ||
+            data.user.owned_properties?.[0];
+          if (propertyId) {
+            loadTimelineAssets(propertyId);
           }
         }
       })
-      .catch((err) => console.warn("Could not load timeline assets for drawer:", err));
+      .catch((err) => console.warn("Failed to load session:", err));
   }, []);
 
-  const toggleRole = async () => {
-    const nextRole = role === "tenant" ? "owner" : "tenant";
-    setRole(nextRole);
-
+  async function loadTimelineAssets(propertyId: string) {
     try {
-      const res = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: nextRole }),
-      });
+      const res = await fetch(`/api/properties/${propertyId}/timeline`);
+      if (!res.ok) return;
       const data = await res.json();
-      if (data.user) {
-        setUserName(`${data.user.name} (${nextRole === "owner" ? "Owner" : "Tenant"})`);
+      if (data?.inspections) {
+        const assets: UnderTheHoodAsset[] = data.inspections.flatMap((i: any) =>
+          i.assets.map((a: any) => ({
+            public_id: a.cloudinary_public_id,
+            secure_url: a.secure_url,
+            sha256: a.sha256,
+            etag: a.etag,
+            room: a.room?.name || a.room_guess || "Kitchen",
+            metadata: {
+              property_id: propertyId,
+              inspection_id: a.inspection_id,
+              inspection_type: i.type,
+              room: a.room?.category || "kitchen",
+              sub_area: a.observations?.[0]?.sub_area || "general",
+              capture_date: i.captured_at?.split("T")[0] || "",
+              issue_category: a.observations?.[0]?.category || "none",
+              review_status: a.observations?.[0]?.review_status || "accepted",
+              ai_confidence: a.observations?.[0]
+                ? Math.round(a.observations[0].confidence * 100)
+                : 90,
+            },
+            tags: [
+              "rentalmove",
+              `room:${a.room?.category || "kitchen"}`,
+              `insp:${i.type}`,
+            ],
+          }))
+        );
+        setAvailableAssets(assets);
+        if (assets.length > 0) setActiveAsset(assets[0]);
       }
-      // Force page refresh to update server-rendered dashboard components
-      window.location.reload();
     } catch (err) {
-      console.error("Failed to switch session role:", err);
+      console.warn("Could not load timeline assets for drawer:", err);
+    }
+  }
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.signOut();
+      setUser(null);
+      router.push("/login");
+      router.refresh();
+    } catch (err) {
+      console.error("Sign out failed:", err);
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
@@ -134,7 +153,91 @@ export function Navbar() {
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          {user && (
+            <nav className="hidden lg:flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
+                      isActive
+                        ? "text-primary font-semibold bg-primary/10"
+                        : "hover:text-foreground hover:bg-secondary/60"
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+
+          {/* Right Actions */}
+          <div className="flex items-center gap-2.5">
+            {user ? (
+              <>
+                {/* Under the Hood Drawer Trigger */}
+                <button
+                  id="under-the-hood-btn"
+                  onClick={() => setIsDrawerOpen(true)}
+                  className="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-secondary/50 text-foreground hover:bg-secondary transition-colors"
+                  title="Inspect real Cloudinary API calls and metadata"
+                >
+                  <Code className="w-3.5 h-3.5 text-primary" />
+                  <span className="font-medium">Under the Hood</span>
+                </button>
+
+                {/* User identity + Sign out */}
+                <div className="flex items-center gap-2">
+                  <div className="hidden sm:flex flex-col items-end">
+                    <span className="text-xs font-semibold text-foreground leading-tight">
+                      {user.name}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">
+                      {user.role === "owner" ? "Property Owner" : "Tenant"}
+                    </span>
+                  </div>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                      user.role === "owner"
+                        ? "bg-accent/20 text-accent"
+                        : "bg-primary/20 text-primary"
+                    }`}
+                  >
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <button
+                    id="signout-btn"
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors disabled:opacity-50"
+                    title="Sign out"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Sign out</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <Link
+                id="login-nav-btn"
+                href="/login"
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Sign in
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Navigation Sub-bar (only when authenticated) */}
+        {user && (
+          <div className="lg:hidden flex items-center gap-1 px-4 py-2 border-t border-border/50 overflow-x-auto text-xs bg-secondary/30 scrollbar-none">
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
@@ -142,73 +245,19 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
+                  className={`px-2.5 py-1 rounded-md whitespace-nowrap flex items-center gap-1 ${
                     isActive
-                      ? "text-primary font-semibold bg-primary/10"
-                      : "hover:text-foreground hover:bg-secondary/60"
+                      ? "text-primary font-semibold bg-card shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="w-3 h-3" />
                   {link.label}
                 </Link>
               );
             })}
-          </nav>
-
-          {/* Right Actions */}
-          <div className="flex items-center gap-2.5">
-            {/* Under the Hood Drawer Trigger */}
-            <button
-              onClick={() => setIsDrawerOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-secondary/50 text-foreground hover:bg-secondary transition-colors"
-              title="Inspect real Cloudinary API calls and metadata"
-            >
-              <Code className="w-3.5 h-3.5 text-primary" />
-              <span className="font-medium">Under the Hood</span>
-            </button>
-
-            {/* Persona Switcher */}
-            <button
-              onClick={toggleRole}
-              className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-background hover:bg-secondary transition-all shadow-sm active:scale-95"
-              title="Toggle between Tenant (Alex Chen) and Owner (Sarah Jenkins)"
-            >
-              {role === "tenant" ? (
-                <>
-                  <UserCheck className="w-3.5 h-3.5 text-primary" />
-                  <span className="font-medium">Tenant: Alex Chen</span>
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="w-3.5 h-3.5 text-accent" />
-                  <span className="font-medium">Owner: Sarah Jenkins</span>
-                </>
-              )}
-            </button>
           </div>
-        </div>
-
-        {/* Mobile Navigation Sub-bar */}
-        <div className="lg:hidden flex items-center gap-1 px-4 py-2 border-t border-border/50 overflow-x-auto text-xs bg-secondary/30 scrollbar-none">
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-2.5 py-1 rounded-md whitespace-nowrap flex items-center gap-1 ${
-                  isActive
-                    ? "text-primary font-semibold bg-card shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="w-3 h-3" />
-                {link.label}
-              </Link>
-            );
-          })}
-        </div>
+        )}
       </header>
 
       {/* Global Dynamic Under the Hood Drawer */}

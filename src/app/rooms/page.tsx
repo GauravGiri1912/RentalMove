@@ -3,20 +3,42 @@ import Link from "next/link";
 import { History, Layers, ArrowRight, ShieldCheck, Sparkles, Building } from "lucide-react";
 import { getDatabase } from "@/lib/db";
 import { getMediaProvider } from "@/lib/media";
+import { getServerUser } from "@/lib/supabase-server";
+import { fetchUserProfile } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function RoomHistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ room?: string }>;
+  searchParams: Promise<{ room?: string; property?: string }>;
 }) {
-  const { room: activeRoom = "kitchen" } = await searchParams;
+  const authUser = await getServerUser();
+  if (!authUser) redirect("/login");
+
+  const currentUser = await fetchUserProfile(authUser.id);
+  if (!currentUser) redirect("/login");
+
+  const { room: activeRoom = "kitchen", property: qsPropertyId } = await searchParams;
   const db = getDatabase();
   const media = getMediaProvider();
 
-  const timeline = await db.getTimeline("prop-381");
-  const rooms = await db.getRooms("prop-381");
+  const activePropertyId =
+    qsPropertyId ||
+    currentUser.assigned_property_id ||
+    currentUser.owned_properties?.[0];
+
+  if (!activePropertyId) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <p className="text-muted-foreground">No property assigned to your account yet.</p>
+      </div>
+    );
+  }
+
+  const timeline = await db.getTimeline(activePropertyId);
+  const rooms = await db.getRooms(activePropertyId);
 
   // Filter assets that match activeRoom
   const matchingAssets = timeline.inspections.flatMap((insp) =>

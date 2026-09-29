@@ -75,8 +75,41 @@ export default function CapturePage() {
   const [fileSha256, setFileSha256] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Dynamic property & room data loaded from API
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
+  const [activePropertyLabel, setActivePropertyLabel] = useState<string>("Loading...");
+  const [availableRooms, setAvailableRooms] = useState<Array<{ id: string; name: string; category: string }>>([]);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  // Load user session and property data
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then(async (data) => {
+        if (!data.authenticated || !data.user) return;
+        const user = data.user;
+        const propId = user.assigned_property_id || user.owned_properties?.[0];
+        if (!propId) return;
+
+        setActivePropertyId(propId);
+
+        // Load property details
+        const propRes = await fetch(`/api/properties/${propId}`);
+        if (propRes.ok) {
+          const propData = await propRes.json();
+          setActivePropertyLabel(`${propData.property.address_label} (${propData.property.unit_label})`);
+          if (propData.rooms?.length > 0) {
+            setAvailableRooms(propData.rooms);
+            setActiveRoomId(propData.rooms[0].id);
+            setRoom(propData.rooms[0].category || propData.rooms[0].name.toLowerCase());
+          }
+        }
+      })
+      .catch((err) => console.warn("Could not load property for capture:", err));
+  }, []);
 
   const prior = PRIOR_IMAGES[room];
   const isFollowUpInspection = inspectionType !== "move_in";
@@ -115,20 +148,26 @@ export default function CapturePage() {
     setCurrentStep("Requesting secure Cloudinary signature...");
 
     try {
+      if (!activePropertyId) {
+        throw new Error("No property selected. Please ensure you are assigned to a property.");
+      }
+
       // 1. Get signed upload parameters from server
       const inspectionId = `insp-${captureDate}-${inspectionType}`;
       const signRes = await fetch("/api/uploads/sign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          property_id: "prop-381",
+          property_id: activePropertyId,
           inspection_id: inspectionId,
           room,
         }),
       });
 
       if (!signRes.ok) {
-        throw new Error("Failed to obtain signed upload credentials from server.");
+        const errData = await signRes.json().catch(() => ({}));
+        if (signRes.status === 401) throw new Error("You must be logged in to upload media.");
+        throw new Error(errData?.message || "Failed to obtain signed upload credentials from server.");
       }
 
       const signData = await signRes.json();
@@ -169,11 +208,12 @@ export default function CapturePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          property_id: "prop-381",
+          property_id: activePropertyId,
           inspection_id: inspectionId,
-          room_id: `room-${room}`,
+          room_id: activeRoomId || availableRooms.find(r => r.category === room)?.id || `room-${room}`,
           cloudinary_public_id: cldData.public_id,
           secure_url: cldData.secure_url,
+          resource_type: cldData.resource_type || "image",
           etag: cldData.etag,
           sha256: fileSha256 || undefined,
           width: cldData.width,
@@ -183,7 +223,8 @@ export default function CapturePage() {
       });
 
       if (!registerRes.ok) {
-        throw new Error("Failed to register asset in persistent database.");
+        const regErr = await registerRes.json().catch(() => ({}));
+        throw new Error(regErr?.message || "Failed to register asset in persistent database.");
       }
 
       const assetData = await registerRes.json();
@@ -192,22 +233,24 @@ export default function CapturePage() {
 
       // Small poll to wait for pipeline analysis completion
       let finalAsset = assetData;
-      for (let i = 0; i < 4; i++) {
-        await new Promise((r) => setTimeout(r, 800));
-        try {
-          const pollRes = await fetch(`/api/properties/prop-381/timeline`);
-          if (pollRes.ok) {
-            const tl = await pollRes.json();
-            const found = tl.inspections
-              .flatMap((i: any) => i.assets)
-              .find((a: any) => a.id === assetData.id || a.cloudinary_public_id === cldData.public_id);
-            if (found && (found.analysis_status === "done" || found.analysis_status === "failed")) {
-              finalAsset = found;
-              break;
+      if (activePropertyId) {
+        for (let i = 0; i < 4; i++) {
+          await new Promise((r) => setTimeout(r, 800));
+          try {
+            const pollRes = await fetch(`/api/properties/${activePropertyId}/timeline`);
+            if (pollRes.ok) {
+              const tl = await pollRes.json();
+              const found = tl.inspections
+                .flatMap((insp: any) => insp.assets)
+                .find((a: any) => a.id === assetData.id || a.cloudinary_public_id === cldData.public_id);
+              if (found && (found.analysis_status === "done" || found.analysis_status === "failed")) {
+                finalAsset = found;
+                break;
+              }
             }
+          } catch {
+            // ignore poll errors
           }
-        } catch {
-          // ignore
         }
       }
 
@@ -251,7 +294,7 @@ export default function CapturePage() {
                 Property Target
               </label>
               <div className="bg-secondary/70 border border-border rounded-lg px-3 py-2 text-xs font-medium text-foreground">
-                381 Elmwood Ave (Apt 4B)
+                {activePropertyLabel}
               </div>
             </div>
 

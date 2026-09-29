@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AssetRegisterRequestSchema } from "@/lib/schemas";
 import { registerAsset } from "@/lib/pipeline";
-import { getSessionUser, canUserAccessProperty, forbiddenResponse } from "@/lib/auth";
+import {
+  getAuthenticatedUserOrThrow,
+  canUserAccessProperty,
+  forbiddenResponse,
+  unauthorizedResponse,
+} from "@/lib/auth";
 
+/**
+ * POST /api/assets/register
+ * Registers a newly uploaded Cloudinary asset in the database and triggers AI analysis.
+ * Requires authentication and property access authorization.
+ */
 export async function POST(req: NextRequest) {
   try {
+    // Require authentication
+    const user = await getAuthenticatedUserOrThrow(req);
+
     const body = await req.json();
     const parsed = AssetRegisterRequestSchema.safeParse(body);
 
@@ -15,17 +28,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await getSessionUser(req);
-    if (user) {
-      const authorized = await canUserAccessProperty(user, parsed.data.property_id);
-      if (!authorized) {
-        return forbiddenResponse("You do not have permission to register assets for this property.");
-      }
+    // Verify user can register assets for this property
+    const authorized = await canUserAccessProperty(user, parsed.data.property_id);
+    if (!authorized) {
+      return forbiddenResponse("You do not have permission to register assets for this property.");
     }
 
     const asset = await registerAsset(parsed.data);
     return NextResponse.json(asset, { status: 201 });
   } catch (err: any) {
+    if (err?.statusCode === 401) return unauthorizedResponse();
     console.error("Asset registration error:", err);
     return NextResponse.json(
       { error: "Failed to register asset", message: err?.message || String(err) },

@@ -26,6 +26,19 @@ export default function SearchPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [isNlParsing, setIsNlParsing] = useState<boolean>(false);
   const [isMock, setIsMock] = useState<boolean>(true);
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
+
+  // Load user's property ID from session
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.authenticated || !data.user) return;
+        const propId = data.user.assigned_property_id || data.user.owned_properties?.[0];
+        if (propId) setActivePropertyId(propId);
+      })
+      .catch(() => {});
+  }, []);
 
   const sampleNlQueries = [
     "show kitchen cabinet observations from 2024",
@@ -41,7 +54,8 @@ export default function SearchPage() {
       if (inspectionType) params.set("inspection_type", inspectionType);
       if (issueCategory) params.set("issue_category", issueCategory);
       if (reviewStatus) params.set("review_status", reviewStatus);
-      params.set("property_id", "prop-381");
+      if (activePropertyId) params.set("property_id", activePropertyId);
+      else { setLoading(false); return; }
 
       const res = await fetch(`/api/search?${params.toString()}`);
       const data = await res.json();
@@ -64,7 +78,7 @@ export default function SearchPage() {
       const res = await fetch("/api/search/nl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, property_id: "prop-381" }),
+        body: JSON.stringify({ query: q, property_id: activePropertyId || "" }),
       });
 
       const data = await res.json();

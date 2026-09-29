@@ -53,11 +53,16 @@ export default function ReviewCenterPage() {
   const [editSubArea, setEditSubArea] = useState<string>("");
   const [reviewerNote, setReviewerNote] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
 
   // Fetch timeline data to get assets and observations
-  const loadData = async () => {
+  const loadData = async (propertyId: string) => {
     try {
-      const res = await fetch("/api/properties/prop-381/timeline");
+      const res = await fetch(`/api/properties/${propertyId}/timeline`);
+      if (!res.ok) {
+        console.error("Timeline fetch failed:", res.status);
+        return;
+      }
       const data = await res.json();
       setTimelineData(data);
     } catch (err) {
@@ -68,7 +73,22 @@ export default function ReviewCenterPage() {
   };
 
   useEffect(() => {
-    loadData();
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.authenticated || !data.user) {
+          setLoading(false);
+          return;
+        }
+        const propId = data.user.assigned_property_id || data.user.owned_properties?.[0];
+        if (propId) {
+          setActivePropertyId(propId);
+          loadData(propId);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const allAssets: Asset[] =
@@ -153,7 +173,7 @@ export default function ReviewCenterPage() {
       });
 
       setIsEditing(false);
-      await loadData();
+      if (activePropertyId) await loadData(activePropertyId);
     } catch (err) {
       console.error("Failed to update observation:", err);
     }

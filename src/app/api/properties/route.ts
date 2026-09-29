@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { PropertyCreateSchema } from "@/lib/schemas";
-import { getSessionUser, forbiddenResponse, unauthorizedResponse } from "@/lib/auth";
+import {
+  getAuthenticatedUserOrThrow,
+  getSessionUser,
+  forbiddenResponse,
+  unauthorizedResponse,
+} from "@/lib/auth";
 
+/**
+ * GET /api/properties
+ * Returns only the properties the authenticated user can access.
+ * - Owners see their own properties
+ * - Tenants see their assigned property
+ * Unauthenticated requests receive 401.
+ */
 export async function GET(req: NextRequest) {
   try {
     const user = await getSessionUser(req);
+    if (!user) return unauthorizedResponse();
+
     const db = getDatabase();
-
-    let properties = [];
-    if (user) {
-      properties = await db.listProperties(user.id, user.role);
-    } else {
-      const { searchParams } = new URL(req.url);
-      const ownerId = searchParams.get("owner_id") || undefined;
-      properties = await db.listProperties(ownerId);
-    }
-
+    const properties = await db.listProperties(user.id, user.role);
     return NextResponse.json({ properties });
   } catch (err: any) {
     return NextResponse.json(
@@ -26,12 +31,16 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * POST /api/properties
+ * Creates a new property. Only owners are authorized.
+ */
 export async function POST(req: NextRequest) {
   try {
-    const user = await getSessionUser(req);
-    // Enforce role authorization: Only owners can create properties
-    if (user && user.role !== "owner") {
-      return forbiddenResponse("Only property owners are authorized to create new properties.");
+    const user = await getAuthenticatedUserOrThrow(req);
+
+    if (user.role !== "owner") {
+      return forbiddenResponse("Only property owners can create properties.");
     }
 
     const body = await req.json();
@@ -47,7 +56,7 @@ export async function POST(req: NextRequest) {
     const db = getDatabase();
     const propertyData = {
       ...parsed.data,
-      owner_id: user ? user.id : (parsed.data.owner_id || "user-owner-1"),
+      owner_id: user.id, // Always use the authenticated user's ID
     };
 
     const property = await db.createProperty(propertyData);
@@ -55,6 +64,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ property, rooms }, { status: 201 });
   } catch (err: any) {
+    if (err?.statusCode === 401) return unauthorizedResponse();
     console.error("Property creation error:", err);
     return NextResponse.json(
       { error: "Failed to create property", message: err?.message || String(err) },

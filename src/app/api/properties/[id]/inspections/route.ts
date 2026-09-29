@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { InspectionTypeEnum } from "@/lib/schemas";
-import { getSessionUser, canUserAccessProperty, forbiddenResponse } from "@/lib/auth";
+import {
+  getAuthenticatedUserOrThrow,
+  canUserAccessProperty,
+  forbiddenResponse,
+  unauthorizedResponse,
+} from "@/lib/auth";
 import { z } from "zod";
 
 const CreateInspectionBodySchema = z.object({
@@ -16,19 +21,18 @@ export async function GET(
 ) {
   try {
     const { id: propertyId } = await params;
-    const user = await getSessionUser(req);
+    const user = await getAuthenticatedUserOrThrow(req);
 
-    if (user) {
-      const authorized = await canUserAccessProperty(user, propertyId);
-      if (!authorized) {
-        return forbiddenResponse("You do not have permission to view inspections for this property.");
-      }
+    const authorized = await canUserAccessProperty(user, propertyId);
+    if (!authorized) {
+      return forbiddenResponse("You do not have permission to view inspections for this property.");
     }
 
     const db = getDatabase();
     const inspections = await db.getInspections(propertyId);
     return NextResponse.json({ inspections });
   } catch (err: any) {
+    if (err?.statusCode === 401) return unauthorizedResponse();
     return NextResponse.json(
       { error: "Failed to fetch inspections", message: err?.message || String(err) },
       { status: 500 }
@@ -42,13 +46,11 @@ export async function POST(
 ) {
   try {
     const { id: propertyId } = await params;
-    const user = await getSessionUser(req);
+    const user = await getAuthenticatedUserOrThrow(req);
 
-    if (user) {
-      const authorized = await canUserAccessProperty(user, propertyId);
-      if (!authorized) {
-        return forbiddenResponse("You do not have permission to create inspections for this property.");
-      }
+    const authorized = await canUserAccessProperty(user, propertyId);
+    if (!authorized) {
+      return forbiddenResponse("You do not have permission to create inspections for this property.");
     }
 
     const db = getDatabase();
@@ -71,12 +73,13 @@ export async function POST(
       property_id: propertyId,
       type: parsed.data.type,
       captured_at: parsed.data.captured_at || new Date().toISOString(),
-      created_by: user ? user.id : undefined,
+      created_by: user.id, // Always the authenticated user
       status: parsed.data.status,
     });
 
     return NextResponse.json(newInspection, { status: 201 });
   } catch (err: any) {
+    if (err?.statusCode === 401) return unauthorizedResponse();
     console.error("Create inspection error:", err);
     return NextResponse.json(
       { error: "Failed to create inspection", message: err?.message || String(err) },

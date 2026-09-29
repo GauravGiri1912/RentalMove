@@ -17,8 +17,8 @@ import {
 import { getDatabase } from "@/lib/db";
 import { getMediaProvider } from "@/lib/media";
 import { APP_COPY } from "@/lib/copy";
-
-import { cookies } from "next/headers";
+import { getServerUser } from "@/lib/supabase-server";
+import { fetchUserProfile } from "@/lib/auth";
 
 export default async function ReportPage({
   searchParams,
@@ -28,10 +28,8 @@ export default async function ReportPage({
   const { token, property_id } = await searchParams;
   const db = getDatabase();
   const media = getMediaProvider();
-  const cookieStore = await cookies();
-  const sessionUserId = cookieStore.get("rentalmove_session_user_id")?.value;
 
-  let activePropertyId = property_id || "prop-381";
+  let activePropertyId: string | null = null;
   let isPublicTokenAccess = false;
   let isTokenValid = true;
 
@@ -43,39 +41,38 @@ export default async function ReportPage({
     } else {
       activePropertyId = shareLink.property_id;
     }
-  } else if (!sessionUserId) {
-    // Neither token nor authenticated session present: Deny unauthorized public access
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-6">
-        <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center">
-          <Lock className="w-8 h-8" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">
-            Authentication Required
-          </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Inspection reports are protected visual records. Please log in as the property owner or assigned tenant, or access via a valid verified share token link.
-          </p>
-        </div>
-        <div className="pt-4 flex justify-center gap-3">
-          <Link
-            href="/"
-            className="px-5 py-2.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary-hover shadow-xs"
-          >
-            Go to Login
-          </Link>
-        </div>
-      </div>
-    );
   } else {
-    // Authenticated user: check property access
-    const user = await db.getUser(sessionUserId);
-    if (user) {
-      if (user.role === "tenant" && user.assigned_property_id) {
-        activePropertyId = user.assigned_property_id;
-      } else if (user.role === "owner" && user.owned_properties.length > 0 && !property_id) {
-        activePropertyId = user.owned_properties[0];
+    // Authenticated route — verify JWT
+    const authUser = await getServerUser();
+    if (!authUser) {
+      return (
+        <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-foreground">Authentication Required</h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Inspection reports are protected visual records. Please log in as the property owner or assigned tenant, or access via a valid verified share token link.
+            </p>
+          </div>
+          <div className="pt-4 flex justify-center gap-3">
+            <Link href="/login" className="px-5 py-2.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary/90 shadow-xs">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    const currentUser = await fetchUserProfile(authUser.id);
+    if (currentUser) {
+      if (property_id) {
+        activePropertyId = property_id;
+      } else if (currentUser.role === "tenant" && currentUser.assigned_property_id) {
+        activePropertyId = currentUser.assigned_property_id;
+      } else if (currentUser.role === "owner" && currentUser.owned_properties && currentUser.owned_properties.length > 0) {
+        activePropertyId = currentUser.owned_properties[0];
       }
     }
   }
@@ -96,13 +93,20 @@ export default async function ReportPage({
           </p>
         </div>
         <div className="pt-4 flex justify-center gap-3">
-          <Link
-            href="/"
-            className="px-5 py-2.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary-hover shadow-xs"
-          >
+          <Link href="/" className="px-5 py-2.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary/90 shadow-xs">
             Return to RentalMove Dashboard
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  if (!activePropertyId) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-6">
+        <Building className="w-12 h-12 text-muted-foreground mx-auto" />
+        <h1 className="text-xl font-bold text-foreground">No Property Found</h1>
+        <p className="text-sm text-muted-foreground">You are not yet assigned to a property. Contact your landlord.</p>
       </div>
     );
   }
@@ -111,7 +115,15 @@ export default async function ReportPage({
   try {
     timeline = await db.getTimeline(activePropertyId);
   } catch {
-    timeline = await db.getTimeline("prop-381");
+    timeline = null;
+  }
+
+  if (!timeline) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+        <p className="text-muted-foreground">No inspection data found for this property.</p>
+      </div>
+    );
   }
 
   const reportToken = token || "demo-token-9842f1a";

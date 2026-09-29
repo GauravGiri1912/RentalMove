@@ -14,14 +14,41 @@ import {
 import { getDatabase } from "@/lib/db";
 import { getMediaProvider } from "@/lib/media";
 import { APP_COPY } from "@/lib/copy";
+import { getServerUser } from "@/lib/supabase-server";
+import { fetchUserProfile } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function TimelinePage() {
+export default async function TimelinePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ property?: string }>;
+}) {
+  const authUser = await getServerUser();
+  if (!authUser) redirect("/login");
+
+  const currentUser = await fetchUserProfile(authUser.id);
+  if (!currentUser) redirect("/login");
+
   const db = getDatabase();
   const media = getMediaProvider();
 
-  const timeline = await db.getTimeline("prop-381");
+  const { property: qsPropertyId } = await searchParams;
+  const activePropertyId =
+    qsPropertyId ||
+    currentUser.assigned_property_id ||
+    currentUser.owned_properties?.[0];
+
+  if (!activePropertyId) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <p className="text-muted-foreground">No property assigned to your account yet.</p>
+      </div>
+    );
+  }
+
+  const timeline = await db.getTimeline(activePropertyId);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">

@@ -1,10 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildCloudinarySearchExpression } from "@/lib/search";
 import { getMediaProvider } from "@/lib/media";
+import {
+  getAuthenticatedUserOrThrow,
+  canUserAccessProperty,
+  forbiddenResponse,
+  unauthorizedResponse,
+} from "@/lib/auth";
+import { SearchFilterSchema } from "@/lib/schemas";
+import { rateLimit } from "@/lib/rate-limit";
 
+
+/**
+ * GET /api/search
+ * Searches Cloudinary structured metadata.
+ * Requires authentication and property access authorization.
+ */
 export async function GET(req: NextRequest) {
   try {
+    const user = await getAuthenticatedUserOrThrow(req);
     const { searchParams } = new URL(req.url);
+
+    // Require property_id — no more hardcoded prop-381 fallback
+    const propertyId = searchParams.get("property_id");
+    if (!propertyId) {
+      return NextResponse.json(
+        { error: "property_id query parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    // Verify user can access this property
+    const authorized = await canUserAccessProperty(user, propertyId);
+    if (!authorized) {
+      return forbiddenResponse("You do not have access to search media for this property.");
+    }
+
     const filterInput: Record<string, string> = {};
 
     const room = searchParams.get("room")?.trim();
@@ -28,10 +59,17 @@ export async function GET(req: NextRequest) {
     const freeText = searchParams.get("free_text")?.trim();
     if (freeText) filterInput.free_text = freeText;
 
-    const propertyId = searchParams.get("property_id") || "prop-381";
+    // Validate with Zod before passing to search
+    const parsedFilter = SearchFilterSchema.safeParse(filterInput);
+    if (!parsedFilter.success) {
+      return NextResponse.json(
+        { error: "Invalid search parameters", details: parsedFilter.error.format() },
+        { status: 400 }
+      );
+    }
 
     const { expression, validatedFilter } = buildCloudinarySearchExpression(
-      filterInput,
+      parsedFilter.data as Record<string, string>,
       propertyId
     );
 
@@ -46,6 +84,7 @@ export async function GET(req: NextRequest) {
       is_mock: media.isMock(),
     });
   } catch (err: any) {
+    if (err?.statusCode === 401) return unauthorizedResponse();
     console.error("Search API error:", err);
     return NextResponse.json(
       { error: "Search query failed", message: err?.message || String(err) },

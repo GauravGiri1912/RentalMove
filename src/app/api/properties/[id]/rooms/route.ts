@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { RoomCategoryEnum } from "@/lib/schemas";
-import { getSessionUser, canUserAccessProperty, forbiddenResponse } from "@/lib/auth";
+import {
+  getAuthenticatedUserOrThrow,
+  canUserAccessProperty,
+  forbiddenResponse,
+  unauthorizedResponse,
+} from "@/lib/auth";
 import { z } from "zod";
 
 const CreateRoomSchema = z.object({
-  name: z.string().min(1, "Room name is required"),
+  name: z.string().min(1, "Room name is required").max(100),
   category: RoomCategoryEnum,
 });
 
@@ -15,19 +20,18 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const user = await getSessionUser(req);
+    const user = await getAuthenticatedUserOrThrow(req);
 
-    if (user) {
-      const authorized = await canUserAccessProperty(user, id);
-      if (!authorized) {
-        return forbiddenResponse("You do not have authorization to view rooms for this property.");
-      }
+    const authorized = await canUserAccessProperty(user, id);
+    if (!authorized) {
+      return forbiddenResponse("You do not have authorization to view rooms for this property.");
     }
 
     const db = getDatabase();
     const rooms = await db.getRooms(id);
     return NextResponse.json({ rooms });
   } catch (err: any) {
+    if (err?.statusCode === 401) return unauthorizedResponse();
     return NextResponse.json(
       { error: "Failed to list rooms", message: err?.message || String(err) },
       { status: 500 }
@@ -41,17 +45,15 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const user = await getSessionUser(req);
+    const user = await getAuthenticatedUserOrThrow(req);
 
-    // Only property owners can add rooms
-    if (user && user.role !== "owner") {
+    if (user.role !== "owner") {
       return forbiddenResponse("Only property owners are authorized to create rooms.");
     }
-    if (user) {
-      const authorized = await canUserAccessProperty(user, id);
-      if (!authorized) {
-        return forbiddenResponse("You do not own this property.");
-      }
+
+    const authorized = await canUserAccessProperty(user, id);
+    if (!authorized) {
+      return forbiddenResponse("You do not own this property.");
     }
 
     const db = getDatabase();
@@ -78,6 +80,7 @@ export async function POST(
 
     return NextResponse.json(newRoom, { status: 201 });
   } catch (err: any) {
+    if (err?.statusCode === 401) return unauthorizedResponse();
     return NextResponse.json(
       { error: "Failed to create room", message: err?.message || String(err) },
       { status: 500 }

@@ -49,11 +49,12 @@ export default function ComparePage() {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [comparisonResult, setComparisonResult] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
 
   // Fetch timeline from DB
-  const loadTimeline = async () => {
+  const loadTimeline = async (propertyId: string) => {
     try {
-      const res = await fetch("/api/properties/prop-381/timeline");
+      const res = await fetch(`/api/properties/${propertyId}/timeline`);
       if (res.ok) {
         const data = await res.json();
         setTimeline(data);
@@ -76,7 +77,22 @@ export default function ComparePage() {
   };
 
   useEffect(() => {
-    loadTimeline();
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.authenticated || !data.user) {
+          setLoading(false);
+          return;
+        }
+        const propId = data.user.assigned_property_id || data.user.owned_properties?.[0];
+        if (propId) {
+          setActivePropertyId(propId);
+          loadTimeline(propId);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const inspections = timeline?.inspections || [];
@@ -93,7 +109,7 @@ export default function ComparePage() {
   );
 
   const handleAnalyzeDifferences = async () => {
-    if (!priorAsset || !currentAsset) return;
+    if (!priorAsset || !currentAsset || !activePropertyId) return;
 
     setIsAnalyzing(true);
     try {
@@ -103,7 +119,7 @@ export default function ComparePage() {
         body: JSON.stringify({
           prior_asset_id: priorAsset.id,
           current_asset_id: currentAsset.id,
-          property_id: "prop-381",
+          property_id: activePropertyId,
           room_id: priorAsset.room_id,
         }),
       });
