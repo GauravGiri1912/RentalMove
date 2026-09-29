@@ -121,8 +121,9 @@ export async function runAnalysisForAsset(assetId: string): Promise<void> {
 
     // Update Cloudinary structured metadata via Admin API
     const primaryObs = analysis.observations[0];
+    const allowedRooms = ["living_room", "kitchen", "bathroom", "bedroom", "exterior"];
     await media.updateMetadata(asset.cloudinary_public_id, {
-      room: analysis.room_guess,
+      room: allowedRooms.includes(analysis.room_guess) ? analysis.room_guess : undefined,
       issue_category: primaryObs ? primaryObs.category : "none",
       ai_confidence: primaryObs ? Math.round(primaryObs.confidence * 100) : 100,
       review_status: "pending",

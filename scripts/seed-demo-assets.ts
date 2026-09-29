@@ -111,9 +111,15 @@ async function seedDemoAssets() {
   console.log("RentalMove: Real Cloudinary Asset Seeding (Property #381)");
   console.log("=================================================");
 
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "yxrdw0hc";
-  const apiKey = process.env.CLOUDINARY_API_KEY || "412129971372729";
-  const apiSecret = process.env.CLOUDINARY_API_SECRET || "1150ZAbEASSDJx2sXPJag17QosA";
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error(
+      "Missing Cloudinary environment variables. Please ensure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are set in .env.local."
+    );
+  }
 
   cloudinary.config({
     cloud_name: cloudName,

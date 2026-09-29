@@ -91,65 +91,109 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
     expect((uploadParams as unknown as Record<string, unknown>).api_secret).toBeUndefined();
   });
 
-  // 6. Upload Response Handling
-  it("6. validates upload response properties", () => {
-    const uploadResponse = {
-      public_id: "properties/prop-381/kitchen/cabinet_test",
-      secure_url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/kitchen/cabinet_test.jpg",
-      resource_type: "image",
-      format: "jpg",
-      width: 1920,
-      height: 1080,
-      bytes: 254000,
-      etag: "b89f0293da2",
-      created_at: new Date().toISOString(),
-    };
+  // 6, 7, 8. Real End-to-End Upload, Hashing, Cloudinary Registration & Verification
+  it("6, 7, 8. performs real file upload, calculates SHA-256 from bytes, receives real Cloudinary public_id/etag, and verifies in Cloudinary API", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const crypto = await import("crypto");
+    const { v2: cloudinary } = await import("cloudinary");
 
-    expect(uploadResponse.public_id).toMatch(/^properties\/prop-381\//);
-    expect(uploadResponse.secure_url).toContain("https://");
-    expect(uploadResponse.etag).toBeDefined();
-  });
+    // 1. Read real local image file from disk
+    const filePath = path.resolve(process.cwd(), "seed/images/2024/kitchen/cabinet-base-01.jpg");
+    expect(fs.existsSync(filePath)).toBe(true);
+    const fileBytes = fs.readFileSync(filePath);
 
-  // 7. Asset Registration
-  it("7. registers asset with cryptographic SHA-256 and Cloudinary metadata", async () => {
+    // 2. Compute actual SHA-256 hash from file bytes
+    const computedSha256 = crypto.createHash("sha256").update(fileBytes).digest("hex");
+    expect(computedSha256.length).toBe(64);
+
+    // 3. Obtain real signed parameters from media provider
+    const mediaProvider = getMediaProvider();
+    const signResult = await mediaProvider.signUpload({
+      propertyId: "prop-381",
+      inspectionId: "insp-2024-move-in",
+      inspectionType: "move_in",
+      room: "kitchen",
+    });
+
+    // 4. Perform actual Cloudinary Upload via FormData
+    const formData = new FormData();
+    formData.append("file", new Blob([fileBytes], { type: "image/jpeg" }), "acceptance-cabinet.jpg");
+    formData.append("api_key", signResult.apiKey);
+    formData.append("timestamp", String(signResult.timestamp));
+    formData.append("signature", signResult.signature);
+    formData.append("folder", signResult.folder);
+    formData.append("tags", signResult.tags);
+    if (signResult.notificationUrl) {
+      formData.append("notification_url", signResult.notificationUrl);
+    }
+
+    const uploadRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${signResult.cloudName}/image/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    expect(uploadRes.status).toBe(200);
+    const cldData = await uploadRes.json();
+
+    // Actual Cloudinary response fields
+    expect(cldData.public_id).toBeDefined();
+    expect(cldData.public_id).toMatch(/^properties\/prop-381\/insp-2024-move-in\/kitchen\//);
+    expect(cldData.secure_url).toMatch(/^https:\/\/res\.cloudinary\.com\//);
+    expect(cldData.etag).toBeDefined();
+
+    // 5. Persist exact real values to database
     const asset = await registerAsset({
       property_id: "prop-381",
       inspection_id: "insp-2024-move-in",
       room_id: "room-kitchen",
-      cloudinary_public_id: "properties/prop-381/acceptance/test-reg-asset",
-      secure_url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/test.jpg",
-      etag: "etag_real_acceptance",
-      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      width: 1600,
-      height: 1200,
+      cloudinary_public_id: cldData.public_id,
+      secure_url: cldData.secure_url,
+      etag: cldData.etag,
+      sha256: computedSha256,
+      width: cldData.width,
+      height: cldData.height,
     });
 
-    expect(asset.id).toBeDefined();
-    expect(asset.sha256).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-    expect(asset.etag).toBe("etag_real_acceptance");
-  });
+    expect(asset.cloudinary_public_id).toBe(cldData.public_id);
+    expect(asset.etag).toBe(cldData.etag);
+    expect(asset.sha256).toBe(computedSha256);
 
-  // 8. Metadata Persistence
-  it("8. persists asset metadata across database retrievals", async () => {
-    const asset = await db.getAssetByPublicId("properties/prop-381/acceptance/test-reg-asset");
-    expect(asset).toBeDefined();
-    expect(asset?.inspection_id).toBe("insp-2024-move-in");
-    expect(asset?.room_id).toBe("room-kitchen");
-  });
+    // 6. Verify Cloudinary API actually returns this resource
+    const cldResource = await cloudinary.api.resource(cldData.public_id);
+    expect(cldResource.public_id).toBe(cldData.public_id);
 
-  // 9. AI Response Schema Validation
-  it("9. validates AI observation output according to strict schema", () => {
-    const validObservation = {
-      category: "scratch",
-      sub_area: "lower_cabinet",
-      description: "Possible scratch visible on lower cabinet surface.",
-      confidence: 0.88,
-      bbox: [0.1, 0.2, 0.4, 0.5] as [number, number, number, number],
-    };
+    // 7. Verify Database references the exact same public_id and etag
+    const dbAsset = await db.getAssetByPublicId(cldData.public_id);
+    expect(dbAsset).toBeDefined();
+    expect(dbAsset?.id).toBe(asset.id);
+    expect(dbAsset?.etag).toBe(cldData.etag);
+    expect(dbAsset?.sha256).toBe(computedSha256);
+  }, 25000);
 
-    const parsed = ObservationItemSchema.safeParse(validObservation);
+  // 9. AI Vision Model Image Analysis
+  it("9. runs real vision analysis on Cloudinary image using configured VLM", async () => {
+    const { getVisionProvider } = await import("../src/lib/vision");
+    const vision = getVisionProvider();
+    const testImageUrl = "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679808/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg";
+
+    const analysis = await vision.analyzeImage({
+      imageUrl: testImageUrl,
+      roomHint: "kitchen",
+    });
+
+    expect(analysis).toBeDefined();
+    expect(analysis.room_guess).toBe("kitchen");
+    expect(analysis.observations.length).toBeGreaterThanOrEqual(1);
+
+    // Validate with strict schema
+    const parsed = ObservationItemSchema.safeParse(analysis.observations[0]);
     expect(parsed.success).toBe(true);
-  });
+    expect(analysis.observations[0].description).toBeDefined();
+  }, 25000);
 
   // 10. Review Persistence
   it("10. updates and persists observation review status and reviewer notes", async () => {

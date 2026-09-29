@@ -1,20 +1,46 @@
+import fs from "fs";
+import path from "path";
 import { v2 as cloudinary } from "cloudinary";
 
-// Configure Cloudinary if credentials exist
-const isCloudinaryConfigured = Boolean(
-  process.env.CLOUDINARY_CLOUD_NAME &&
-  process.env.CLOUDINARY_API_KEY &&
-  process.env.CLOUDINARY_API_SECRET
-);
-
-if (isCloudinaryConfigured) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-  });
+// Ensure .env.local is populated if running in Node scripts/tests
+if (typeof window === "undefined" && !process.env.CLOUDINARY_API_SECRET) {
+  try {
+    const envFile = path.resolve(process.cwd(), ".env.local");
+    if (fs.existsSync(envFile)) {
+      const content = fs.readFileSync(envFile, "utf8");
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+          const [key, ...vals] = trimmed.split("=");
+          if (!process.env[key.trim()]) {
+            process.env[key.trim()] = vals.join("=").trim();
+          }
+        }
+      }
+    }
+  } catch {}
 }
+
+export function isCloudinaryConfigured(): boolean {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
+}
+
+function ensureCloudinaryConfig() {
+  if (isCloudinaryConfigured()) {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
+  }
+}
+
+ensureCloudinaryConfig();
 
 export interface UploadSignatureResult {
   signature: string;
@@ -83,7 +109,7 @@ export class MockMediaProvider implements MediaProvider {
     this.mockStore = [
       {
         public_id: "properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01",
-        secure_url: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=80",
+        secure_url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679808/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
         created_at: "2024-06-01T10:00:00Z",
         format: "jpg",
         width: 1920,
@@ -103,7 +129,7 @@ export class MockMediaProvider implements MediaProvider {
       },
       {
         public_id: "properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01",
-        secure_url: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80",
+        secure_url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679810/properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01.jpg",
         created_at: "2024-06-01T10:15:00Z",
         format: "jpg",
         width: 1920,
@@ -123,7 +149,7 @@ export class MockMediaProvider implements MediaProvider {
       },
       {
         public_id: "properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02",
-        secure_url: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=80",
+        secure_url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679812/properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02.jpg",
         created_at: "2025-06-01T11:00:00Z",
         format: "jpg",
         width: 1920,
@@ -368,7 +394,8 @@ let mediaInstance: MediaProvider | null = null;
 
 export function getMediaProvider(): MediaProvider {
   if (!mediaInstance) {
-    if (isCloudinaryConfigured) {
+    if (isCloudinaryConfigured()) {
+      ensureCloudinaryConfig();
       mediaInstance = new CloudinaryMediaProvider();
     } else {
       mediaInstance = new MockMediaProvider();

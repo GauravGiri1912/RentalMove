@@ -91,10 +91,10 @@ Create `.env.local` using `.env.example` as a template:
 
 ```bash
 # Cloudinary Credentials (Required)
-CLOUDINARY_CLOUD_NAME=yxrdw0hc
-CLOUDINARY_API_KEY=412129971372729
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key_here
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret_here
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=yxrdw0hc
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
 
 # AI Vision & Natural Language Provider (Required for live VLM / NL search)
 GROQ_API_KEY=your_groq_api_key_here

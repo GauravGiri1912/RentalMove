@@ -342,61 +342,100 @@ Omit any keys not explicitly mentioned. Return JSON only.
 }
 
 // =========================================================================
-// GROQ VISION / LLM PROVIDER (Compatible with user's Groq / xAI key)
+// =========================================================================
+// GROQ VISION / LLM PROVIDER (Real Multimodal Vision with Qwen)
 // =========================================================================
 
 export class GroqVisionProvider implements VisionProvider {
   private apiKey: string;
   private modelName: string;
 
-  constructor(apiKey: string, modelName = "openai/gpt-oss-120b") {
+  constructor(apiKey: string, modelName = "qwen/qwen3.8-27b") {
     this.apiKey = apiKey;
     this.modelName = modelName;
   }
 
   async analyzeImage(input: { imageUrl: string; roomHint?: string }): Promise<ImageAnalysis> {
-    const prompt = `
-You are an assistive rental property inspection assistant.
-Room category: "${input.roomHint || "general"}"
-Image URL: "${input.imageUrl}"
-
-RULES:
-1. Provide a neutral, objective condition observation for the room.
-2. NEVER use blame, fault, damage claims, or financial deduction language. Always prefix with "Possible", "Visible", "Observed", or "Noted".
-3. Suggest an issue category from: "scratch", "stain", "crack", "dent", "mark", "other".
-4. Estimate confidence between 0.70 and 0.95.
-5. Return JSON only conforming to:
+    const prompt = `You are an objective AI property inspection assistant. Inspect this rental property photo and output ONLY valid JSON matching this schema:
 {
-  "room_guess": "living_room"|"kitchen"|"bathroom"|"bedroom"|"exterior",
-  "image_quality": "ok"|"blurry"|"too_dark"|"not_a_room",
+  "room_guess": "living_room" | "kitchen" | "bathroom" | "bedroom" | "exterior" | "unknown",
+  "image_quality": "ok" | "blurry" | "too_dark" | "not_a_room",
   "observations": [
     {
-      "category": "scratch"|"stain"|"crack"|"dent"|"mark"|"other",
-      "sub_area": string,
-      "description": string,
-      "confidence": number,
-      "bbox": [number, number, number, number]
+      "category": "scratch" | "stain" | "crack" | "dent" | "mark" | "other",
+      "sub_area": "string",
+      "description": "neutral description of visible surface feature",
+      "confidence": number between 0 and 1,
+      "bbox": [x1, y1, x2, y2]
     }
   ]
 }
-Return JSON only, no markdown.
-`;
+RULES:
+1. Provide a neutral, objective condition observation for the room.
+2. NEVER use blame, fault, damage claims, tenant liability, or financial deduction language. Always prefix with "Possible", "Visible", "Observed", or "Noted".
+3. Return ONLY valid JSON, no markdown formatting.`;
+
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const payload = {
+        model: this.modelName,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: input.imageUrl } },
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 700,
+        temperature: 0.1,
+      };
+
+      let response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify({
-          model: this.modelName,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.1,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      if (response.status === 429) {
+        const errText = await response.text().catch(() => "");
+        let waitMs = 6000;
+        const match = errText.match(/try again in ([0-9.]+)s/i);
+        if (match) {
+          waitMs = Math.ceil(parseFloat(match[1]) * 1000) + 1000;
+        }
+        console.warn(`[VisionProvider] Groq rate limit (429) hit in analyzeImage. Waiting ${waitMs}ms before retry...`);
+        await new Promise((r) => setTimeout(r, waitMs));
+        response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
       if (!response.ok) {
-        return new MockVisionProvider().analyzeImage(input);
+        const errText = await response.text().catch(() => "");
+        console.error(`[VisionProvider] Groq API error (${response.status}):`, errText);
+        return ImageAnalysisSchema.parse({
+          room_guess: (input.roomHint as any) || "unknown",
+          image_quality: "ok",
+          observations: [
+            {
+              category: "other",
+              sub_area: "general",
+              description: "AI analysis unavailable. Manual review required.",
+              confidence: 0.5,
+              bbox: [0, 0, 1, 1],
+            },
+          ],
+        });
       }
 
       const data = await response.json();
@@ -404,14 +443,54 @@ Return JSON only, no markdown.
       const cleanJson = content.replace(/```json/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleanJson);
       if (Array.isArray(parsed.observations)) {
-        parsed.observations = parsed.observations.map((obs: any) => ({
-          ...obs,
-          description: sanitizeObservationText(obs.description || ""),
-        }));
+        parsed.observations = parsed.observations.map((obs: any) => {
+          let bbox: [number, number, number, number] = [0.1, 0.1, 0.4, 0.4];
+          if (Array.isArray(obs.bbox) && obs.bbox.length === 4) {
+            let [x1, y1, x2, y2] = obs.bbox.map(Number);
+            if (x1 > 1 || y1 > 1 || x2 > 1 || y2 > 1) {
+              const maxVal = Math.max(x1, y1, x2, y2);
+              const scale = maxVal > 100 ? 1000 : 100;
+              x1 = Math.min(1, Math.max(0, x1 / scale));
+              y1 = Math.min(1, Math.max(0, y1 / scale));
+              x2 = Math.min(1, Math.max(0, x2 / scale));
+              y2 = Math.min(1, Math.max(0, y2 / scale));
+            } else {
+              x1 = Math.min(1, Math.max(0, x1 || 0));
+              y1 = Math.min(1, Math.max(0, y1 || 0));
+              x2 = Math.min(1, Math.max(0, x2 || 0.4));
+              y2 = Math.min(1, Math.max(0, y2 || 0.4));
+            }
+            bbox = [
+              Number(x1.toFixed(3)),
+              Number(y1.toFixed(3)),
+              Number(x2.toFixed(3)),
+              Number(y2.toFixed(3)),
+            ];
+          }
+          return {
+            ...obs,
+            bbox,
+            description: sanitizeObservationText(obs.description || ""),
+          };
+        });
       }
       return ImageAnalysisSchema.parse(parsed);
-    } catch {
-      return new MockVisionProvider().analyzeImage(input);
+    } catch (err) {
+      const msg = err instanceof Error ? err.stack || err.message : String(err);
+      console.error("[VisionProvider] Vision analysis exception: " + msg);
+      return ImageAnalysisSchema.parse({
+        room_guess: (input.roomHint as any) || "unknown",
+        image_quality: "ok",
+        observations: [
+          {
+            category: "other",
+            sub_area: "general",
+            description: "AI analysis unavailable. Manual review required.",
+            confidence: 0.5,
+            bbox: [0, 0, 1, 1],
+          },
+        ],
+      });
     }
   }
 
@@ -420,40 +499,73 @@ Return JSON only, no markdown.
     currentUrl: string;
     room: string;
   }): Promise<ComparisonResult> {
-    const prompt = `
-You are an assistive visual inspection assistant comparing two condition captures of a rental property.
-Room: "${input.room}"
-Prior Image: "${input.priorUrl}"
-Current Image: "${input.currentUrl}"
-
+    const prompt = `Compare these two condition inspection photos of room: "${input.room}" (Prior Baseline vs Current Move-Out).
 RULES:
-1. Assistive visual comparison only. Use strictly neutral, descriptive language.
+1. Provide an objective, assistive visual comparison only. Use strictly neutral, descriptive language.
 2. NEVER make legal accusations, fault, liability, monetary claims, or blame landlord/tenant.
-3. Highlight visible differences or confirm consistency with baseline.
+3. Highlight visible differences observed or confirm consistency with baseline.
 4. Output valid JSON only, conforming to:
 {
   "summary": string,
   "changes": [{ "description": string, "confidence": number }],
   "caveats": [string]
 }
-Return JSON only, no markdown.
-`;
+Return ONLY valid JSON.`;
+
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const payload = {
+        model: this.modelName,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: input.priorUrl } },
+              { type: "image_url", image_url: { url: input.currentUrl } },
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 700,
+        temperature: 0.1,
+      };
+
+      let response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify({
-          model: this.modelName,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.2,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      if (response.status === 429) {
+        const errText = await response.text().catch(() => "");
+        let waitMs = 7000;
+        const match = errText.match(/try again in ([0-9.]+)s/i);
+        if (match) {
+          waitMs = Math.ceil(parseFloat(match[1]) * 1000) + 1000;
+        }
+        console.warn(`[VisionProvider] Groq rate limit (429) hit in compareImages. Waiting ${waitMs}ms before retry...`);
+        await new Promise((r) => setTimeout(r, waitMs));
+        response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
       if (!response.ok) {
-        return new MockVisionProvider().compareImages(input);
+        const errText = await response.text().catch(() => "");
+        console.error(`[VisionProvider] Groq compare error (${response.status}):`, errText);
+        return ComparisonResultSchema.parse({
+          summary: "Automated visual comparison unavailable. Manual inspection required.",
+          changes: [],
+          caveats: ["AI comparative analysis could not be completed at this time."],
+        });
       }
 
       const data = await response.json();
@@ -467,8 +579,13 @@ Return JSON only, no markdown.
         }));
       }
       return ComparisonResultSchema.parse(parsed);
-    } catch {
-      return new MockVisionProvider().compareImages(input);
+    } catch (err) {
+      console.error("[VisionProvider] Compare exception:", err);
+      return ComparisonResultSchema.parse({
+        summary: "Automated visual comparison unavailable. Manual inspection required.",
+        changes: [],
+        caveats: ["AI comparative analysis could not be completed at this time."],
+      });
     }
   }
 
@@ -520,12 +637,12 @@ Omit any keys not mentioned. JSON only, no markdown:
 // =========================================================================
 
 export function getVisionProvider(): VisionProvider {
-  const provider = process.env.VISION_PROVIDER || "mock";
-  const model = process.env.VISION_MODEL || "mock-vlm-v1";
+  const provider = process.env.VISION_PROVIDER || (process.env.GROQ_API_KEY ? "groq" : "mock");
+  const model = process.env.VISION_MODEL || "qwen/qwen3.8-27b";
 
   const groqKey = process.env.GROQ_API_KEY || process.env.XAI_API_KEY;
-  if (provider === "groq" && groqKey) {
-    return new GroqVisionProvider(groqKey, model.includes("gpt") || model.includes("qwen") ? model : "openai/gpt-oss-120b");
+  if ((provider === "groq" || groqKey) && groqKey) {
+    return new GroqVisionProvider(groqKey, model.includes("qwen") ? model : "qwen/qwen3.8-27b");
   }
 
   if (provider === "gemini" && process.env.GEMINI_API_KEY) {
