@@ -91,6 +91,11 @@ export interface DatabaseService {
     createdBy?: string
   ): Promise<ShareLink>;
   revokeShareLink(token: string): Promise<boolean>;
+
+  // Teardown / Cleanup
+  deleteProperty?(id: string): Promise<boolean>;
+  deleteAsset?(id: string): Promise<boolean>;
+  deleteShareLink?(token: string): Promise<boolean>;
 }
 
 export interface StoreData {
@@ -484,12 +489,13 @@ export class PersistentDatabaseService implements DatabaseService {
   }
 
   async createProperty(data: {
+    id?: string;
     address_label: string;
     unit_label: string;
     owner_id?: string;
     rooms?: Array<{ name: string; category: any }>;
   }): Promise<Property> {
-    const propertyId = `prop-${Date.now()}`;
+    const propertyId = data.id || `prop-${Date.now()}`;
     const newProperty: Property = {
       id: propertyId,
       address_label: data.address_label,
@@ -755,6 +761,27 @@ export class PersistentDatabaseService implements DatabaseService {
     const link = this.memoryCache.share_links.find((s) => s.token === token);
     if (!link) return false;
     link.revoked_at = new Date().toISOString();
+    this.flushToDisk();
+    return true;
+  }
+
+  async deleteProperty(id: string): Promise<boolean> {
+    this.memoryCache.properties = this.memoryCache.properties.filter((p) => p.id !== id);
+    this.memoryCache.rooms = this.memoryCache.rooms.filter((r) => r.property_id !== id);
+    this.memoryCache.inspections = this.memoryCache.inspections.filter((i) => i.property_id !== id);
+    this.flushToDisk();
+    return true;
+  }
+
+  async deleteAsset(id: string): Promise<boolean> {
+    this.memoryCache.assets = this.memoryCache.assets.filter((a) => a.id !== id);
+    this.memoryCache.observations = this.memoryCache.observations.filter((o) => o.asset_id !== id);
+    this.flushToDisk();
+    return true;
+  }
+
+  async deleteShareLink(token: string): Promise<boolean> {
+    this.memoryCache.share_links = this.memoryCache.share_links.filter((s) => s.token !== token);
     this.flushToDisk();
     return true;
   }

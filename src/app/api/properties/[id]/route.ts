@@ -26,13 +26,14 @@ export async function GET(
     }
 
     const db = getDatabase();
-    const property = await db.getProperty(id);
+    const [property, rooms, inspections] = await Promise.all([
+      db.getProperty(id),
+      db.getRooms(id),
+      db.getInspections(id),
+    ]);
     if (!property) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
-
-    const rooms = await db.getRooms(id);
-    const inspections = await db.getInspections(id);
 
     return NextResponse.json({ property, rooms, inspections });
   } catch (err: any) {

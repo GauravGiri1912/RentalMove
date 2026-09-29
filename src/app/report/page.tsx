@@ -270,14 +270,45 @@ export default async function ReportPage({
                     className="border border-border rounded-xl p-4 space-y-3 bg-background"
                   >
                     <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-black/90">
-                      <img
-                        src={media.review(asset.secure_url)}
-                        alt={asset.room.name}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-2 left-2 bg-black/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded capitalize">
-                        {asset.room.name}
-                      </div>
+                      {(() => {
+                        const activeObs = asset.observations.filter(
+                          (o) => o.review_status !== "rejected" && o.bbox
+                        );
+                        const boxes = activeObs.map((o) => ({
+                          bbox: o.bbox,
+                          label: `${o.category} ${Math.round(o.confidence * 100)}%`,
+                        }));
+                        const displayUrl =
+                          boxes.length > 0
+                            ? media.evidence(
+                                asset.cloudinary_public_id || asset.secure_url,
+                                boxes,
+                                { pixelateFaces: true }
+                              )
+                            : media.shared(asset.cloudinary_public_id || asset.secure_url);
+
+                        return (
+                          <>
+                            <img
+                              src={displayUrl}
+                              alt={asset.room.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-2 left-2 bg-black/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded capitalize">
+                              {asset.room.name}
+                            </div>
+                            <div className="absolute top-2 right-2 bg-emerald-700/90 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-1 shadow">
+                              <ShieldCheck className="w-2.5 h-2.5" />
+                              Privacy &bull; Face Pixelated
+                            </div>
+                            {boxes.length > 0 && (
+                              <div className="absolute bottom-2 left-2 bg-red-600/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">
+                                Cloudinary Evidence Layer
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     <div className="space-y-1.5 text-xs">

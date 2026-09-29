@@ -65,6 +65,8 @@ export type ImageAnalysis = z.infer<typeof ImageAnalysisSchema>;
 export const ComparisonChangeSchema = z.object({
   description: z.string(),
   confidence: z.number().min(0).max(1),
+  /** Which part of the matched frame the change was seen in, e.g. "top-left". */
+  region: z.string().optional(),
 });
 
 export const ComparisonResultSchema = z.object({

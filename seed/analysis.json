@@ -4,11 +4,18 @@
     "image_quality": "ok",
     "observations": [
       {
-        "category": "scratch",
+        "category": "mark",
         "sub_area": "lower_cabinet",
-        "description": "Possible scratch visible on lower cabinet door finish.",
-        "confidence": 0.88,
-        "bbox": [0.15, 0.45, 0.38, 0.72]
+        "description": "Visible dark smudge or mark on the white cabinet door surface near the handle.",
+        "confidence": 0.85,
+        "bbox": [0.38, 0.42, 0.55, 0.65]
+      },
+      {
+        "category": "mark",
+        "sub_area": "lower_cabinet",
+        "description": "Observed small dark spot on the white cabinet door panel.",
+        "confidence": 0.75,
+        "bbox": [0.45, 0.5, 0.58, 0.62]
       }
     ]
   },
@@ -18,10 +25,42 @@
     "observations": [
       {
         "category": "stain",
-        "sub_area": "shower_wall",
-        "description": "Visible water stain discoloration along shower wall tile grout line.",
-        "confidence": 0.84,
-        "bbox": [0.28, 0.35, 0.52, 0.62]
+        "sub_area": "shower_track",
+        "description": "Visible dark discoloration and residue along the bottom edge of the glass shower door and the white base track.",
+        "confidence": 0.95,
+        "bbox": [0.42, 0.65, 0.55, 0.85]
+      },
+      {
+        "category": "stain",
+        "sub_area": "shower_wall_corner",
+        "description": "Observed dark grime accumulation in the corner where the tiled wall meets the shower base.",
+        "confidence": 0.9,
+        "bbox": [0.48, 0.72, 0.6, 0.88]
+      }
+    ]
+  },
+  "properties/prop-381/insp-2024-move-in/living_room/living-floor-01": {
+    "room_guess": "living_room",
+    "image_quality": "ok",
+    "observations": []
+  },
+  "properties/prop-381/insp-2024-move-in/bedroom/bedroom-wall-01": {
+    "room_guess": "bedroom",
+    "image_quality": "ok",
+    "observations": [
+      {
+        "category": "mark",
+        "sub_area": "baseboard",
+        "description": "Observed dark mark or scuff on the white baseboard near the door frame.",
+        "confidence": 0.85,
+        "bbox": [0.2, 0.78, 0.28, 0.86]
+      },
+      {
+        "category": "mark",
+        "sub_area": "drywall",
+        "description": "Visible faint discoloration or patch on the upper section of the wall.",
+        "confidence": 0.6,
+        "bbox": [0.55, 0.25, 0.7, 0.42]
       }
     ]
   },
@@ -30,24 +69,38 @@
     "image_quality": "ok",
     "observations": [
       {
-        "category": "scratch",
+        "category": "mark",
         "sub_area": "lower_cabinet",
-        "description": "Existing cabinet mark reviewed, consistent with baseline move-in capture.",
-        "confidence": 0.89,
-        "bbox": [0.16, 0.46, 0.39, 0.73]
+        "description": "Visible small dark spot on the white cabinet door surface.",
+        "confidence": 0.85,
+        "bbox": [0.38, 0.42, 0.55, 0.65]
+      },
+      {
+        "category": "mark",
+        "sub_area": "lower_cabinet",
+        "description": "Observed faint linear mark on the upper section of the cabinet door.",
+        "confidence": 0.6,
+        "bbox": [0.4, 0.3, 0.52, 0.45]
       }
     ]
   },
-  "properties/prop-381/insp-2026-periodic/bathroom/shower-tile-02": {
+  "properties/prop-381/insp-2025-periodic/bathroom/shower-tile-02": {
     "room_guess": "bathroom",
     "image_quality": "ok",
     "observations": [
       {
         "category": "stain",
-        "sub_area": "lower_tile_corner",
-        "description": "New visible discoloration for review near base caulking seam.",
-        "confidence": 0.81,
-        "bbox": [0.35, 0.65, 0.60, 0.88]
+        "sub_area": "shower_track",
+        "description": "Visible dark discoloration and residue along the bottom edge of the glass shower door and the white threshold.",
+        "confidence": 0.95,
+        "bbox": [0.42, 0.65, 0.55, 0.85]
+      },
+      {
+        "category": "stain",
+        "sub_area": "shower_wall_corner",
+        "description": "Observed dark grime accumulation in the corner where the tiled wall meets the shower base.",
+        "confidence": 0.9,
+        "bbox": [0.48, 0.72, 0.6, 0.88]
       }
     ]
   },
@@ -56,11 +109,38 @@
     "image_quality": "ok",
     "observations": [
       {
-        "category": "scratch",
+        "category": "mark",
         "sub_area": "lower_cabinet",
-        "description": "Superficial scratch visible on lower cabinet door surface.",
-        "confidence": 0.87,
-        "bbox": [0.15, 0.45, 0.38, 0.72]
+        "description": "Visible dark smudge on the white cabinet door surface.",
+        "confidence": 0.85,
+        "bbox": [0.38, 0.42, 0.55, 0.65]
+      },
+      {
+        "category": "mark",
+        "sub_area": "lower_cabinet",
+        "description": "Observed faint scuff mark on the upper section of the cabinet door.",
+        "confidence": 0.75,
+        "bbox": [0.4, 0.3, 0.52, 0.45]
+      }
+    ]
+  },
+  "properties/prop-381/insp-2026-move-out/bathroom/shower-tile-03": {
+    "room_guess": "bathroom",
+    "image_quality": "ok",
+    "observations": [
+      {
+        "category": "stain",
+        "sub_area": "shower_curb",
+        "description": "Visible dark discoloration and residue along the bottom edge of the glass door and the white shower curb.",
+        "confidence": 0.95,
+        "bbox": [0.42, 0.65, 0.55, 0.85]
+      },
+      {
+        "category": "stain",
+        "sub_area": "shower_wall_corner",
+        "description": "Observed dark grime accumulation in the corner where the tiled wall meets the shower base.",
+        "confidence": 0.9,
+        "bbox": [0.48, 0.72, 0.6, 0.88]
       }
     ]
   }

@@ -15,6 +15,49 @@ import {
   ShareLink,
 } from "./schemas";
 
+function mapAssetRow(a: any): Asset {
+  return {
+    id: a.id,
+    inspection_id: a.inspection_id,
+    room_id: a.room_id,
+    cloudinary_public_id: a.cloudinary_public_id,
+    secure_url: a.secure_url,
+    resource_type: a.resource_type || "image",
+    format: a.format,
+    width: a.width,
+    height: a.height,
+    bytes: a.bytes,
+    etag: a.etag,
+    sha256: a.sha256,
+    captured_at: a.captured_at,
+    analysis_status: a.analysis_status,
+    analysis_error: a.analysis_error,
+    room_guess: a.room_guess,
+    image_quality: a.image_quality,
+    created_at: a.created_at,
+  };
+}
+
+function mapObservationRow(o: any): Observation {
+  return {
+    id: o.id,
+    asset_id: o.asset_id,
+    category: o.category,
+    sub_area: o.sub_area,
+    description: o.description,
+    confidence: Number(o.confidence),
+    bbox: o.bbox,
+    review_status: o.review_status,
+    reviewer_note: o.reviewer_note,
+    reviewed_by: o.reviewed_by,
+    reviewed_at: o.reviewed_at,
+    source: o.source,
+    edited_from: o.edited_from,
+    created_at: o.created_at,
+    updated_at: o.updated_at,
+  };
+}
+
 export class SupabaseDatabaseService implements DatabaseService {
   private client: SupabaseClient;
   private fallback?: DatabaseService;
@@ -57,11 +100,13 @@ export class SupabaseDatabaseService implements DatabaseService {
 
   async getUser(id: string): Promise<User | null> {
     try {
-      const { data: user, error } = await this.client
-        .from("users")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
+      // Run all three lookups in parallel (one round trip instead of two sequential ones)
+      const [userRes, assignmentsRes, propsRes] = await Promise.all([
+        this.client.from("users").select("*").eq("id", id).maybeSingle(),
+        this.client.from("property_tenants").select("property_id").eq("tenant_id", id),
+        this.client.from("properties").select("id").eq("owner_id", id),
+      ]);
+      const { data: user, error } = userRes;
 
       if (error) {
         if (this.isSchemaMissingError(error)) {
@@ -78,18 +123,12 @@ export class SupabaseDatabaseService implements DatabaseService {
       let owned_properties: string[] = [];
 
       if (user.role === "tenant") {
-        const { data: assignments } = await this.client
-          .from("property_tenants")
-          .select("property_id")
-          .eq("tenant_id", id);
+        const assignments = assignmentsRes.data;
         if (assignments && assignments.length > 0) {
           assigned_property_id = assignments[0].property_id;
         }
       } else if (user.role === "owner") {
-        const { data: props } = await this.client
-          .from("properties")
-          .select("id")
-          .eq("owner_id", id);
+        const props = propsRes.data;
         if (props) {
           owned_properties = props.map((p) => p.id);
         }
@@ -285,7 +324,7 @@ export class SupabaseDatabaseService implements DatabaseService {
       }
 
       if (this.fallback) {
-        await this.fallback.createProperty(data).catch(() => {});
+        await (this.fallback as any).createProperty({ ...data, id }).catch(() => {});
       }
 
       return newProperty;
@@ -832,19 +871,31 @@ export class SupabaseDatabaseService implements DatabaseService {
       return this.fallback.getTimeline(propertyId);
     }
     try {
-      const property = await this.getProperty(propertyId);
+      // Fetch property, rooms and the full inspection → asset → observation tree
+      // in parallel. The tree is a single PostgREST nested select (one round trip)
+      // instead of one query per inspection and per asset.
+      const [property, rooms, tree] = await Promise.all([
+        this.getProperty(propertyId),
+        this.getRooms(propertyId),
+        this.client
+          .from("inspections")
+          .select("*, assets(*, observations(*))")
+          .eq("property_id", propertyId)
+          .order("captured_at", { ascending: false }),
+      ]);
+
       if (!property) {
         if (this.fallback) {
           return this.fallback.getTimeline(propertyId);
         }
         throw new Error(`Property ${propertyId} not found`);
       }
+      if (tree.error) throw tree.error;
 
-      const rooms = await this.getRooms(propertyId);
-      const inspections = await this.getInspections(propertyId);
+      const inspectionRows: any[] = tree.data || [];
 
       // If Supabase has empty inspections but fallback has seed inspections, use fallback
-      if (inspections.length === 0 && this.fallback) {
+      if (inspectionRows.length === 0 && this.fallback) {
         const fallbackTimeline = await this.fallback.getTimeline(propertyId).catch(() => null);
         if (fallbackTimeline && fallbackTimeline.inspections.length > 0) {
           return fallbackTimeline;
@@ -852,21 +903,54 @@ export class SupabaseDatabaseService implements DatabaseService {
       }
 
       const detailedInspections = await Promise.all(
-        inspections.map(async (insp) => {
-          const assets = await this.getAssets(insp.id);
+        inspectionRows.map(async (i) => {
+          const insp: Inspection = {
+            id: i.id,
+            property_id: i.property_id,
+            type: i.type,
+            captured_at: i.captured_at,
+            status: i.status,
+            created_by: i.created_by,
+            created_at: i.created_at,
+          };
+          const assetRows: any[] = (i.assets || []).sort(
+            (a: any, b: any) =>
+              new Date(b.captured_at).getTime() - new Date(a.captured_at).getTime()
+          );
+          const assets: Array<Asset & { observations?: Observation[] }> =
+            assetRows.length > 0
+              ? assetRows.map((a) => ({
+                  ...mapAssetRow(a),
+                  observations: (a.observations || [])
+                    .map(mapObservationRow)
+                    .sort(
+                      (x: Observation, y: Observation) =>
+                        new Date(x.created_at).getTime() - new Date(y.created_at).getTime()
+                    ),
+                }))
+              : this.fallback
+                ? await this.fallback.getAssets(insp.id)
+                : [];
+
           const detailedAssets = await Promise.all(
-            assets.map(async (asset) => {
+            assets.map(async ({ observations, ...asset }) => {
               const room = rooms.find((r) => r.id === asset.room_id) || {
                 id: asset.room_id,
                 property_id: propertyId,
                 name: "General",
                 category: "unknown" as any,
               };
-              const observations = await this.getObservations(asset.id);
+              // Preserve previous behavior: fall back to local store when Supabase has none
+              const obs =
+                observations && observations.length > 0
+                  ? observations
+                  : this.fallback
+                    ? await this.fallback.getObservations(asset.id)
+                    : [];
               return {
                 ...asset,
                 room,
-                observations,
+                observations: obs,
               };
             })
           );
@@ -1070,6 +1154,42 @@ export class SupabaseDatabaseService implements DatabaseService {
       return true;
     } catch {
       return this.fallback ? this.fallback.revokeShareLink(token) : false;
+    }
+  }
+
+  async deleteProperty(id: string): Promise<boolean> {
+    try {
+      await this.client.from("properties").delete().eq("id", id);
+      if (this.fallback && "deleteProperty" in this.fallback) {
+        await (this.fallback as any).deleteProperty(id).catch(() => {});
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async deleteAsset(id: string): Promise<boolean> {
+    try {
+      await this.client.from("assets").delete().eq("id", id);
+      if (this.fallback && "deleteAsset" in this.fallback) {
+        await (this.fallback as any).deleteAsset(id).catch(() => {});
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async deleteShareLink(token: string): Promise<boolean> {
+    try {
+      await this.client.from("share_links").delete().eq("token", token);
+      if (this.fallback && "deleteShareLink" in this.fallback) {
+        await (this.fallback as any).deleteShareLink(token).catch(() => {});
+      }
+      return true;
+    } catch {
+      return false;
     }
   }
 }

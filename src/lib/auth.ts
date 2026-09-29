@@ -33,14 +33,13 @@ export async function getSessionUser(req: NextRequest): Promise<User | null> {
     },
   });
 
-  const {
-    data: { user: authUser },
-    error,
-  } = await supabase.auth.getUser();
+  // getClaims() verifies the JWT locally instead of calling the Auth server
+  const { data, error } = await supabase.auth.getClaims();
+  const authUid = data?.claims?.sub;
 
-  if (error || !authUser) return null;
+  if (error || !authUid) return null;
 
-  return fetchUserProfile(authUser.id);
+  return fetchUserProfile(authUid);
 }
 
 /**
@@ -50,11 +49,13 @@ export async function getSessionUser(req: NextRequest): Promise<User | null> {
 export async function fetchUserProfile(authUid: string): Promise<User | null> {
   const admin = createSupabaseAdminClient();
 
-  const { data: user, error } = await admin
-    .from("users")
-    .select("*")
-    .eq("id", authUid)
-    .maybeSingle();
+  // Run all three lookups in parallel (one round trip instead of two sequential ones)
+  const [userRes, assignmentsRes, propsRes] = await Promise.all([
+    admin.from("users").select("*").eq("id", authUid).maybeSingle(),
+    admin.from("property_tenants").select("property_id").eq("tenant_id", authUid),
+    admin.from("properties").select("id").eq("owner_id", authUid),
+  ]);
+  const { data: user, error } = userRes;
 
   if (error || !user) return null;
 
@@ -62,18 +63,12 @@ export async function fetchUserProfile(authUid: string): Promise<User | null> {
   let owned_properties: string[] = [];
 
   if (user.role === "tenant") {
-    const { data: assignments } = await admin
-      .from("property_tenants")
-      .select("property_id")
-      .eq("tenant_id", authUid);
+    const assignments = assignmentsRes.data;
     if (assignments && assignments.length > 0) {
       assigned_property_id = assignments[0].property_id;
     }
   } else if (user.role === "owner") {
-    const { data: props } = await admin
-      .from("properties")
-      .select("id")
-      .eq("owner_id", authUid);
+    const props = propsRes.data;
     if (props) {
       owned_properties = props.map((p: any) => p.id);
     }

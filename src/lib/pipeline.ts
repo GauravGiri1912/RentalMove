@@ -3,6 +3,7 @@ import { getMediaProvider } from "./media";
 import { getVisionProvider } from "./vision";
 import { computeRemoteImageSha256 } from "./hash";
 import { Asset, AssetRegisterRequest } from "./schemas";
+import { computeManagedTags } from "./tags";
 
 /**
  * Core idempotent asset registration pipeline.
@@ -129,6 +130,16 @@ export async function runAnalysisForAsset(assetId: string): Promise<void> {
       ai_confidence: primaryObs ? Math.round(primaryObs.confidence * 100) : 100,
       review_status: "pending",
     });
+
+    // Write tags back to Cloudinary so new uploads are searchable by issue type and review status
+    try {
+      const desiredTags = computeManagedTags(
+        analysis.observations.map((o) => ({ category: o.category, review_status: "pending" }))
+      );
+      await media.syncManagedTags(asset.cloudinary_public_id, desiredTags);
+    } catch (tagErr) {
+      console.warn(`[Pipeline] Could not sync tags to Cloudinary for ${asset.cloudinary_public_id}:`, tagErr);
+    }
   } catch (err: any) {
     const duration = Date.now() - startTime;
     console.error(`[Pipeline] Analysis error after ${duration}ms:`, err);

@@ -16,8 +16,22 @@ describe("Cloudinary Search Expression Builder", () => {
     expect(expression).toContain("public_id:properties/prop-381*");
     expect(expression).toContain("tags:kitchen");
     expect(expression).toContain("tags:scratch");
+    expect(expression).toContain("tags:review:accepted");
     expect(expression).toContain("created_at>=2024-01-01");
     expect(validatedFilter.room).toBe("kitchen");
+  });
+
+  it("builds inspection year folder and tag search expressions", () => {
+    const { expression } = buildCloudinarySearchExpression(
+      {
+        date_from: "2024-01-01",
+        date_to: "2024-12-31",
+      },
+      "prop-381"
+    );
+
+    expect(expression).toContain("public_id:properties/prop-381*");
+    expect(expression).toContain("(tags:2024 OR public_id:properties/prop-381/*2024*)");
   });
 
   it("sanitizes property IDs and prevents expression injection", () => {

@@ -52,10 +52,10 @@ export async function middleware(req: NextRequest) {
     },
   });
 
-  // IMPORTANT: Always call getUser() (not getSession()) to validate the JWT
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() validates the JWT signature locally (cached JWKS) and refreshes the
+  // session if needed — no round trip to the Auth server on every request.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
 
   const { pathname } = req.nextUrl;
 
@@ -84,6 +84,6 @@ export const config = {
      * - public assets
      * - api routes (handled per-route)
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

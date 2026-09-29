@@ -31,18 +31,39 @@ export function buildCloudinarySearchExpression(
     clauses.push(`tags:${filter.issue_category}`);
   }
 
-  if (filter.date_from) {
-    clauses.push(`created_at>=${filter.date_from}`);
+  if (filter.review_status) {
+    clauses.push(`tags:review:${filter.review_status}`);
   }
 
-  if (filter.date_to) {
-    clauses.push(`created_at<=${filter.date_to}`);
+  // Handle year searches vs actual upload timestamp searches.
+  // Inspection photos have years in folder paths (insp-2024-move-in) and tags (2024, year:2024).
+  // Cloudinary's `created_at` is only the upload timestamp.
+  const yearFrom = filter.date_from?.match(/^(\d{4})/)?.[1];
+  const yearTo = filter.date_to?.match(/^(\d{4})/)?.[1];
+  const currentYear = new Date().getFullYear().toString();
+
+  if (yearFrom && yearTo && yearFrom === yearTo) {
+    // If searching for a specific inspection year (e.g. 2024, 2025)
+    clauses.push(`(tags:${yearFrom} OR public_id:properties/${safePropId}/*${yearFrom}*)`);
+  } else {
+    // Otherwise use upload date bounds if provided
+    if (filter.date_from) {
+      clauses.push(`created_at>=${filter.date_from}`);
+    }
+    if (filter.date_to) {
+      clauses.push(`created_at<=${filter.date_to}`);
+    }
   }
 
   if (filter.free_text) {
     const sanitizedText = filter.free_text.replace(/[^a-zA-Z0-9_-]/g, "").trim();
     if (sanitizedText) {
-      clauses.push(`tags:${sanitizedText}*`);
+      // Check if free text is a 4-digit year
+      if (/^202[0-9]$/.test(sanitizedText)) {
+        clauses.push(`(tags:${sanitizedText} OR public_id:properties/${safePropId}/*${sanitizedText}*)`);
+      } else {
+        clauses.push(`tags:${sanitizedText}*`);
+      }
     }
   }
 

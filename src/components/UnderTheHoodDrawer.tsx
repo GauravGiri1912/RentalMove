@@ -174,6 +174,28 @@ export function UnderTheHoodDrawer({
                 {vlmCopyUrl}
               </div>
             </div>
+
+            {/* Tenant Privacy Face Pixelation */}
+            <div className="bg-secondary/40 border border-border rounded-lg p-2.5 space-y-1">
+              <div className="flex items-center justify-between font-medium">
+                <span>Tenant Privacy Face Pixelation</span>
+                <span className="font-mono text-[10px] text-emerald-500">e_pixelate_faces:20</span>
+              </div>
+              <div className="font-mono text-[11px] text-muted-foreground truncate bg-card p-1.5 rounded border border-border">
+                {`https://res.cloudinary.com/${cloudName}/image/upload/c_limit,w_1600,h_1200,e_pixelate_faces:20,f_auto,q_auto/${asset.public_id}.jpg`}
+              </div>
+            </div>
+
+            {/* Matched Normalization Pipeline */}
+            <div className="bg-secondary/40 border border-border rounded-lg p-2.5 space-y-1">
+              <div className="flex items-center justify-between font-medium">
+                <span>Matched Comparison Rendition</span>
+                <span className="font-mono text-[10px] text-indigo-400">c_fill,g_auto,e_auto_brightness,e_auto_contrast</span>
+              </div>
+              <div className="font-mono text-[11px] text-muted-foreground truncate bg-card p-1.5 rounded border border-border">
+                {`https://res.cloudinary.com/${cloudName}/image/upload/c_fill,g_auto,w_1600,h_1200,e_auto_brightness,e_auto_contrast/c_limit,w_1024,f_jpg,q_auto/${asset.public_id}.jpg`}
+              </div>
+            </div>
           </div>
         </div>
 

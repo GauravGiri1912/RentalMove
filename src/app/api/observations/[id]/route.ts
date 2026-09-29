@@ -49,7 +49,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Observation not found" }, { status: 404 });
     }
 
-    // Sync review status to Cloudinary Structured Metadata
+    // Sync review status to Cloudinary Structured Metadata & Managed Tags
     const asset = await db.getAssetById(updated.asset_id);
     if (asset?.cloudinary_public_id) {
       media.updateMetadata(asset.cloudinary_public_id, {
@@ -58,6 +58,15 @@ export async function PATCH(
       }).catch((err) => {
         console.warn("[Observations] Failed to sync metadata to Cloudinary:", err);
       });
+
+      try {
+        const { computeManagedTags } = await import("@/lib/tags");
+        const allObs = await db.getObservations(updated.asset_id);
+        const desiredTags = computeManagedTags(allObs);
+        await media.syncManagedTags(asset.cloudinary_public_id, desiredTags);
+      } catch (err) {
+        console.warn("[Observations] Failed to sync managed tags to Cloudinary:", err);
+      }
     }
 
     return NextResponse.json(updated);

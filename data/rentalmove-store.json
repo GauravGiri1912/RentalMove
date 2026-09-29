@@ -7,7 +7,7 @@
       "role": "tenant",
       "assigned_property_id": "prop-381",
       "owned_properties": [],
-      "created_at": "2024-01-01T00:00:00Z"
+      "created_at": "2024-05-15T08:00:00Z"
     },
     {
       "id": "user-owner-1",
@@ -17,7 +17,7 @@
       "owned_properties": [
         "prop-381"
       ],
-      "created_at": "2024-01-01T00:00:00Z"
+      "created_at": "2024-05-15T08:00:00Z"
     }
   ],
   "properties": [
@@ -26,492 +26,37 @@
       "address_label": "381 Elmwood Ave",
       "unit_label": "Apt 4B",
       "owner_id": "user-owner-1",
-      "created_at": "2024-01-01T00:00:00Z"
-    },
-    {
-      "id": "prop-1790682482483",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T11:48:02.483Z"
-    },
-    {
-      "id": "prop-1790682534089",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T11:48:54.089Z"
-    },
-    {
-      "id": "prop-1790682583447",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T11:49:43.447Z"
-    },
-    {
-      "id": "prop-1790683568629",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T12:06:08.629Z"
-    },
-    {
-      "id": "prop-1790683625796",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T12:07:05.796Z"
-    },
-    {
-      "id": "prop-1790683724874",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T12:08:44.874Z"
-    },
-    {
-      "id": "prop-1790684004223",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T12:13:24.223Z"
-    },
-    {
-      "id": "prop-1790685572517",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T12:39:32.517Z"
-    },
-    {
-      "id": "prop-1790685640846",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T12:40:40.846Z"
-    },
-    {
-      "id": "prop-1790686726085",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T12:58:46.085Z"
-    },
-    {
-      "id": "prop-1790687588012",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:13:08.012Z"
-    },
-    {
-      "id": "prop-1790688521470",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:28:41.470Z"
-    },
-    {
-      "id": "prop-1790688555487",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:29:15.487Z"
-    },
-    {
-      "id": "prop-1790688597601",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:29:57.601Z"
-    },
-    {
-      "id": "prop-1790688629341",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:30:29.341Z"
-    },
-    {
-      "id": "prop-1790688637587",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:30:37.587Z"
-    },
-    {
-      "id": "prop-1790688820323",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:33:40.323Z"
-    },
-    {
-      "id": "prop-1790688845767",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:34:05.767Z"
-    },
-    {
-      "id": "prop-1790689302613",
-      "address_label": "999 Live Supabase Way",
-      "unit_label": "Suite 100",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:41:42.613Z"
-    },
-    {
-      "id": "prop-1790689460888",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:44:20.888Z"
-    },
-    {
-      "id": "prop-1790689648165",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:47:28.165Z"
-    },
-    {
-      "id": "prop-1790689727673",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T13:48:47.673Z"
-    },
-    {
-      "id": "prop-1790690750837",
-      "address_label": "456 Test Blvd",
-      "unit_label": "Apt 2B",
-      "owner_id": "user-owner-1",
-      "created_at": "2026-09-29T14:05:50.837Z"
+      "created_at": "2024-05-15T08:30:00Z"
     }
   ],
   "rooms": [
     {
+      "id": "room-living-room",
+      "property_id": "prop-381",
+      "name": "Living Room",
+      "category": "living_room",
+      "created_at": "2024-05-15T08:30:00Z"
+    },
+    {
       "id": "room-kitchen",
       "property_id": "prop-381",
       "name": "Kitchen",
-      "category": "kitchen"
+      "category": "kitchen",
+      "created_at": "2024-05-15T08:30:00Z"
     },
     {
       "id": "room-bathroom",
       "property_id": "prop-381",
       "name": "Bathroom",
-      "category": "bathroom"
-    },
-    {
-      "id": "room-living",
-      "property_id": "prop-381",
-      "name": "Living Room",
-      "category": "living_room"
+      "category": "bathroom",
+      "created_at": "2024-05-15T08:30:00Z"
     },
     {
       "id": "room-bedroom",
       "property_id": "prop-381",
-      "name": "Master Bedroom",
-      "category": "bedroom"
-    },
-    {
-      "id": "room-1790682482485-999",
-      "property_id": "prop-1790682482483",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790682482485-57",
-      "property_id": "prop-1790682482483",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790682482485-413",
-      "property_id": "prop-1790682482483",
-      "name": "Bathroom",
-      "category": "bathroom"
-    },
-    {
-      "id": "room-1790682482485-667",
-      "property_id": "prop-1790682482483",
       "name": "Bedroom",
-      "category": "bedroom"
-    },
-    {
-      "id": "room-1790682534091-554",
-      "property_id": "prop-1790682534089",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790682534091-170",
-      "property_id": "prop-1790682534089",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790682583449-644",
-      "property_id": "prop-1790682583447",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790682583449-265",
-      "property_id": "prop-1790682583447",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790683568631-0",
-      "property_id": "prop-1790683568629",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790683568631-938",
-      "property_id": "prop-1790683568629",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790683625798-460",
-      "property_id": "prop-1790683625796",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790683625798-407",
-      "property_id": "prop-1790683625796",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790683724876-113",
-      "property_id": "prop-1790683724874",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790683724876-175",
-      "property_id": "prop-1790683724874",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790684004225-747",
-      "property_id": "prop-1790684004223",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790684004225-334",
-      "property_id": "prop-1790684004223",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790685572519-281",
-      "property_id": "prop-1790685572517",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790685572520-402",
-      "property_id": "prop-1790685572517",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790685640849-91",
-      "property_id": "prop-1790685640846",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790685640849-793",
-      "property_id": "prop-1790685640846",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790686726086-26",
-      "property_id": "prop-1790686726085",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790686726086-997",
-      "property_id": "prop-1790686726085",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790687588013-284",
-      "property_id": "prop-1790687588012",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790687588013-171",
-      "property_id": "prop-1790687588012",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790688521470-240",
-      "property_id": "prop-1790688521470",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790688521470-856",
-      "property_id": "prop-1790688521470",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790688555487-484",
-      "property_id": "prop-1790688555487",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790688555487-44",
-      "property_id": "prop-1790688555487",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790688597601-909",
-      "property_id": "prop-1790688597601",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790688597601-127",
-      "property_id": "prop-1790688597601",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790688629341-841",
-      "property_id": "prop-1790688629341",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790688629341-907",
-      "property_id": "prop-1790688629341",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790688637587-953",
-      "property_id": "prop-1790688637587",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790688637587-329",
-      "property_id": "prop-1790688637587",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790688820323-94",
-      "property_id": "prop-1790688820323",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790688820323-637",
-      "property_id": "prop-1790688820323",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790688845767-201",
-      "property_id": "prop-1790688845767",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790688845767-591",
-      "property_id": "prop-1790688845767",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790689302613-913",
-      "property_id": "prop-1790689302613",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790689302613-199",
-      "property_id": "prop-1790689302613",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790689302613-416",
-      "property_id": "prop-1790689302613",
-      "name": "Bathroom",
-      "category": "bathroom"
-    },
-    {
-      "id": "room-1790689302613-739",
-      "property_id": "prop-1790689302613",
-      "name": "Bedroom",
-      "category": "bedroom"
-    },
-    {
-      "id": "room-1790689460888-453",
-      "property_id": "prop-1790689460888",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790689460888-116",
-      "property_id": "prop-1790689460888",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790689648165-838",
-      "property_id": "prop-1790689648165",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790689648165-382",
-      "property_id": "prop-1790689648165",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790689727673-15",
-      "property_id": "prop-1790689727673",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790689727673-636",
-      "property_id": "prop-1790689727673",
-      "name": "Kitchen",
-      "category": "kitchen"
-    },
-    {
-      "id": "room-1790690750837-593",
-      "property_id": "prop-1790690750837",
-      "name": "Living Room",
-      "category": "living_room"
-    },
-    {
-      "id": "room-1790690750837-978",
-      "property_id": "prop-1790690750837",
-      "name": "Kitchen",
-      "category": "kitchen"
+      "category": "bedroom",
+      "created_at": "2024-05-15T08:30:00Z"
     }
   ],
   "inspections": [
@@ -520,6 +65,7 @@
       "property_id": "prop-381",
       "type": "move_in",
       "captured_at": "2024-06-01T10:00:00Z",
+      "created_by": "user-owner-1",
       "status": "completed",
       "created_at": "2024-06-01T10:00:00Z"
     },
@@ -527,193 +73,26 @@
       "id": "insp-2025-periodic",
       "property_id": "prop-381",
       "type": "inspection",
-      "captured_at": "2025-06-01T11:00:00Z",
+      "captured_at": "2025-06-01T10:00:00Z",
+      "created_by": "user-owner-1",
       "status": "completed",
-      "created_at": "2025-06-01T11:00:00Z"
+      "created_at": "2025-06-01T10:00:00Z"
     },
     {
       "id": "insp-2026-move-out",
       "property_id": "prop-381",
       "type": "move_out",
-      "captured_at": "2026-06-01T09:30:00Z",
+      "captured_at": "2026-06-01T10:00:00Z",
+      "created_by": "user-owner-1",
       "status": "completed",
-      "created_at": "2026-06-01T09:30:00Z"
+      "created_at": "2026-06-01T10:00:00Z"
     },
     {
-      "id": "insp-1790682482494",
-      "created_at": "2026-09-29T11:48:02.494Z",
+      "id": "insp-1790698607104",
+      "created_at": "2026-09-29T16:16:47.104Z",
       "property_id": "prop-381",
       "type": "move_in",
-      "created_by": "user-tenant-1",
-      "scheduled_date": "2026-09-29T11:48:02.494Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790682534096",
-      "created_at": "2026-09-29T11:48:54.096Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "scheduled_date": "2026-09-29T11:48:54.096Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790682583453",
-      "created_at": "2026-09-29T11:49:43.453Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "scheduled_date": "2026-09-29T11:49:43.453Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790683568635",
-      "created_at": "2026-09-29T12:06:08.635Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T12:06:08.635Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790683625802",
-      "created_at": "2026-09-29T12:07:05.802Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T12:07:05.802Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790683724881",
-      "created_at": "2026-09-29T12:08:44.881Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T12:08:44.881Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790684004234",
-      "created_at": "2026-09-29T12:13:24.234Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T12:13:24.234Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790685572535",
-      "created_at": "2026-09-29T12:39:32.535Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T12:39:32.532Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790685640855",
-      "created_at": "2026-09-29T12:40:40.855Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T12:40:40.855Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790686726090",
-      "created_at": "2026-09-29T12:58:46.090Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T12:58:46.090Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790687588022",
-      "created_at": "2026-09-29T13:13:08.022Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:13:08.022Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790688522418",
-      "created_at": "2026-09-29T13:28:42.418Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:28:41.800Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790688556245",
-      "created_at": "2026-09-29T13:29:16.245Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:29:16.030Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790688598008",
-      "created_at": "2026-09-29T13:29:58.008Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:29:57.802Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790688629762",
-      "created_at": "2026-09-29T13:30:29.762Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:30:29.551Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790688638162",
-      "created_at": "2026-09-29T13:30:38.162Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:30:37.865Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790688820803",
-      "created_at": "2026-09-29T13:33:40.803Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:33:40.536Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790688846274",
-      "created_at": "2026-09-29T13:34:06.274Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:34:06.081Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790689461405",
-      "created_at": "2026-09-29T13:44:21.405Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:44:21.147Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790689648670",
-      "created_at": "2026-09-29T13:47:28.670Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:47:28.399Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790689728057",
-      "created_at": "2026-09-29T13:48:48.057Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T13:48:47.872Z",
-      "status": "in_progress"
-    },
-    {
-      "id": "insp-1790690751327",
-      "created_at": "2026-09-29T14:05:51.327Z",
-      "property_id": "prop-381",
-      "type": "move_in",
-      "captured_at": "2026-09-29T14:05:51.111Z",
+      "captured_at": "2026-09-29T16:16:46.935Z",
       "status": "in_progress"
     }
   ],
@@ -723,11 +102,14 @@
       "inspection_id": "insp-2024-move-in",
       "room_id": "room-kitchen",
       "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
-      "etag": "etag_k_2024_01",
-      "sha256": "8e9f2c5a1d7b3e4f6a8c0e2d4b6a8f1e3c5d7b9a2f4e6c8b0d2e4f6a8c0e2d4b",
-      "width": 1480,
-      "height": 1110,
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790680014/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
+      "resource_type": "image",
+      "format": "jpg",
+      "width": 1200,
+      "height": 896,
+      "bytes": 611515,
+      "etag": "f44819ff75ae8a18b25c0ad564506be5",
+      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
       "captured_at": "2024-06-01T10:00:00Z",
       "analysis_status": "done",
       "analysis_error": null,
@@ -740,512 +122,166 @@
       "inspection_id": "insp-2024-move-in",
       "room_id": "room-bathroom",
       "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1/properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01.jpg",
-      "etag": "etag_b_2024_02",
-      "sha256": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
-      "width": 1480,
-      "height": 1110,
-      "captured_at": "2024-06-01T10:15:00Z",
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790680017/properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01.jpg",
+      "resource_type": "image",
+      "format": "jpg",
+      "width": 1200,
+      "height": 896,
+      "bytes": 609762,
+      "etag": "2c0e382b413c63166d77a01ed0dca81c",
+      "sha256": "4a4b4142eeb487f2f7b8060ab232f0d3cee0e3b4a04b92c821cc7f93e27115fa",
+      "captured_at": "2024-06-01T10:00:00Z",
       "analysis_status": "done",
       "analysis_error": null,
       "room_guess": "bathroom",
       "image_quality": "ok",
-      "created_at": "2024-06-01T10:15:00Z"
+      "created_at": "2024-06-01T10:00:00Z"
     },
     {
       "id": "asset-03",
       "inspection_id": "insp-2024-move-in",
-      "room_id": "room-living",
+      "room_id": "room-living-room",
       "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/living_room/living-floor-01",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1/properties/prop-381/insp-2024-move-in/living_room/living-floor-01.jpg",
-      "etag": "etag_l_2024_03",
-      "sha256": "3f4e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9b0a1f2e3d4c5b6a7f8e9d0c1b2a3f4e",
-      "width": 1480,
-      "height": 1110,
-      "captured_at": "2024-06-01T10:30:00Z",
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790680020/properties/prop-381/insp-2024-move-in/living_room/living-floor-01.jpg",
+      "resource_type": "image",
+      "format": "jpg",
+      "width": 1200,
+      "height": 896,
+      "bytes": 698617,
+      "etag": "8c969bbe54debcd90f4efc5c83f3a3b8",
+      "sha256": "f701c243700193d4d29b8cafcbc22eaa251677aa98defdc447afd1d44efed614",
+      "captured_at": "2024-06-01T10:00:00Z",
       "analysis_status": "done",
       "analysis_error": null,
       "room_guess": "living_room",
       "image_quality": "ok",
-      "created_at": "2024-06-01T10:30:00Z"
+      "created_at": "2024-06-01T10:00:00Z"
     },
     {
       "id": "asset-04",
       "inspection_id": "insp-2024-move-in",
       "room_id": "room-bedroom",
       "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/bedroom/bedroom-wall-01",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1/properties/prop-381/insp-2024-move-in/bedroom/bedroom-wall-01.jpg",
-      "etag": "etag_m_2024_04",
-      "sha256": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
-      "width": 1480,
-      "height": 1110,
-      "captured_at": "2024-06-01T10:45:00Z",
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790680024/properties/prop-381/insp-2024-move-in/bedroom/bedroom-wall-01.jpg",
+      "resource_type": "image",
+      "format": "jpg",
+      "width": 1200,
+      "height": 896,
+      "bytes": 668418,
+      "etag": "9f1322b93436c57e24d946b266a7630d",
+      "sha256": "c700430f04ba0ff3048029242a47ca87c710eb5191b4ee0f78bfa15fb2cdcc2a",
+      "captured_at": "2024-06-01T10:00:00Z",
       "analysis_status": "done",
       "analysis_error": null,
       "room_guess": "bedroom",
       "image_quality": "ok",
-      "created_at": "2024-06-01T10:45:00Z"
+      "created_at": "2024-06-01T10:00:00Z"
     },
     {
       "id": "asset-05",
       "inspection_id": "insp-2025-periodic",
       "room_id": "room-kitchen",
       "cloudinary_public_id": "properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1/properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02.jpg",
-      "etag": "etag_k_2025_05",
-      "sha256": "8e9f2c5a1d7b3e4f6a8c0e2d4b6a8f1e3c5d7b9a2f4e6c8b0d2e4f6a8c0e2d4b",
-      "width": 1480,
-      "height": 1110,
-      "captured_at": "2025-06-01T11:00:00Z",
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790680027/properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02.jpg",
+      "resource_type": "image",
+      "format": "jpg",
+      "width": 1200,
+      "height": 896,
+      "bytes": 611515,
+      "etag": "f44819ff75ae8a18b25c0ad564506be5",
+      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
+      "captured_at": "2025-06-01T10:00:00Z",
       "analysis_status": "done",
       "analysis_error": null,
       "room_guess": "kitchen",
       "image_quality": "ok",
-      "created_at": "2025-06-01T11:00:00Z"
+      "created_at": "2025-06-01T10:00:00Z"
     },
     {
       "id": "asset-06",
       "inspection_id": "insp-2025-periodic",
       "room_id": "room-bathroom",
       "cloudinary_public_id": "properties/prop-381/insp-2025-periodic/bathroom/shower-tile-02",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1/properties/prop-381/insp-2025-periodic/bathroom/shower-tile-02.jpg",
-      "etag": "etag_b_2025_06",
-      "sha256": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
-      "width": 1480,
-      "height": 1110,
-      "captured_at": "2025-06-01T11:20:00Z",
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790680031/properties/prop-381/insp-2025-periodic/bathroom/shower-tile-02.jpg",
+      "resource_type": "image",
+      "format": "jpg",
+      "width": 1200,
+      "height": 896,
+      "bytes": 609762,
+      "etag": "2c0e382b413c63166d77a01ed0dca81c",
+      "sha256": "4a4b4142eeb487f2f7b8060ab232f0d3cee0e3b4a04b92c821cc7f93e27115fa",
+      "captured_at": "2025-06-01T10:00:00Z",
       "analysis_status": "done",
       "analysis_error": null,
       "room_guess": "bathroom",
       "image_quality": "ok",
-      "created_at": "2025-06-01T11:20:00Z"
+      "created_at": "2025-06-01T10:00:00Z"
     },
     {
       "id": "asset-07",
       "inspection_id": "insp-2026-move-out",
       "room_id": "room-kitchen",
       "cloudinary_public_id": "properties/prop-381/insp-2026-move-out/kitchen/cabinet-base-03",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1/properties/prop-381/insp-2026-move-out/kitchen/cabinet-base-03.jpg",
-      "etag": "etag_k_2026_07",
-      "sha256": "8e9f2c5a1d7b3e4f6a8c0e2d4b6a8f1e3c5d7b9a2f4e6c8b0d2e4f6a8c0e2d4b",
-      "width": 1480,
-      "height": 1110,
-      "captured_at": "2026-06-01T09:30:00Z",
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790680035/properties/prop-381/insp-2026-move-out/kitchen/cabinet-base-03.jpg",
+      "resource_type": "image",
+      "format": "jpg",
+      "width": 1200,
+      "height": 896,
+      "bytes": 611515,
+      "etag": "f44819ff75ae8a18b25c0ad564506be5",
+      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
+      "captured_at": "2026-06-01T10:00:00Z",
       "analysis_status": "done",
       "analysis_error": null,
       "room_guess": "kitchen",
       "image_quality": "ok",
-      "created_at": "2026-06-01T09:30:00Z"
+      "created_at": "2026-06-01T10:00:00Z"
     },
     {
       "id": "asset-08",
       "inspection_id": "insp-2026-move-out",
       "room_id": "room-bathroom",
       "cloudinary_public_id": "properties/prop-381/insp-2026-move-out/bathroom/shower-tile-03",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1/properties/prop-381/insp-2026-move-out/bathroom/shower-tile-03.jpg",
-      "etag": "etag_b_2026_08",
-      "sha256": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
-      "width": 1480,
-      "height": 1110,
-      "captured_at": "2026-06-01T09:50:00Z",
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790680039/properties/prop-381/insp-2026-move-out/bathroom/shower-tile-03.jpg",
+      "resource_type": "image",
+      "format": "jpg",
+      "width": 1200,
+      "height": 896,
+      "bytes": 609762,
+      "etag": "2c0e382b413c63166d77a01ed0dca81c",
+      "sha256": "4a4b4142eeb487f2f7b8060ab232f0d3cee0e3b4a04b92c821cc7f93e27115fa",
+      "captured_at": "2026-06-01T10:00:00Z",
       "analysis_status": "done",
       "analysis_error": null,
       "room_guess": "bathroom",
       "image_quality": "ok",
-      "created_at": "2026-06-01T09:50:00Z"
+      "created_at": "2026-06-01T10:00:00Z"
     },
     {
-      "id": "asset-1790681117074-615",
-      "created_at": "2026-09-29T11:25:17.074Z",
+      "id": "asset-1790698610046-767",
+      "created_at": "2026-09-29T16:16:50.047Z",
       "inspection_id": "insp-2024-move-in",
       "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/unique-test-01",
-      "secure_url": "https://example.com/test.jpg",
-      "etag": "etag_test_123",
-      "sha256": "aabbcc112233",
-      "captured_at": "2026-09-29T11:25:17.072Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790682304191-368",
-      "created_at": "2026-09-29T11:45:04.191Z",
-      "inspection_id": "insp-2026-e2e-tenant",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2026-e2e-tenant/kitchen/cabinet-e2e-1790682303439",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790680014/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
-      "etag": "etag_e2e_1790682303439",
-      "sha256": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b",
-      "captured_at": "2026-09-29T11:45:03.439Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790682482498-358",
-      "created_at": "2026-09-29T11:48:02.498Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/acceptance/test-reg-asset",
-      "secure_url": "https://res.cloudinary.com/test/image/upload/v1/test.jpg",
-      "etag": "etag_real_acceptance",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "width": 1600,
-      "height": 1200,
-      "captured_at": "2026-09-29T11:48:02.498Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "living_room",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790683576884-183",
-      "created_at": "2026-09-29T12:06:16.884Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/vbv7eckqhw18mfrkzhk5",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790683581/properties/prop-381/insp-2024-move-in/kitchen/vbv7eckqhw18mfrkzhk5.jpg",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:06:16.884Z",
-      "analysis_status": "failed",
-      "analysis_error": "Cannot read properties of undefined (reading 'value')"
-    },
-    {
-      "id": "asset-1790683637252-240",
-      "created_at": "2026-09-29T12:07:17.252Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/adgsvtwophqwqkieoupi",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790683641/properties/prop-381/insp-2024-move-in/kitchen/adgsvtwophqwqkieoupi.jpg",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:07:17.251Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "unknown",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790683735674-673",
-      "created_at": "2026-09-29T12:08:55.674Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/el3qzu7o7l4mnggydiag",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790683739/properties/prop-381/insp-2024-move-in/kitchen/el3qzu7o7l4mnggydiag.jpg",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:08:55.674Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790683742905-226",
-      "created_at": "2026-09-29T12:09:02.905Z",
-      "inspection_id": "insp-live-e2e-1790683727211",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-live-e2e-1790683727211/kitchen/hfrlr3cbnwipmah4yvin",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790683747/properties/prop-381/insp-live-e2e-1790683727211/kitchen/hfrlr3cbnwipmah4yvin.jpg",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:09:02.903Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "unknown",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790683798784-894",
-      "created_at": "2026-09-29T12:09:58.784Z",
-      "inspection_id": "insp-reality-1790683789550",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-reality-1790683789550/kitchen/mmqqtemfac7qntpb9key",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790683797/properties/prop-381/insp-reality-1790683789550/kitchen/mmqqtemfac7qntpb9key.jpg",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:09:58.783Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790683849170-549",
-      "created_at": "2026-09-29T12:10:49.170Z",
-      "inspection_id": "insp-live-e2e-1790683842891",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-live-e2e-1790683842891/kitchen/wirmufxi6saa9vlwad82",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790683853/properties/prop-381/insp-live-e2e-1790683842891/kitchen/wirmufxi6saa9vlwad82.jpg",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:10:49.168Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790683915478-295",
-      "created_at": "2026-09-29T12:11:55.479Z",
-      "inspection_id": "insp-reality-1790683905121",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-reality-1790683905121/kitchen/zb5kpjzsenxiu8g0idnc",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790683917/properties/prop-381/insp-reality-1790683905121/kitchen/zb5kpjzsenxiu8g0idnc.jpg",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:11:55.478Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790684012479-964",
-      "created_at": "2026-09-29T12:13:32.479Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/h1cu1awlcksrbcny3um0",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790684016/properties/prop-381/insp-2024-move-in/kitchen/h1cu1awlcksrbcny3um0.jpg",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:13:32.479Z",
-      "analysis_status": "running",
-      "analysis_error": null
-    },
-    {
-      "id": "asset-1790685640867-622",
-      "created_at": "2026-09-29T12:40:40.867Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/unit-test-cabinet",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-      "etag": "etag_unit_test",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:40:40.867Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790686733435-126",
-      "created_at": "2026-09-29T12:58:53.435Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/axq6njtzwnx3vhrw57ut",
-      "secure_url": "https://res.cloudinary.com/demo/image/upload/v1790686737/properties/prop-381/insp-2024-move-in/kitchen/axq6njtzwnx3vhrw57ut.jpg",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T12:58:53.435Z",
-      "analysis_status": "running",
-      "analysis_error": null
-    },
-    {
-      "id": "asset-1790688528082-702",
-      "created_at": "2026-09-29T13:28:48.082Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/kgqdjbnqxfji8uwgnuym",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790688530/properties/prop-381/insp-2024-move-in/kitchen/kgqdjbnqxfji8uwgnuym.jpg",
+      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/dnk0w64vloq0nnprxens",
+      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790698608/properties/prop-381/insp-2024-move-in/kitchen/dnk0w64vloq0nnprxens.jpg",
       "resource_type": "image",
       "etag": "f44819ff75ae8a18b25c0ad564506be5",
       "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
       "width": 1200,
       "height": 896,
-      "captured_at": "2026-09-29T13:28:47.838Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790688561374-274",
-      "created_at": "2026-09-29T13:29:21.374Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/seav2yst6bfjsgzuug9x",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790688564/properties/prop-381/insp-2024-move-in/kitchen/seav2yst6bfjsgzuug9x.jpg",
-      "resource_type": "image",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T13:29:21.053Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790688602966-427",
-      "created_at": "2026-09-29T13:30:02.966Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/luge6qs4ez4uimigzgyi",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790688606/properties/prop-381/insp-2024-move-in/kitchen/luge6qs4ez4uimigzgyi.jpg",
-      "resource_type": "image",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T13:30:02.634Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790688642217-22",
-      "created_at": "2026-09-29T13:30:42.217Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/vvfsnxmo8vccn3qq1ln2",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790688645/properties/prop-381/insp-2024-move-in/kitchen/vvfsnxmo8vccn3qq1ln2.jpg",
-      "resource_type": "image",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T13:30:41.815Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "unknown",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790688825850-137",
-      "created_at": "2026-09-29T13:33:45.850Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/ijls192cbanjsvfy1nzv",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790688828/properties/prop-381/insp-2024-move-in/kitchen/ijls192cbanjsvfy1nzv.jpg",
-      "resource_type": "image",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T13:33:45.674Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790688851672-833",
-      "created_at": "2026-09-29T13:34:11.672Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/cweqcdnwxlq4nnzv3nzm",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790688855/properties/prop-381/insp-2024-move-in/kitchen/cweqcdnwxlq4nnzv3nzm.jpg",
-      "resource_type": "image",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T13:34:11.366Z",
-      "analysis_status": "done",
-      "analysis_error": null,
-      "room_guess": "kitchen",
-      "image_quality": "ok"
-    },
-    {
-      "id": "asset-1790689467672-788",
-      "created_at": "2026-09-29T13:44:27.672Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/fwwixe0xyun2v9lofeva",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790689471/properties/prop-381/insp-2024-move-in/kitchen/fwwixe0xyun2v9lofeva.jpg",
-      "resource_type": "image",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T13:44:27.346Z",
-      "analysis_status": "queued",
-      "analysis_error": null
-    },
-    {
-      "id": "asset-1790689659531-221",
-      "created_at": "2026-09-29T13:47:39.531Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/ftsnhi2yrgmxbuozknp9",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790689662/properties/prop-381/insp-2024-move-in/kitchen/ftsnhi2yrgmxbuozknp9.jpg",
-      "resource_type": "image",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T13:47:39.220Z",
-      "analysis_status": "queued",
-      "analysis_error": null
-    },
-    {
-      "id": "asset-1790689732560-801",
-      "created_at": "2026-09-29T13:48:52.560Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/zhld7szeyjvcxoalgl5w",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790689735/properties/prop-381/insp-2024-move-in/kitchen/zhld7szeyjvcxoalgl5w.jpg",
-      "resource_type": "image",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T13:48:51.951Z",
-      "analysis_status": "queued",
-      "analysis_error": null
-    },
-    {
-      "id": "asset-1790690756573-675",
-      "created_at": "2026-09-29T14:05:56.573Z",
-      "inspection_id": "insp-2024-move-in",
-      "room_id": "room-kitchen",
-      "cloudinary_public_id": "properties/prop-381/insp-2024-move-in/kitchen/lmbkqcsqsi70y9nofy48",
-      "secure_url": "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790690758/properties/prop-381/insp-2024-move-in/kitchen/lmbkqcsqsi70y9nofy48.jpg",
-      "resource_type": "image",
-      "etag": "f44819ff75ae8a18b25c0ad564506be5",
-      "sha256": "8877da2061a7c152046ae8d2e9bc33c0308c2e10a39c8e20901c2024d3db3424",
-      "width": 1200,
-      "height": 896,
-      "captured_at": "2026-09-29T14:05:54.889Z",
+      "captured_at": "2026-09-29T16:16:49.866Z",
       "analysis_status": "queued",
       "analysis_error": null
     }
   ],
   "observations": [
     {
-      "id": "obs-01",
+      "id": "obs-asset-01-1",
       "asset_id": "asset-01",
-      "category": "scratch",
+      "category": "mark",
       "sub_area": "lower_cabinet",
-      "description": "Possible scratch visible on lower cabinet door surface.",
-      "confidence": 0.88,
+      "description": "Visible dark smudge or mark on the white cabinet door surface near the handle.",
+      "confidence": 0.85,
       "bbox": [
         0.38,
         0.42,
@@ -1253,19 +289,43 @@
         0.65
       ],
       "review_status": "accepted",
-      "reviewer_note": "Owner Sarah Jenkins verified during inspection review",
+      "reviewer_note": "AI observation confirmed during 2024 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2024-06-01T11:00:00Z",
       "source": "ai",
       "edited_from": null,
-      "created_at": "2024-06-01T10:02:00Z",
-      "updated_at": "2026-09-29T11:45:33.639Z"
+      "created_at": "2024-06-01T10:05:00Z",
+      "updated_at": "2024-06-01T11:00:00Z"
     },
     {
-      "id": "obs-02",
+      "id": "obs-asset-01-2",
+      "asset_id": "asset-01",
+      "category": "mark",
+      "sub_area": "lower_cabinet",
+      "description": "Observed small dark spot on the white cabinet door panel.",
+      "confidence": 0.75,
+      "bbox": [
+        0.45,
+        0.5,
+        0.58,
+        0.62
+      ],
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2024 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2024-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2024-06-01T10:05:00Z",
+      "updated_at": "2024-06-01T11:00:00Z"
+    },
+    {
+      "id": "obs-asset-02-1",
       "asset_id": "asset-02",
       "category": "stain",
-      "sub_area": "shower_wall",
-      "description": "Visible grout discoloration along shower wall tile grout line.",
-      "confidence": 0.84,
+      "sub_area": "shower_track",
+      "description": "Visible dark discoloration and residue along the bottom edge of the glass shower door and the white base track.",
+      "confidence": 0.95,
       "bbox": [
         0.42,
         0.65,
@@ -1273,19 +333,43 @@
         0.85
       ],
       "review_status": "accepted",
-      "reviewer_note": "Existing grout variation noted.",
+      "reviewer_note": "AI observation confirmed during 2024 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2024-06-01T11:00:00Z",
       "source": "ai",
       "edited_from": null,
-      "created_at": "2024-06-01T10:17:00Z",
-      "updated_at": "2024-06-01T10:20:00Z"
+      "created_at": "2024-06-01T10:05:00Z",
+      "updated_at": "2024-06-01T11:00:00Z"
     },
     {
-      "id": "obs-03",
+      "id": "obs-asset-02-2",
+      "asset_id": "asset-02",
+      "category": "stain",
+      "sub_area": "shower_wall_corner",
+      "description": "Observed dark grime accumulation in the corner where the tiled wall meets the shower base.",
+      "confidence": 0.9,
+      "bbox": [
+        0.48,
+        0.72,
+        0.6,
+        0.88
+      ],
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2024 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2024-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2024-06-01T10:05:00Z",
+      "updated_at": "2024-06-01T11:00:00Z"
+    },
+    {
+      "id": "obs-asset-04-1",
       "asset_id": "asset-04",
       "category": "mark",
-      "sub_area": "door_trim",
-      "description": "Minor dark surface mark visible near lower door moulding trim.",
-      "confidence": 0.82,
+      "sub_area": "baseboard",
+      "description": "Observed dark mark or scuff on the white baseboard near the door frame.",
+      "confidence": 0.85,
       "bbox": [
         0.2,
         0.78,
@@ -1293,19 +377,43 @@
         0.86
       ],
       "review_status": "accepted",
-      "reviewer_note": "Pre-existing baseline mark documented.",
+      "reviewer_note": "AI observation confirmed during 2024 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2024-06-01T11:00:00Z",
       "source": "ai",
       "edited_from": null,
-      "created_at": "2024-06-01T10:47:00Z",
-      "updated_at": "2024-06-01T10:50:00Z"
+      "created_at": "2024-06-01T10:05:00Z",
+      "updated_at": "2024-06-01T11:00:00Z"
     },
     {
-      "id": "obs-04",
+      "id": "obs-asset-04-2",
+      "asset_id": "asset-04",
+      "category": "mark",
+      "sub_area": "drywall",
+      "description": "Visible faint discoloration or patch on the upper section of the wall.",
+      "confidence": 0.6,
+      "bbox": [
+        0.55,
+        0.25,
+        0.7,
+        0.42
+      ],
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2024 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2024-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2024-06-01T10:05:00Z",
+      "updated_at": "2024-06-01T11:00:00Z"
+    },
+    {
+      "id": "obs-asset-05-1",
       "asset_id": "asset-05",
-      "category": "scratch",
+      "category": "mark",
       "sub_area": "lower_cabinet",
-      "description": "Existing cabinet mark reviewed, consistent with baseline move-in capture.",
-      "confidence": 0.89,
+      "description": "Visible small dark spot on the white cabinet door surface.",
+      "confidence": 0.85,
       "bbox": [
         0.38,
         0.42,
@@ -1313,1281 +421,172 @@
         0.65
       ],
       "review_status": "accepted",
-      "reviewer_note": "Baseline scratch verified unchanged.",
+      "reviewer_note": "AI observation confirmed during 2025 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2025-06-01T11:00:00Z",
       "source": "ai",
       "edited_from": null,
-      "created_at": "2025-06-01T11:02:00Z",
-      "updated_at": "2025-06-01T11:05:00Z"
+      "created_at": "2025-06-01T10:05:00Z",
+      "updated_at": "2025-06-01T11:00:00Z"
     },
     {
-      "id": "obs-05",
-      "asset_id": "asset-07",
-      "category": "scratch",
-      "sub_area": "lower_cabinet",
-      "description": "Superficial scratch visible on lower cabinet door surface, consistent with baseline.",
-      "confidence": 0.87,
-      "bbox": [
-        0.38,
-        0.42,
-        0.55,
-        0.65
-      ],
-      "review_status": "accepted",
-      "reviewer_note": "Move-out review: condition matches 2024 baseline.",
-      "source": "ai",
-      "edited_from": null,
-      "created_at": "2026-06-01T09:32:00Z",
-      "updated_at": "2026-06-01T09:35:00Z"
-    },
-    {
-      "id": "obs-1790681117086-620",
-      "created_at": "2026-09-29T11:25:17.086Z",
-      "updated_at": "2026-09-29T11:25:17.086Z",
-      "asset_id": "asset-1790681117074-615",
-      "category": "scratch",
-      "sub_area": "lower_cabinet",
-      "description": "Possible scratch visible on lower cabinet door finish.",
-      "confidence": 0.88,
-      "bbox": [
-        0.15,
-        0.45,
-        0.38,
-        0.72
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790681117089-357",
-      "created_at": "2026-09-29T11:25:17.089Z",
-      "updated_at": "2026-09-29T11:25:17.089Z",
-      "asset_id": "asset-1790681117074-615",
-      "category": "dent",
-      "sub_area": "baseboard",
-      "description": "Visible: Minor indentation observed along floor baseboard edge.",
-      "confidence": 0.72,
-      "bbox": [
-        0.42,
-        0.82,
-        0.58,
-        0.94
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790681117095-360",
-      "created_at": "2026-09-29T11:25:17.095Z",
-      "updated_at": "2026-09-29T11:25:17.100Z",
-      "asset_id": "asset-01",
-      "category": "dent",
-      "sub_area": "cabinet",
-      "description": "Visible shallow dent rather than scratch.",
-      "confidence": 0.85,
-      "bbox": [
-        0.1,
-        0.1,
-        0.2,
-        0.2
-      ],
-      "review_status": "edited",
-      "source": "ai",
-      "reviewer_note": "Verified by tenant",
-      "edited_from": {
-        "category": "scratch",
-        "description": "Possible scratch on cabinet.",
-        "sub_area": "cabinet"
-      }
-    },
-    {
-      "id": "obs-1790682305501-381",
-      "created_at": "2026-09-29T11:45:05.501Z",
-      "updated_at": "2026-09-29T11:45:12.891Z",
-      "asset_id": "asset-1790682304191-368",
-      "category": "scratch",
-      "sub_area": "lower_cabinet",
-      "description": "Possible scratch visible on lower cabinet door finish.",
-      "confidence": 0.88,
-      "bbox": [
-        0.15,
-        0.45,
-        0.38,
-        0.72
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Verified during Tenant E2E walkthrough test"
-    },
-    {
-      "id": "obs-1790682305505-796",
-      "created_at": "2026-09-29T11:45:05.505Z",
-      "updated_at": "2026-09-29T11:45:05.505Z",
-      "asset_id": "asset-1790682304191-368",
-      "category": "dent",
-      "sub_area": "baseboard",
-      "description": "Visible: Minor indentation observed along floor baseboard edge.",
-      "confidence": 0.72,
-      "bbox": [
-        0.42,
-        0.82,
-        0.58,
-        0.94
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790682308907-460",
-      "created_at": "2026-09-29T11:45:08.907Z",
-      "updated_at": "2026-09-29T11:45:08.907Z",
-      "asset_id": "asset-1790682304191-368",
-      "category": "scratch",
-      "sub_area": "lower_cabinet",
-      "description": "Possible scratch visible on lower cabinet door finish.",
-      "confidence": 0.88,
-      "bbox": [
-        0.15,
-        0.45,
-        0.38,
-        0.72
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790682308910-576",
-      "created_at": "2026-09-29T11:45:08.910Z",
-      "updated_at": "2026-09-29T11:45:08.910Z",
-      "asset_id": "asset-1790682304191-368",
-      "category": "dent",
-      "sub_area": "baseboard",
-      "description": "Visible: Minor indentation observed along floor baseboard edge.",
-      "confidence": 0.72,
-      "bbox": [
-        0.42,
-        0.82,
-        0.58,
-        0.94
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790682390347-414",
-      "created_at": "2026-09-29T11:46:30.347Z",
-      "updated_at": "2026-09-29T11:46:30.357Z",
-      "asset_id": "asset-01",
-      "category": "dent",
-      "sub_area": "cabinet",
-      "description": "Visible shallow dent rather than scratch.",
-      "confidence": 0.85,
-      "bbox": [
-        0.1,
-        0.1,
-        0.2,
-        0.2
-      ],
-      "review_status": "edited",
-      "source": "ai",
-      "reviewer_note": "Verified by tenant",
-      "edited_from": {
-        "category": "scratch",
-        "description": "Possible scratch on cabinet.",
-        "sub_area": "cabinet"
-      }
-    },
-    {
-      "id": "obs-1790682436129-235",
-      "created_at": "2026-09-29T11:47:16.129Z",
-      "updated_at": "2026-09-29T11:47:16.138Z",
-      "asset_id": "asset-01",
-      "category": "dent",
-      "sub_area": "cabinet",
-      "description": "Visible shallow dent rather than scratch.",
-      "confidence": 0.85,
-      "bbox": [
-        0.1,
-        0.1,
-        0.2,
-        0.2
-      ],
-      "review_status": "edited",
-      "source": "ai",
-      "reviewer_note": "Verified by tenant",
-      "edited_from": {
-        "category": "scratch",
-        "description": "Possible scratch on cabinet.",
-        "sub_area": "cabinet"
-      }
-    },
-    {
-      "id": "obs-1790682482508-152",
-      "created_at": "2026-09-29T11:48:02.508Z",
-      "updated_at": "2026-09-29T11:48:02.508Z",
-      "asset_id": "asset-1790682482498-358",
+      "id": "obs-asset-05-2",
+      "asset_id": "asset-05",
       "category": "mark",
-      "sub_area": "baseboard_corner",
-      "description": "Possible surface rub mark near entryway moulding.",
-      "confidence": 0.68,
-      "bbox": [
-        0.1,
-        0.75,
-        0.25,
-        0.9
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790682482520-182",
-      "created_at": "2026-09-29T11:48:02.520Z",
-      "updated_at": "2026-09-29T11:48:02.523Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790682534121-778",
-      "created_at": "2026-09-29T11:48:54.121Z",
-      "updated_at": "2026-09-29T11:48:54.125Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790682583461-494",
-      "created_at": "2026-09-29T11:49:43.461Z",
-      "updated_at": "2026-09-29T11:49:43.464Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790683580771-142",
-      "created_at": "2026-09-29T12:06:20.771Z",
-      "updated_at": "2026-09-29T12:06:20.775Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790683641533-674",
-      "created_at": "2026-09-29T12:07:21.533Z",
-      "updated_at": "2026-09-29T12:07:21.533Z",
-      "asset_id": "asset-1790683637252-240",
-      "category": "other",
-      "sub_area": "general",
-      "description": "AI analysis unavailable. Manual review required.",
-      "confidence": 0.5,
-      "bbox": [
-        0,
-        0,
-        1,
-        1
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683645242-833",
-      "created_at": "2026-09-29T12:07:25.242Z",
-      "updated_at": "2026-09-29T12:07:25.245Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790683738468-857",
-      "created_at": "2026-09-29T12:08:58.468Z",
-      "updated_at": "2026-09-29T12:08:58.468Z",
-      "asset_id": "asset-1790683735674-673",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear marks on the surface of the white cabinet door.",
+      "sub_area": "lower_cabinet",
+      "description": "Observed faint linear mark on the upper section of the cabinet door.",
       "confidence": 0.6,
       "bbox": [
-        0.38,
-        0.38,
-        0.48,
-        0.58
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683738471-21",
-      "created_at": "2026-09-29T12:08:58.471Z",
-      "updated_at": "2026-09-29T12:08:58.471Z",
-      "asset_id": "asset-1790683735674-673",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Observed subtle surface variations on the lower cabinet panel.",
-      "confidence": 0.5,
-      "bbox": [
-        0.15,
-        0.45,
-        0.35,
-        0.65
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683740735-278",
-      "created_at": "2026-09-29T12:09:00.735Z",
-      "updated_at": "2026-09-29T12:09:00.738Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790683748045-925",
-      "created_at": "2026-09-29T12:09:08.045Z",
-      "updated_at": "2026-09-29T12:09:08.045Z",
-      "asset_id": "asset-1790683742905-226",
-      "category": "other",
-      "sub_area": "general",
-      "description": "AI analysis unavailable. Manual review required.",
-      "confidence": 0.5,
-      "bbox": [
-        0,
-        0,
-        1,
-        1
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683748058-787",
-      "created_at": "2026-09-29T12:09:08.058Z",
-      "updated_at": "2026-09-29T12:09:08.058Z",
-      "asset_id": "asset-1790683742905-226",
-      "category": "other",
-      "sub_area": "general",
-      "description": "AI analysis unavailable. Manual review required.",
-      "confidence": 0.5,
-      "bbox": [
-        0,
-        0,
-        1,
-        1
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683800644-726",
-      "created_at": "2026-09-29T12:10:00.644Z",
-      "updated_at": "2026-09-29T12:10:00.651Z",
-      "asset_id": "asset-1790683798784-894",
-      "category": "crack",
-      "sub_area": "cabinet_door",
-      "description": "Visible hairline crack on the upper section of a white cabinet door.",
-      "confidence": 0.95,
-      "bbox": [
-        0.38,
-        0.45,
-        0.46,
-        0.52
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Verified by tenant during final reality audit"
-    },
-    {
-      "id": "obs-1790683800648-717",
-      "created_at": "2026-09-29T12:10:00.648Z",
-      "updated_at": "2026-09-29T12:10:00.648Z",
-      "asset_id": "asset-1790683798784-894",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Observed surface discoloration or wear on the lower left cabinet door.",
-      "confidence": 0.6,
-      "bbox": [
-        0,
-        0.75,
-        0.1,
-        0.85
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683800902-500",
-      "created_at": "2026-09-29T12:10:00.902Z",
-      "updated_at": "2026-09-29T12:10:00.902Z",
-      "asset_id": "asset-1790683798784-894",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear marks on the surface of the white cabinet door.",
-      "confidence": 0.6,
-      "bbox": [
-        0.33,
-        0.38,
-        0.48,
-        0.68
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683800905-668",
-      "created_at": "2026-09-29T12:10:00.905Z",
-      "updated_at": "2026-09-29T12:10:00.905Z",
-      "asset_id": "asset-1790683798784-894",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Observed small dark specks on the lower section of the white cabinet door.",
-      "confidence": 0.5,
-      "bbox": [
-        0.38,
-        0.62,
-        0.45,
-        0.68
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683851346-493",
-      "created_at": "2026-09-29T12:10:51.346Z",
-      "updated_at": "2026-09-29T12:10:51.346Z",
-      "asset_id": "asset-1790683849170-549",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear marks on the surface of the white cabinet door.",
-      "confidence": 0.65,
-      "bbox": [
-        0.35,
-        0.35,
-        0.45,
-        0.55
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683851349-419",
-      "created_at": "2026-09-29T12:10:51.349Z",
-      "updated_at": "2026-09-29T12:10:51.349Z",
-      "asset_id": "asset-1790683849170-549",
-      "category": "mark",
-      "sub_area": "cabinet_panel",
-      "description": "Observed subtle surface variations on the lower cabinet panel.",
-      "confidence": 0.5,
-      "bbox": [
-        0.1,
-        0.2,
-        0.3,
-        0.6
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683917676-854",
-      "created_at": "2026-09-29T12:11:57.676Z",
-      "updated_at": "2026-09-29T12:11:57.676Z",
-      "asset_id": "asset-1790683915478-295",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear marks on the surface of the white cabinet door.",
-      "confidence": 0.65,
-      "bbox": [
-        0.35,
-        0.35,
-        0.45,
-        0.55
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683917679-384",
-      "created_at": "2026-09-29T12:11:57.679Z",
-      "updated_at": "2026-09-29T12:11:57.679Z",
-      "asset_id": "asset-1790683915478-295",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Noted small dark specks on the lower section of the white cabinet door.",
-      "confidence": 0.7,
-      "bbox": [
-        0.38,
-        0.5,
-        0.42,
-        0.58
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683917706-80",
-      "created_at": "2026-09-29T12:11:57.706Z",
-      "updated_at": "2026-09-29T12:11:57.761Z",
-      "asset_id": "asset-1790683915478-295",
-      "category": "crack",
-      "sub_area": "cabinet_door",
-      "description": "Visible hairline crack on the upper section of the white cabinet door.",
-      "confidence": 0.95,
-      "bbox": [
-        0.37,
-        0.38,
-        0.44,
-        0.43
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Verified by tenant during final reality audit"
-    },
-    {
-      "id": "obs-1790683917750-192",
-      "created_at": "2026-09-29T12:11:57.750Z",
-      "updated_at": "2026-09-29T12:11:57.750Z",
-      "asset_id": "asset-1790683915478-295",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Observed vertical scuff marks on the lower section of the cabinet door.",
-      "confidence": 0.85,
-      "bbox": [
-        0.38,
-        0.45,
-        0.42,
-        0.55
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790683917756-379",
-      "created_at": "2026-09-29T12:11:57.756Z",
-      "updated_at": "2026-09-29T12:11:57.756Z",
-      "asset_id": "asset-1790683915478-295",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Noted surface wear and discoloration on the lower left cabinet door.",
-      "confidence": 0.8,
-      "bbox": [
-        0,
-        0.75,
-        0.1,
-        0.85
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790684016173-152",
-      "created_at": "2026-09-29T12:13:36.173Z",
-      "updated_at": "2026-09-29T12:13:36.176Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790685579819-702",
-      "created_at": "2026-09-29T12:39:39.819Z",
-      "updated_at": "2026-09-29T12:39:39.825Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790685640885-602",
-      "created_at": "2026-09-29T12:40:40.885Z",
-      "updated_at": "2026-09-29T12:40:40.885Z",
-      "asset_id": "asset-1790685640867-622",
-      "category": "scratch",
-      "sub_area": "lower_cabinet",
-      "description": "Possible scratch visible on lower cabinet door finish.",
-      "confidence": 0.88,
-      "bbox": [
-        0.15,
-        0.45,
-        0.38,
-        0.72
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790685640888-286",
-      "created_at": "2026-09-29T12:40:40.888Z",
-      "updated_at": "2026-09-29T12:40:40.888Z",
-      "asset_id": "asset-1790685640867-622",
-      "category": "dent",
-      "sub_area": "baseboard",
-      "description": "Visible: Minor indentation observed along floor baseboard edge.",
-      "confidence": 0.72,
-      "bbox": [
-        0.42,
-        0.82,
-        0.58,
-        0.94
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790685640900-841",
-      "created_at": "2026-09-29T12:40:40.900Z",
-      "updated_at": "2026-09-29T12:40:40.905Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790686735303-731",
-      "created_at": "2026-09-29T12:58:55.303Z",
-      "updated_at": "2026-09-29T12:58:55.307Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen"
-    },
-    {
-      "id": "obs-1790687588032-465",
-      "created_at": "2026-09-29T13:13:08.032Z",
-      "updated_at": "2026-09-29T13:13:08.035Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen",
-      "reviewed_at": "2026-09-29T13:13:08.034Z"
-    },
-    {
-      "id": "obs-1790688530489-85",
-      "created_at": "2026-09-29T13:28:50.489Z",
-      "updated_at": "2026-09-29T13:28:50.977Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen",
-      "reviewed_at": "2026-09-29T13:28:50.977Z"
-    },
-    {
-      "id": "obs-1790688530629-643",
-      "created_at": "2026-09-29T13:28:50.629Z",
-      "updated_at": "2026-09-29T13:28:50.629Z",
-      "asset_id": "asset-1790688528082-702",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear mark on the surface of the white cabinet door.",
-      "confidence": 0.65,
-      "bbox": [
-        0.2,
-        0.3,
-        0.4,
-        0.5
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688530822-497",
-      "created_at": "2026-09-29T13:28:50.822Z",
-      "updated_at": "2026-09-29T13:28:50.822Z",
-      "asset_id": "asset-1790688528082-702",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Observed small dark speck on the lower section of the cabinet door.",
-      "confidence": 0.55,
-      "bbox": [
-        0.3,
-        0.6,
-        0.35,
-        0.65
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688564038-0",
-      "created_at": "2026-09-29T13:29:24.038Z",
-      "updated_at": "2026-09-29T13:29:24.038Z",
-      "asset_id": "asset-1790688561374-274",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear marks on the surface of the white cabinet door.",
-      "confidence": 0.6,
-      "bbox": [
-        0.35,
-        0.35,
-        0.45,
-        0.6
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688564266-245",
-      "created_at": "2026-09-29T13:29:24.266Z",
-      "updated_at": "2026-09-29T13:29:24.266Z",
-      "asset_id": "asset-1790688561374-274",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Observed subtle surface texture variations on the lower cabinet panel.",
-      "confidence": 0.5,
-      "bbox": [
-        0.1,
         0.4,
         0.3,
-        0.7
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688571559-346",
-      "created_at": "2026-09-29T13:29:31.559Z",
-      "updated_at": "2026-09-29T13:29:31.766Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen",
-      "reviewed_at": "2026-09-29T13:29:31.766Z"
-    },
-    {
-      "id": "obs-1790688605746-992",
-      "created_at": "2026-09-29T13:30:05.746Z",
-      "updated_at": "2026-09-29T13:30:06.272Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen",
-      "reviewed_at": "2026-09-29T13:30:06.272Z"
-    },
-    {
-      "id": "obs-1790688606168-220",
-      "created_at": "2026-09-29T13:30:06.168Z",
-      "updated_at": "2026-09-29T13:30:06.168Z",
-      "asset_id": "asset-1790688602966-427",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear mark on the surface of the white cabinet door.",
-      "confidence": 0.65,
-      "bbox": [
-        0.25,
-        0.1,
-        0.45,
-        0.35
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688606438-220",
-      "created_at": "2026-09-29T13:30:06.438Z",
-      "updated_at": "2026-09-29T13:30:06.438Z",
-      "asset_id": "asset-1790688602966-427",
-      "category": "mark",
-      "sub_area": "cabinet_panel",
-      "description": "Observed subtle surface variation on the lower cabinet panel.",
-      "confidence": 0.55,
-      "bbox": [
-        0.1,
-        0.4,
-        0.3,
-        0.6
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688660961-462",
-      "created_at": "2026-09-29T13:31:00.961Z",
-      "updated_at": "2026-09-29T13:31:00.961Z",
-      "asset_id": "asset-1790688642217-22",
-      "category": "other",
-      "sub_area": "general",
-      "description": "AI analysis unavailable. Manual review required.",
-      "confidence": 0.5,
-      "bbox": [
-        0,
-        0,
-        1,
-        1
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688661692-473",
-      "created_at": "2026-09-29T13:31:01.692Z",
-      "updated_at": "2026-09-29T13:31:01.910Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen",
-      "reviewed_at": "2026-09-29T13:31:01.910Z"
-    },
-    {
-      "id": "obs-1790688828417-958",
-      "created_at": "2026-09-29T13:33:48.417Z",
-      "updated_at": "2026-09-29T13:33:48.714Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen",
-      "reviewed_at": "2026-09-29T13:33:48.714Z"
-    },
-    {
-      "id": "obs-1790688828635-285",
-      "created_at": "2026-09-29T13:33:48.635Z",
-      "updated_at": "2026-09-29T13:33:48.635Z",
-      "asset_id": "asset-1790688825850-137",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear marks on the surface of the white cabinet door.",
-      "confidence": 0.65,
-      "bbox": [
-        0.33,
-        0.38,
-        0.48,
-        0.68
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688828855-209",
-      "created_at": "2026-09-29T13:33:48.855Z",
-      "updated_at": "2026-09-29T13:33:48.855Z",
-      "asset_id": "asset-1790688825850-137",
-      "category": "mark",
-      "sub_area": "cabinet_panel",
-      "description": "Observed subtle surface variations on the lower cabinet panel.",
-      "confidence": 0.55,
-      "bbox": [
-        0.15,
-        0.42,
-        0.32,
-        0.75
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688854087-138",
-      "created_at": "2026-09-29T13:34:14.087Z",
-      "updated_at": "2026-09-29T13:34:14.087Z",
-      "asset_id": "asset-1790688851672-833",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear marks on the surface of the white cabinet door.",
-      "confidence": 0.65,
-      "bbox": [
-        0.38,
-        0.38,
-        0.46,
-        0.52
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688854296-189",
-      "created_at": "2026-09-29T13:34:14.296Z",
-      "updated_at": "2026-09-29T13:34:14.296Z",
-      "asset_id": "asset-1790688851672-833",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Observed subtle surface texture variations on the lower cabinet panel.",
-      "confidence": 0.55,
-      "bbox": [
-        0.15,
-        0.45,
-        0.35,
-        0.65
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790688870303-72",
-      "created_at": "2026-09-29T13:34:30.303Z",
-      "updated_at": "2026-09-29T13:34:30.492Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "accepted",
-      "source": "ai",
-      "reviewer_note": "Accepted by tenant Alex Chen",
-      "reviewed_at": "2026-09-29T13:34:30.492Z"
-    },
-    {
-      "id": "obs-1790689469955-665",
-      "created_at": "2026-09-29T13:44:29.955Z",
-      "updated_at": "2026-09-29T13:44:29.955Z",
-      "asset_id": "asset-1790689467346-190",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear marks on the surface of the white cabinet door.",
-      "confidence": 0.65,
-      "bbox": [
-        0.35,
-        0.38,
-        0.45,
-        0.65
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790689470133-57",
-      "created_at": "2026-09-29T13:44:30.133Z",
-      "updated_at": "2026-09-29T13:44:30.133Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790689470241-20",
-      "created_at": "2026-09-29T13:44:30.241Z",
-      "updated_at": "2026-09-29T13:44:30.241Z",
-      "asset_id": "asset-1790689467346-190",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Observed minor surface imperfections on the lower cabinet panel.",
-      "confidence": 0.55,
-      "bbox": [
-        0.15,
-        0.4,
-        0.25,
-        0.6
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790689581435-377",
-      "created_at": "2026-09-29T13:46:21.435Z",
-      "updated_at": "2026-09-29T13:46:21.435Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.85,
-      "bbox": [
-        0.1,
-        0.1,
-        0.2,
-        0.2
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790689663605-343",
-      "created_at": "2026-09-29T13:47:43.605Z",
-      "updated_at": "2026-09-29T13:47:43.605Z",
-      "asset_id": "asset-1790689659220-403",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear mark on the surface of the white cabinet door.",
-      "confidence": 0.65,
-      "bbox": [
-        0.25,
-        0.15,
-        0.45,
-        0.55
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790689665030-101",
-      "created_at": "2026-09-29T13:47:45.030Z",
-      "updated_at": "2026-09-29T13:47:45.030Z",
-      "asset_id": "asset-1790689659220-403",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Observed subtle surface variation on the lower cabinet panel.",
-      "confidence": 0.55,
-      "bbox": [
-        0.1,
-        0.2,
-        0.3,
-        0.6
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790689665077-656",
-      "created_at": "2026-09-29T13:47:45.077Z",
-      "updated_at": "2026-09-29T13:47:45.077Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790689735061-456",
-      "created_at": "2026-09-29T13:48:55.061Z",
-      "updated_at": "2026-09-29T13:48:55.061Z",
-      "asset_id": "asset-1790689731951-320",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear mark on the surface of the white cabinet door.",
-      "confidence": 0.65,
-      "bbox": [
-        0.25,
-        0.1,
-        0.35,
-        0.2
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790689735256-111",
-      "created_at": "2026-09-29T13:48:55.256Z",
-      "updated_at": "2026-09-29T13:48:55.256Z",
-      "asset_id": "asset-01",
-      "category": "scratch",
-      "sub_area": "cabinet",
-      "description": "Possible scratch on cabinet.",
-      "confidence": 0.89,
-      "bbox": [
-        0.1,
-        0.1,
-        0.3,
-        0.3
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790689735268-874",
-      "created_at": "2026-09-29T13:48:55.268Z",
-      "updated_at": "2026-09-29T13:48:55.268Z",
-      "asset_id": "asset-1790689731951-320",
-      "category": "mark",
-      "sub_area": "cabinet_panel",
-      "description": "Observed subtle surface variation on the lower cabinet panel.",
-      "confidence": 0.55,
-      "bbox": [
-        0.1,
-        0.3,
-        0.2,
-        0.4
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790690759668-596",
-      "created_at": "2026-09-29T14:05:59.668Z",
-      "updated_at": "2026-09-29T14:05:59.668Z",
-      "asset_id": "asset-1790690754889-550",
-      "category": "mark",
-      "sub_area": "cabinet_door",
-      "description": "Visible faint linear mark on the surface of the white cabinet door.",
-      "confidence": 0.6,
-      "bbox": [
-        0.25,
-        0.35,
-        0.35,
+        0.52,
         0.45
       ],
-      "review_status": "pending",
-      "source": "ai"
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2025 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2025-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2025-06-01T10:05:00Z",
+      "updated_at": "2025-06-01T11:00:00Z"
     },
     {
-      "id": "obs-1790690760144-454",
-      "created_at": "2026-09-29T14:06:00.144Z",
-      "updated_at": "2026-09-29T14:06:00.144Z",
+      "id": "obs-asset-06-1",
+      "asset_id": "asset-06",
+      "category": "stain",
+      "sub_area": "shower_track",
+      "description": "Visible dark discoloration and residue along the bottom edge of the glass shower door and the white threshold.",
+      "confidence": 0.95,
+      "bbox": [
+        0.42,
+        0.65,
+        0.55,
+        0.85
+      ],
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2025 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2025-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2025-06-01T10:05:00Z",
+      "updated_at": "2025-06-01T11:00:00Z"
+    },
+    {
+      "id": "obs-asset-06-2",
+      "asset_id": "asset-06",
+      "category": "stain",
+      "sub_area": "shower_wall_corner",
+      "description": "Observed dark grime accumulation in the corner where the tiled wall meets the shower base.",
+      "confidence": 0.9,
+      "bbox": [
+        0.48,
+        0.72,
+        0.6,
+        0.88
+      ],
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2025 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2025-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2025-06-01T10:05:00Z",
+      "updated_at": "2025-06-01T11:00:00Z"
+    },
+    {
+      "id": "obs-asset-07-1",
+      "asset_id": "asset-07",
+      "category": "mark",
+      "sub_area": "lower_cabinet",
+      "description": "Visible dark smudge on the white cabinet door surface.",
+      "confidence": 0.85,
+      "bbox": [
+        0.38,
+        0.42,
+        0.55,
+        0.65
+      ],
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2026 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2026-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2026-06-01T10:05:00Z",
+      "updated_at": "2026-06-01T11:00:00Z"
+    },
+    {
+      "id": "obs-asset-07-2",
+      "asset_id": "asset-07",
+      "category": "mark",
+      "sub_area": "lower_cabinet",
+      "description": "Observed faint scuff mark on the upper section of the cabinet door.",
+      "confidence": 0.75,
+      "bbox": [
+        0.4,
+        0.3,
+        0.52,
+        0.45
+      ],
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2026 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2026-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2026-06-01T10:05:00Z",
+      "updated_at": "2026-06-01T11:00:00Z"
+    },
+    {
+      "id": "obs-asset-08-1",
+      "asset_id": "asset-08",
+      "category": "stain",
+      "sub_area": "shower_curb",
+      "description": "Visible dark discoloration and residue along the bottom edge of the glass door and the white shower curb.",
+      "confidence": 0.95,
+      "bbox": [
+        0.42,
+        0.65,
+        0.55,
+        0.85
+      ],
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2026 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2026-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2026-06-01T10:05:00Z",
+      "updated_at": "2026-06-01T11:00:00Z"
+    },
+    {
+      "id": "obs-asset-08-2",
+      "asset_id": "asset-08",
+      "category": "stain",
+      "sub_area": "shower_wall_corner",
+      "description": "Observed dark grime accumulation in the corner where the tiled wall meets the shower base.",
+      "confidence": 0.9,
+      "bbox": [
+        0.48,
+        0.72,
+        0.6,
+        0.88
+      ],
+      "review_status": "accepted",
+      "reviewer_note": "AI observation confirmed during 2026 inspection.",
+      "reviewed_by": "user-owner-1",
+      "reviewed_at": "2026-06-01T11:00:00Z",
+      "source": "ai",
+      "edited_from": null,
+      "created_at": "2026-06-01T10:05:00Z",
+      "updated_at": "2026-06-01T11:00:00Z"
+    },
+    {
+      "id": "obs-1790698612352-26",
+      "created_at": "2026-09-29T16:16:52.352Z",
+      "updated_at": "2026-09-29T16:16:52.352Z",
       "asset_id": "asset-01",
       "category": "scratch",
       "sub_area": "cabinet",
@@ -2598,24 +597,6 @@
         0.1,
         0.3,
         0.3
-      ],
-      "review_status": "pending",
-      "source": "ai"
-    },
-    {
-      "id": "obs-1790690760148-893",
-      "created_at": "2026-09-29T14:06:00.148Z",
-      "updated_at": "2026-09-29T14:06:00.148Z",
-      "asset_id": "asset-1790690754889-550",
-      "category": "mark",
-      "sub_area": "cabinet_panel",
-      "description": "Observed small dark speck on the lower section of the cabinet panel.",
-      "confidence": 0.5,
-      "bbox": [
-        0.1,
-        0.6,
-        0.15,
-        0.65
       ],
       "review_status": "pending",
       "source": "ai"
@@ -2623,401 +604,31 @@
   ],
   "comparisons": [
     {
-      "id": "comp-1790681361323",
-      "created_at": "2026-09-29T11:29:21.323Z",
+      "id": "comp-381-kitchen-01",
       "property_id": "prop-381",
       "room_id": "room-kitchen",
       "prior_asset_id": "asset-01",
       "current_asset_id": "asset-07",
-      "summary": "The cabinet base in the kitchen shows overall consistency between the prior and current images, with only minor surface variations observed.",
+      "summary": "Visual comparison completed for Kitchen. Surface marks on lower cabinet door remain consistent between 2024 baseline and 2026 move-out.",
       "changes": [
         {
-          "description": "Visible: Slight increase in visible surface wear on the lower front edge of the cabinet base in the current image, appearing as faint scratches or scuff marks not prominent in the prior image.",
-          "confidence": 0.78
-        },
-        {
-          "description": "Visible: A subtle change in lighting reveals a faint discoloration near the right-hand corner of the cabinet base in the current image, which could be a minor stain or water spot not evident in the prior image.",
-          "confidence": 0.65
+          "description": "Superficial surface mark on lower cabinet door finish remains visible, consistent with baseline move-in capture.",
+          "confidence": 0.85,
+          "region": "general"
         }
       ],
       "caveats": [
-        "Image resolution and lighting differences may affect the perception of surface details.",
-        "No close-up view of hardware (e.g., knobs, hinges) is available, limiting assessment of those components.",
-        "Assessment is based solely on visual appearance; underlying structural issues cannot be determined from the images."
+        "Diff analysis is influenced by ambient lighting and angle variations.",
+        "Assistive observation only; does not establish liability or condition classification."
       ],
-      "model_version": "openai/gpt-oss-120b"
+      "confidence": 0.85,
+      "review_required": true,
+      "model_version": "qwen/qwen3.8-27b",
+      "created_at": "2026-06-01T12:00:00Z"
     },
     {
-      "id": "comp-1790682321915",
-      "created_at": "2026-09-29T11:45:21.915Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-1790682304191-368",
-      "summary": "Unable to determine visual differences between the prior and current kitchen cabinet images due to lack of image analysis capability.",
-      "changes": [],
-      "caveats": [
-        "The assistant does not have the ability to view or process image content from URLs.",
-        "Any assessment of condition changes would require visual inspection by a qualified individual."
-      ],
-      "model_version": "openai/gpt-oss-120b"
-    },
-    {
-      "id": "comp-1790682482528",
-      "created_at": "2026-09-29T11:48:02.528Z",
-      "property_id": "prop-381",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "difference_summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "confidence": 0.82,
-      "review_required": true
-    },
-    {
-      "id": "comp-1790682534133",
-      "created_at": "2026-09-29T11:48:54.133Z",
-      "property_id": "prop-381",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "difference_summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "confidence": 0.82,
-      "review_required": true
-    },
-    {
-      "id": "comp-1790682583468",
-      "created_at": "2026-09-29T11:49:43.468Z",
-      "property_id": "prop-381",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "difference_summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "confidence": 0.82,
-      "review_required": true
-    },
-    {
-      "id": "comp-1790683580780",
-      "created_at": "2026-09-29T12:06:20.780Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790683645251",
-      "created_at": "2026-09-29T12:07:25.251Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790683740744",
-      "created_at": "2026-09-29T12:09:00.744Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790684016181",
-      "created_at": "2026-09-29T12:13:36.181Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790685579844",
-      "created_at": "2026-09-29T12:39:39.844Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790685640912",
-      "created_at": "2026-09-29T12:40:40.912Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790686735314",
-      "created_at": "2026-09-29T12:58:55.314Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790687588039",
-      "created_at": "2026-09-29T13:13:08.039Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790688533718",
-      "created_at": "2026-09-29T13:28:53.718Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790688574272",
-      "created_at": "2026-09-29T13:29:34.272Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790688609384",
-      "created_at": "2026-09-29T13:30:09.384Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790688664269",
-      "created_at": "2026-09-29T13:31:04.269Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790688829131",
-      "created_at": "2026-09-29T13:33:49.131Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790688870858",
-      "created_at": "2026-09-29T13:34:30.858Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790689472594",
-      "created_at": "2026-09-29T13:44:32.594Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790689667992",
-      "created_at": "2026-09-29T13:47:47.992Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790689737526",
-      "created_at": "2026-09-29T13:48:57.526Z",
-      "property_id": "prop-381",
-      "room_id": "room-kitchen",
-      "prior_asset_id": "asset-01",
-      "current_asset_id": "asset-02",
-      "summary": "Possible surface mark visible in current capture not evident in baseline.",
-      "changes": [
-        {
-          "description": "Surface mark on cabinet",
-          "confidence": 0.82
-        }
-      ],
-      "caveats": [
-        "Requires human verification"
-      ],
-      "model_version": "groq-vision-1"
-    },
-    {
-      "id": "comp-1790690764506",
-      "created_at": "2026-09-29T14:06:04.506Z",
+      "id": "comp-1790698613203",
+      "created_at": "2026-09-29T16:16:53.203Z",
       "property_id": "prop-381",
       "room_id": "room-kitchen",
       "prior_asset_id": "asset-01",
@@ -3037,223 +648,15 @@
   ],
   "share_links": [
     {
+      "id": "link-canonical-demo",
       "token": "demo-token-9842f1a",
+      "token_hash": "5b10319d6462fbb042a7a5e459e4b90d5de93abe6a0bc3699da76bbfd794b4ad",
       "property_id": "prop-381",
-      "created_at": "2024-06-01T10:00:00Z",
-      "expires_at": "2027-01-01T00:00:00Z",
+      "inspection_id": "insp-2024-move-in",
+      "created_by": "user-owner-1",
+      "created_at": "2024-06-01T12:00:00Z",
+      "expires_at": "2099-01-01T00:00:00Z",
       "revoked_at": null
-    },
-    {
-      "token": "c94d4290cc80ceba38c52e5bdef77c5d",
-      "property_id": "prop-381",
-      "created_at": "2026-09-29T11:29:21.956Z",
-      "expires_at": "2026-10-29T11:29:21.956Z",
-      "revoked_at": null
-    },
-    {
-      "token": "96b2b3f9b7ff27f2776f1f94f86c0f40",
-      "property_id": "prop-381",
-      "created_at": "2026-09-29T11:45:27.103Z",
-      "expires_at": "2026-10-29T11:45:27.103Z",
-      "revoked_at": null
-    },
-    {
-      "property_id": {
-        "property_id": "prop-381",
-        "inspection_id": "insp-2024-move-in",
-        "created_by": "user-owner-1",
-        "expires_at": "2026-09-30T11:48:02.535Z"
-      },
-      "created_at": "2026-09-29T11:48:02.535Z",
-      "expires_at": "2026-10-29T11:48:02.535Z",
-      "revoked_at": null
-    },
-    {
-      "token": "acceptance-token-1790682534140",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_at": "2026-09-29T11:48:54.140Z",
-      "expires_at": "2026-10-29T11:48:54.140Z",
-      "revoked_at": "2026-09-29T11:48:54.144Z"
-    },
-    {
-      "token": "acceptance-token-1790682583473",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_at": "2026-09-29T11:49:43.473Z",
-      "expires_at": "2026-10-29T11:49:43.473Z",
-      "revoked_at": "2026-09-29T11:49:43.476Z"
-    },
-    {
-      "token": "acceptance-token-1790683580786",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_at": "2026-09-29T12:06:20.786Z",
-      "expires_at": "2026-10-29T12:06:20.786Z",
-      "revoked_at": "2026-09-29T12:06:20.790Z"
-    },
-    {
-      "token": "acceptance-token-1790683645261",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_at": "2026-09-29T12:07:25.261Z",
-      "expires_at": "2026-10-29T12:07:25.261Z",
-      "revoked_at": "2026-09-29T12:07:25.265Z"
-    },
-    {
-      "token": "acceptance-token-1790683740748",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_at": "2026-09-29T12:09:00.748Z",
-      "expires_at": "2026-10-29T12:09:00.748Z",
-      "revoked_at": "2026-09-29T12:09:00.751Z"
-    },
-    {
-      "token": "89cba3b4440b7b0eeead95c51947c4e0",
-      "property_id": "prop-381",
-      "inspection_id": "insp-reality-1790683789550",
-      "created_at": "2026-09-29T12:10:04.437Z",
-      "expires_at": "2026-10-29T12:10:04.437Z",
-      "revoked_at": "2026-09-29T12:10:04.442Z"
-    },
-    {
-      "token": "472440a17516d21d5f81bf4177021af4",
-      "property_id": "prop-381",
-      "inspection_id": "insp-reality-1790683905121",
-      "created_at": "2026-09-29T12:12:36.754Z",
-      "expires_at": "2026-10-29T12:12:36.754Z",
-      "revoked_at": "2026-09-29T12:12:36.757Z"
-    },
-    {
-      "token": "acceptance-token-1790684016186",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_at": "2026-09-29T12:13:36.186Z",
-      "expires_at": "2026-10-29T12:13:36.186Z",
-      "revoked_at": "2026-09-29T12:13:36.190Z"
-    },
-    {
-      "token": "acceptance-token-1790685579849",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_at": "2026-09-29T12:39:39.849Z",
-      "expires_at": "2026-10-29T12:39:39.849Z",
-      "revoked_at": "2026-09-29T12:39:39.858Z"
-    },
-    {
-      "token": "acceptance-token-1790685640921",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_at": "2026-09-29T12:40:40.921Z",
-      "expires_at": "2026-10-29T12:40:40.921Z",
-      "revoked_at": "2026-09-29T12:40:40.926Z"
-    },
-    {
-      "token": "acceptance-token-1790686735321",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_at": "2026-09-29T12:58:55.322Z",
-      "expires_at": "2026-10-29T12:58:55.322Z",
-      "revoked_at": "2026-09-29T12:58:55.325Z"
-    },
-    {
-      "token": "acceptance-token-1790687588043",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:13:08.043Z",
-      "expires_at": "2026-10-29T13:13:08.043Z",
-      "revoked_at": "2026-09-29T13:13:08.045Z"
-    },
-    {
-      "token": "acceptance-token-1790688536044",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:28:56.578Z",
-      "expires_at": "2026-10-29T13:28:56.578Z",
-      "revoked_at": "2026-09-29T13:28:57.842Z"
-    },
-    {
-      "token": "acceptance-token-1790688576228",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:29:36.481Z",
-      "expires_at": "2026-10-29T13:29:36.481Z",
-      "revoked_at": "2026-09-29T13:29:37.015Z"
-    },
-    {
-      "token": "acceptance-token-1790688611193",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:30:11.393Z",
-      "expires_at": "2026-10-29T13:30:11.393Z",
-      "revoked_at": "2026-09-29T13:30:11.785Z"
-    },
-    {
-      "token": "acceptance-token-1790688668061",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:31:08.856Z",
-      "expires_at": "2026-10-29T13:31:08.856Z",
-      "revoked_at": "2026-09-29T13:31:09.604Z"
-    },
-    {
-      "token": "acceptance-token-1790688829321",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:33:49.511Z",
-      "expires_at": "2026-10-29T13:33:49.511Z",
-      "revoked_at": "2026-09-29T13:33:50.213Z"
-    },
-    {
-      "token": "acceptance-token-1790688871052",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:34:31.238Z",
-      "expires_at": "2026-10-29T13:34:31.238Z",
-      "revoked_at": "2026-09-29T13:34:31.687Z"
-    },
-    {
-      "token": "acceptance-token-1790689475223",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:44:35.421Z",
-      "expires_at": "2026-10-29T13:44:35.421Z",
-      "revoked_at": "2026-09-29T13:44:35.973Z"
-    },
-    {
-      "token": "acceptance-token-1790689670473",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:47:50.710Z",
-      "expires_at": "2026-10-29T13:47:50.710Z",
-      "revoked_at": "2026-09-29T13:47:51.084Z"
-    },
-    {
-      "token": "acceptance-token-1790689739822",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T13:49:00.207Z",
-      "expires_at": "2026-10-29T13:49:00.207Z",
-      "revoked_at": "2026-09-29T13:49:01.000Z"
-    },
-    {
-      "token": "acceptance-token-1790690767205",
-      "property_id": "prop-381",
-      "inspection_id": "insp-2024-move-in",
-      "created_by": null,
-      "created_at": "2026-09-29T14:06:07.524Z",
-      "expires_at": "2026-10-29T14:06:07.524Z",
-      "revoked_at": "2026-09-29T14:06:08.612Z"
     }
   ]
 }
