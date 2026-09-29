@@ -15,27 +15,85 @@ import {
   History,
   FileText,
   Code,
+  User,
 } from "lucide-react";
 import { APP_COPY } from "@/lib/copy";
-import { UnderTheHoodDrawer } from "./UnderTheHoodDrawer";
+import { UnderTheHoodDrawer, UnderTheHoodAsset } from "./UnderTheHoodDrawer";
 
 export function Navbar() {
   const pathname = usePathname();
-  const [role, setRole] = useState<"tenant" | "manager">("tenant");
+  const [role, setRole] = useState<"tenant" | "owner">("tenant");
+  const [userName, setUserName] = useState<string>("Alex Chen (Tenant)");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [activeAsset, setActiveAsset] = useState<UnderTheHoodAsset | null>(null);
+  const [availableAssets, setAvailableAssets] = useState<UnderTheHoodAsset[]>([]);
 
+  // Load session from server
   useEffect(() => {
-    const saved = localStorage.getItem("rentalmove_role");
-    if (saved === "tenant" || saved === "manager") {
-      setRole(saved);
-    }
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) {
+          setRole(data.user.role);
+          setUserName(`${data.user.name} (${data.user.role === "owner" ? "Owner" : "Tenant"})`);
+        }
+      })
+      .catch((err) => console.warn("Failed to load session:", err));
+
+    // Fetch real assets from DB timeline for the Under the Hood drawer
+    fetch("/api/properties/prop-381/timeline")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.inspections) {
+          const assets: UnderTheHoodAsset[] = data.inspections.flatMap((i: any) =>
+            i.assets.map((a: any) => ({
+              public_id: a.cloudinary_public_id,
+              secure_url: a.secure_url,
+              sha256: a.sha256,
+              etag: a.etag,
+              room: a.room?.name || a.room_guess || "Kitchen",
+              metadata: {
+                property_id: "prop-381",
+                inspection_id: a.inspection_id,
+                inspection_type: i.type,
+                room: a.room?.category || "kitchen",
+                sub_area: a.observations?.[0]?.sub_area || "general",
+                capture_date: i.captured_at?.split("T")[0] || "2024-06-01",
+                issue_category: a.observations?.[0]?.category || "none",
+                review_status: a.observations?.[0]?.review_status || "accepted",
+                ai_confidence: a.observations?.[0] ? Math.round(a.observations[0].confidence * 100) : 90,
+              },
+              tags: ["rentalmove", `room:${a.room?.category || "kitchen"}`, `insp:${i.type}`],
+            }))
+          );
+          setAvailableAssets(assets);
+          if (assets.length > 0) {
+            setActiveAsset(assets[0]);
+          }
+        }
+      })
+      .catch((err) => console.warn("Could not load timeline assets for drawer:", err));
   }, []);
 
-  const toggleRole = () => {
-    const next = role === "tenant" ? "manager" : "tenant";
-    setRole(next);
-    localStorage.setItem("rentalmove_role", next);
-    document.cookie = `rentalmove_role=${next}; path=/; max-age=31536000`;
+  const toggleRole = async () => {
+    const nextRole = role === "tenant" ? "owner" : "tenant";
+    setRole(nextRole);
+
+    try {
+      const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: nextRole }),
+      });
+      const data = await res.json();
+      if (data.user) {
+        setUserName(`${data.user.name} (${nextRole === "owner" ? "Owner" : "Tenant"})`);
+      }
+      // Force page refresh to update server-rendered dashboard components
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to switch session role:", err);
+    }
   };
 
   const navLinks = [
@@ -103,7 +161,7 @@ export function Navbar() {
             <button
               onClick={() => setIsDrawerOpen(true)}
               className="hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-secondary/50 text-foreground hover:bg-secondary transition-colors"
-              title="Inspect Cloudinary API calls and metadata"
+              title="Inspect real Cloudinary API calls and metadata"
             >
               <Code className="w-3.5 h-3.5 text-primary" />
               <span className="font-medium">Under the Hood</span>
@@ -113,17 +171,17 @@ export function Navbar() {
             <button
               onClick={toggleRole}
               className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-background hover:bg-secondary transition-all shadow-sm active:scale-95"
-              title="Toggle Tenant or Property Manager view"
+              title="Toggle between Tenant (Alex Chen) and Owner (Sarah Jenkins)"
             >
               {role === "tenant" ? (
                 <>
                   <UserCheck className="w-3.5 h-3.5 text-primary" />
-                  <span>Tenant Mode</span>
+                  <span className="font-medium">Tenant: Alex Chen</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="w-3.5 h-3.5 text-accent" />
-                  <span>Manager Mode</span>
+                  <span className="font-medium">Owner: Sarah Jenkins</span>
                 </>
               )}
             </button>
@@ -153,30 +211,13 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* Global Under the Hood Drawer */}
+      {/* Global Dynamic Under the Hood Drawer */}
       <UnderTheHoodDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        asset={{
-          public_id: "properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01",
-          secure_url:
-            "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
-          sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          etag: "1150ZAbEASSDJx2sXPJag17QosA",
-          room: "kitchen",
-          tags: ["rentalmove", "room:kitchen", "insp:move_in"],
-          metadata: {
-            property_id: "prop-381",
-            inspection_id: "insp-2024-move-in",
-            inspection_type: "move_in",
-            room: "kitchen",
-            sub_area: "lower_cabinet",
-            capture_date: "2024-06-01",
-            issue_category: "scratch",
-            review_status: "accepted",
-            ai_confidence: 88,
-          },
-        }}
+        asset={activeAsset}
+        availableAssets={availableAssets}
+        onSelectAsset={(a) => setActiveAsset(a)}
       />
     </>
   );

@@ -13,11 +13,10 @@ describe("Cloudinary Search Expression Builder", () => {
       "prop-381"
     );
 
-    expect(expression).toContain("folder:properties/prop-381/*");
-    expect(expression).toContain("metadata.room=kitchen");
-    expect(expression).toContain("metadata.issue_category=scratch");
-    expect(expression).toContain("metadata.review_status=accepted");
-    expect(expression).toContain("metadata.capture_date>=2024-01-01");
+    expect(expression).toContain("public_id:properties/prop-381*");
+    expect(expression).toContain("tags:kitchen");
+    expect(expression).toContain("tags:scratch");
+    expect(expression).toContain("created_at>=2024-01-01");
     expect(validatedFilter.room).toBe("kitchen");
   });
 
@@ -28,7 +27,7 @@ describe("Cloudinary Search Expression Builder", () => {
     );
 
     // Expression must only contain sanitized alphanumeric ID
-    expect(expression).toContain("folder:properties/prop-381DROPTABLEusers/*");
+    expect(expression).toContain("public_id:properties/prop-381DROPTABLEusers*");
     expect(expression).not.toContain(";");
   });
 

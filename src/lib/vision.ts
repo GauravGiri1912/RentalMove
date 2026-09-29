@@ -355,8 +355,64 @@ export class GroqVisionProvider implements VisionProvider {
   }
 
   async analyzeImage(input: { imageUrl: string; roomHint?: string }): Promise<ImageAnalysis> {
-    // Falls back to deterministic mock for image observation bbox accuracy
-    return new MockVisionProvider().analyzeImage(input);
+    const prompt = `
+You are an assistive rental property inspection assistant.
+Room category: "${input.roomHint || "general"}"
+Image URL: "${input.imageUrl}"
+
+RULES:
+1. Provide a neutral, objective condition observation for the room.
+2. NEVER use blame, fault, damage claims, or financial deduction language. Always prefix with "Possible", "Visible", "Observed", or "Noted".
+3. Suggest an issue category from: "scratch", "stain", "crack", "dent", "mark", "other".
+4. Estimate confidence between 0.70 and 0.95.
+5. Return JSON only conforming to:
+{
+  "room_guess": "living_room"|"kitchen"|"bathroom"|"bedroom"|"exterior",
+  "image_quality": "ok"|"blurry"|"too_dark"|"not_a_room",
+  "observations": [
+    {
+      "category": "scratch"|"stain"|"crack"|"dent"|"mark"|"other",
+      "sub_area": string,
+      "description": string,
+      "confidence": number,
+      "bbox": [number, number, number, number]
+    }
+  ]
+}
+Return JSON only, no markdown.
+`;
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.modelName,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.1,
+        }),
+      });
+
+      if (!response.ok) {
+        return new MockVisionProvider().analyzeImage(input);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "{}";
+      const cleanJson = content.replace(/```json/g, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleanJson);
+      if (Array.isArray(parsed.observations)) {
+        parsed.observations = parsed.observations.map((obs: any) => ({
+          ...obs,
+          description: sanitizeObservationText(obs.description || ""),
+        }));
+      }
+      return ImageAnalysisSchema.parse(parsed);
+    } catch {
+      return new MockVisionProvider().analyzeImage(input);
+    }
   }
 
   async compareImages(input: {
@@ -364,7 +420,56 @@ export class GroqVisionProvider implements VisionProvider {
     currentUrl: string;
     room: string;
   }): Promise<ComparisonResult> {
-    return new MockVisionProvider().compareImages(input);
+    const prompt = `
+You are an assistive visual inspection assistant comparing two condition captures of a rental property.
+Room: "${input.room}"
+Prior Image: "${input.priorUrl}"
+Current Image: "${input.currentUrl}"
+
+RULES:
+1. Assistive visual comparison only. Use strictly neutral, descriptive language.
+2. NEVER make legal accusations, fault, liability, monetary claims, or blame landlord/tenant.
+3. Highlight visible differences or confirm consistency with baseline.
+4. Output valid JSON only, conforming to:
+{
+  "summary": string,
+  "changes": [{ "description": string, "confidence": number }],
+  "caveats": [string]
+}
+Return JSON only, no markdown.
+`;
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.modelName,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.2,
+        }),
+      });
+
+      if (!response.ok) {
+        return new MockVisionProvider().compareImages(input);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "{}";
+      const cleanJson = content.replace(/```json/g, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleanJson);
+      if (Array.isArray(parsed.changes)) {
+        parsed.changes = parsed.changes.map((c: any) => ({
+          ...c,
+          description: sanitizeObservationText(c.description),
+        }));
+      }
+      return ComparisonResultSchema.parse(parsed);
+    } catch {
+      return new MockVisionProvider().compareImages(input);
+    }
   }
 
   async parseSearchQuery(q: string): Promise<SearchFilter> {

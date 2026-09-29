@@ -242,7 +242,7 @@ export class CloudinaryMediaProvider implements MediaProvider {
   }): Promise<UploadSignatureResult> {
     const timestamp = Math.round(Date.now() / 1000);
     const folder = `properties/${params.propertyId}/${params.inspectionId}/${params.room}`;
-    const tags = `rentalmove,room:${params.room},insp:${params.inspectionType}`;
+    const tags = `rentalmove,${params.room},${params.inspectionType},room:${params.room},insp:${params.inspectionType}`;
     const notificationUrl = process.env.CLOUDINARY_NOTIFICATION_URL;
 
     const paramsToSign: Record<string, any> = {

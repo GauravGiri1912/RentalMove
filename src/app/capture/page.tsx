@@ -15,6 +15,9 @@ import {
   ArrowRight,
   RefreshCw,
   Image as ImageIcon,
+  Video,
+  FileCheck,
+  Check,
 } from "lucide-react";
 import { APP_COPY } from "@/lib/copy";
 
@@ -25,29 +28,28 @@ interface PriorRoomImage {
   year: string;
 }
 
-// Seeded prior reference images for the Ghost Overlay
 const PRIOR_IMAGES: Record<string, PriorRoomImage> = {
   kitchen: {
     room: "kitchen",
-    url: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=80",
+    url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
     inspectionTitle: "Move-In Baseline 2024",
     year: "2024",
   },
   bathroom: {
     room: "bathroom",
-    url: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80",
+    url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01.jpg",
     inspectionTitle: "Move-In Baseline 2024",
     year: "2024",
   },
   living_room: {
     room: "living_room",
-    url: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=80",
+    url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/insp-2024-move-in/living_room/living-floor-01.jpg",
     inspectionTitle: "Move-In Baseline 2024",
     year: "2024",
   },
   bedroom: {
     room: "bedroom",
-    url: "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80",
+    url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/insp-2024-move-in/bedroom/bedroom-wall-01.jpg",
     inspectionTitle: "Move-In Baseline 2024",
     year: "2024",
   },
@@ -56,17 +58,23 @@ const PRIOR_IMAGES: Record<string, PriorRoomImage> = {
 export default function CapturePage() {
   const [inspectionType, setInspectionType] = useState<string>("inspection");
   const [room, setRoom] = useState<string>("kitchen");
-  const [captureDate, setCaptureDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [captureDate, setCaptureDate] = useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
   const [ghostOpacity, setGhostOpacity] = useState<number>(35);
   const [showGhost, setShowGhost] = useState<boolean>(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isVideo, setIsVideo] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [currentStep, setCurrentStep] = useState<string>("");
   const [uploadedAsset, setUploadedAsset] = useState<any | null>(null);
   const [fileSha256, setFileSha256] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const prior = PRIOR_IMAGES[room];
   const isFollowUpInspection = inspectionType !== "move_in";
@@ -75,11 +83,13 @@ export default function CapturePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setErrorMessage(null);
     setSelectedFile(file);
+    setIsVideo(file.type.startsWith("video/"));
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
 
-    // Compute browser SHA-256 for evidence integrity
+    // Compute real browser SHA-256 for evidence integrity
     try {
       const buffer = await file.arrayBuffer();
       const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
@@ -92,51 +102,119 @@ export default function CapturePage() {
   };
 
   const handleUploadAndAnalyze = async () => {
-    if (!selectedFile && !previewUrl) return;
+    if (!selectedFile) {
+      setErrorMessage("Please select or capture a photo/video file first.");
+      return;
+    }
 
     setIsUploading(true);
-    setUploadProgress(20);
+    setErrorMessage(null);
+    setUploadProgress(10);
+    setCurrentStep("Requesting secure Cloudinary signature...");
 
     try {
       // 1. Get signed upload parameters from server
+      const inspectionId = `insp-${captureDate}-${inspectionType}`;
       const signRes = await fetch("/api/uploads/sign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           property_id: "prop-381",
-          inspection_id: `insp-${captureDate}-${inspectionType}`,
+          inspection_id: inspectionId,
           room,
         }),
       });
 
+      if (!signRes.ok) {
+        throw new Error("Failed to obtain signed upload credentials from server.");
+      }
+
       const signData = await signRes.json();
-      setUploadProgress(50);
+      setUploadProgress(30);
+      setCurrentStep("Uploading media to live Cloudinary CDN...");
 
-      // 2. Direct upload to Cloudinary (or register directly)
-      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "yxrdw0hc";
-      const publicId = `${signData.folder}/capture-${Date.now()}`;
+      // 2. Real Direct upload to Cloudinary Upload API
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("api_key", signData.apiKey);
+      formData.append("timestamp", String(signData.timestamp));
+      formData.append("signature", signData.signature);
+      formData.append("folder", signData.folder);
+      formData.append("tags", signData.tags);
+      if (signData.notificationUrl) {
+        formData.append("notification_url", signData.notificationUrl);
+      }
 
-      // Register asset in RentalMove pipeline
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${signData.cloudName}/auto/upload`;
+      const cldRes = await fetch(uploadUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!cldRes.ok) {
+        const errorData = await cldRes.json().catch(() => ({}));
+        throw new Error(
+          errorData?.error?.message || `Cloudinary upload failed with HTTP ${cldRes.status}`
+        );
+      }
+
+      const cldData = await cldRes.json();
+      setUploadProgress(65);
+      setCurrentStep("Registering asset & cryptographic integrity in database...");
+
+      // 3. Register real asset in RentalMove pipeline
       const registerRes = await fetch("/api/assets/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           property_id: "prop-381",
-          inspection_id: `insp-${captureDate}-${inspectionType}`,
+          inspection_id: inspectionId,
           room_id: `room-${room}`,
-          cloudinary_public_id: publicId,
-          secure_url: previewUrl || prior?.url || "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=80",
-          sha256: fileSha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          etag: `etag_${Date.now()}`,
+          cloudinary_public_id: cldData.public_id,
+          secure_url: cldData.secure_url,
+          etag: cldData.etag,
+          sha256: fileSha256 || undefined,
+          width: cldData.width,
+          height: cldData.height,
           captured_at: new Date().toISOString(),
         }),
       });
 
+      if (!registerRes.ok) {
+        throw new Error("Failed to register asset in persistent database.");
+      }
+
       const assetData = await registerRes.json();
+      setUploadProgress(85);
+      setCurrentStep("Running AI visual analysis & structured metadata attachment...");
+
+      // Small poll to wait for pipeline analysis completion
+      let finalAsset = assetData;
+      for (let i = 0; i < 4; i++) {
+        await new Promise((r) => setTimeout(r, 800));
+        try {
+          const pollRes = await fetch(`/api/properties/prop-381/timeline`);
+          if (pollRes.ok) {
+            const tl = await pollRes.json();
+            const found = tl.inspections
+              .flatMap((i: any) => i.assets)
+              .find((a: any) => a.id === assetData.id || a.cloudinary_public_id === cldData.public_id);
+            if (found && (found.analysis_status === "done" || found.analysis_status === "failed")) {
+              finalAsset = found;
+              break;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       setUploadProgress(100);
-      setUploadedAsset(assetData);
-    } catch (err) {
+      setCurrentStep("Upload and AI pipeline completed!");
+      setUploadedAsset(finalAsset);
+    } catch (err: any) {
       console.error("Upload error:", err);
+      setErrorMessage(err?.message || "Media pipeline error occurred.");
     } finally {
       setIsUploading(false);
     }
@@ -151,7 +229,7 @@ export default function CapturePage() {
           Capture &amp; Upload Inspection Media
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Document rental condition with Cloudinary signed uploads, room tagging, and guided ghost overlays.
+          Document rental condition with real Cloudinary direct uploads, SHA-256 cryptographic integrity, and guided ghost overlays.
         </p>
       </div>
 
@@ -289,9 +367,9 @@ export default function CapturePage() {
 
           {/* Consent Notice */}
           <div className="text-[11px] text-muted-foreground leading-relaxed bg-secondary/40 p-3.5 rounded-lg border border-border">
-            <span className="font-semibold text-foreground">Media Integrity Policy:</span> Photos are
-            cryptographically hashed (SHA-256) upon ingestion. Original media is stored immutably
-            in Cloudinary with structured tags.
+            <span className="font-semibold text-foreground">Evidence Integrity:</span> Real SHA-256
+            hashes are calculated from raw bytes. Photos are uploaded directly to Cloudinary and
+            stamped with structured metadata.
           </div>
         </div>
 
@@ -301,7 +379,7 @@ export default function CapturePage() {
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-sm text-foreground uppercase tracking-wider flex items-center gap-2">
                 <Camera className="w-4 h-4 text-primary" />
-                2. Camera Viewfinder &amp; Photo Dropzone
+                2. Camera Viewfinder &amp; Media Dropzone
               </h2>
               {fileSha256 && (
                 <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-mono">
@@ -310,26 +388,42 @@ export default function CapturePage() {
               )}
             </div>
 
+            {/* Error Banner */}
+            {errorMessage && (
+              <div className="p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             {/* Viewfinder Canvas Area */}
             <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-black/90 border border-border flex items-center justify-center group">
-              {/* Preview image if user selected a file */}
+              {/* Preview image or video if user selected a file */}
               {previewUrl ? (
-                <img
-                  src={previewUrl}
-                  alt="Captured inspection preview"
-                  className="w-full h-full object-cover"
-                />
+                isVideo ? (
+                  <video
+                    src={previewUrl}
+                    controls
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <img
+                    src={previewUrl}
+                    alt="Captured inspection preview"
+                    className="w-full h-full object-cover"
+                  />
+                )
               ) : (
-                /* Fallback background image representing live viewfinder */
+                /* Baseline reference image when no file selected */
                 <img
-                  src={prior?.url || "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=80"}
-                  alt="Camera Viewfinder"
+                  src={prior?.url}
+                  alt="Camera Viewfinder Baseline"
                   className="w-full h-full object-cover opacity-80 filter brightness-90"
                 />
               )}
 
               {/* Ghost Overlay Layer (Only on follow-up inspections) */}
-              {isFollowUpInspection && showGhost && prior && (
+              {!isVideo && isFollowUpInspection && showGhost && prior && (
                 <div
                   className="absolute inset-0 pointer-events-none transition-opacity duration-200"
                   style={{ opacity: ghostOpacity / 100 }}
@@ -360,20 +454,29 @@ export default function CapturePage() {
 
               {/* File Dropzone Trigger inside Viewfinder */}
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs p-4 text-center">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 rounded-lg bg-card text-foreground font-semibold text-xs shadow hover:bg-secondary transition-colors flex items-center gap-1.5"
-                >
-                  <Upload className="w-4 h-4 text-primary" />
-                  Choose File or Use Camera
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-card text-foreground font-semibold text-xs shadow hover:bg-secondary transition-colors flex items-center gap-1.5"
+                  >
+                    <Upload className="w-4 h-4 text-primary" />
+                    Upload Image
+                  </button>
+                  <button
+                    onClick={() => videoInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-card text-foreground font-semibold text-xs shadow hover:bg-secondary transition-colors flex items-center gap-1.5"
+                  >
+                    <Video className="w-4 h-4 text-accent" />
+                    Upload Video
+                  </button>
+                </div>
                 <p className="text-[11px] text-white/80 mt-2">
-                  JPG, PNG, WebP up to 25MB
+                  JPG, PNG, WebP, or short MP4 up to 50MB
                 </p>
               </div>
             </div>
 
-            {/* Hidden native input */}
+            {/* Hidden native inputs */}
             <input
               type="file"
               ref={fileInputRef}
@@ -382,27 +485,43 @@ export default function CapturePage() {
               capture="environment"
               className="hidden"
             />
+            <input
+              type="file"
+              ref={videoInputRef}
+              onChange={handleFileChange}
+              accept="video/*"
+              capture="environment"
+              className="hidden"
+            />
 
             {/* Action Buttons & Upload Trigger */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="px-4 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs transition-colors flex items-center gap-2"
                 >
                   <Camera className="w-4 h-4 text-primary" />
-                  {selectedFile ? "Replace Photo" : "Upload / Snap Photo"}
+                  {selectedFile ? "Replace Media" : "Select Photo / Camera"}
+                </button>
+                <button
+                  onClick={() => videoInputRef.current?.click()}
+                  className="px-3 py-2.5 rounded-lg border border-border bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs transition-colors flex items-center gap-1.5"
+                  title="Upload short walkthrough video"
+                >
+                  <Video className="w-4 h-4 text-accent" />
+                  Walkthrough Video
                 </button>
                 {selectedFile && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[160px]">
-                    {selectedFile.name}
+                  <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                    {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
                   </span>
                 )}
               </div>
 
               <button
                 onClick={handleUploadAndAnalyze}
-                disabled={isUploading}
+                disabled={isUploading || !selectedFile}
                 className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground font-semibold text-xs shadow-md shadow-primary/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isUploading ? (
@@ -413,18 +532,21 @@ export default function CapturePage() {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    <span>Upload &amp; Run AI Analysis</span>
+                    <span>Upload to Cloudinary &amp; Run AI</span>
                   </>
                 )}
               </button>
             </div>
 
-            {/* Upload Progress Bar */}
+            {/* Upload Progress & Step Indicator */}
             {isUploading && (
-              <div className="space-y-1.5 pt-2">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Uploading to Cloudinary &bull; Running VLM Analysis...</span>
-                  <span className="font-mono">{uploadProgress}%</span>
+              <div className="space-y-2 pt-2 p-4 rounded-xl bg-secondary/50 border border-border">
+                <div className="flex justify-between text-xs text-foreground font-medium">
+                  <span className="flex items-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" />
+                    {currentStep}
+                  </span>
+                  <span className="font-mono text-primary font-bold">{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
                   <div
@@ -437,25 +559,45 @@ export default function CapturePage() {
 
             {/* Upload Success Banner */}
             {uploadedAsset && (
-              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-3 animate-in fade-in">
+              <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-4 animate-in fade-in">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                     <span className="font-bold text-sm text-foreground">
-                      Asset Ingested &amp; Analysis Completed
+                      Asset Ingested to Cloudinary &amp; Registered
                     </span>
                   </div>
-                  <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400">
+                  <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">
                     Status: {uploadedAsset.analysis_status}
                   </span>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-card p-3 rounded-lg border border-border text-xs font-mono">
+                  <div>
+                    <span className="text-muted-foreground block text-[10px]">Cloudinary Public ID:</span>
+                    <span className="text-foreground truncate block">{uploadedAsset.cloudinary_public_id}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[10px]">Cloudinary ETag:</span>
+                    <span className="text-foreground truncate block">{uploadedAsset.etag || "verified"}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[10px]">Evidence SHA-256:</span>
+                    <span className="text-foreground truncate block">{uploadedAsset.sha256?.substring(0, 18)}...</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[10px]">Room Inferred:</span>
+                    <span className="text-primary font-semibold capitalize block">
+                      {uploadedAsset.room_guess || room}
+                    </span>
+                  </div>
+                </div>
+
                 <p className="text-xs text-muted-foreground">
-                  The photo was uploaded to Cloudinary, stamped with structured metadata, and
-                  analyzed by the VLM pipeline. Observations are ready for triage in the Review Center.
+                  The photo was uploaded directly to Cloudinary, hashed for tamper-evident integrity, and indexed with structured metadata. Observations are ready for triage.
                 </p>
 
-                <div className="pt-1 flex items-center gap-3">
+                <div className="pt-1 flex flex-wrap items-center gap-3">
                   <Link
                     href={`/review?assetId=${uploadedAsset.id}`}
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary-hover shadow-xs"
@@ -468,6 +610,14 @@ export default function CapturePage() {
                   >
                     View in Timeline
                   </Link>
+                  <a
+                    href={uploadedAsset.secure_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-2 text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    View on Cloudinary CDN
+                  </a>
                 </div>
               </div>
             )}

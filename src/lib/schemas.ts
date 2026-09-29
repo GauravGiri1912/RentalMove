@@ -86,14 +86,41 @@ export const SearchFilterSchema = z.object({
 });
 export type SearchFilter = z.infer<typeof SearchFilterSchema>;
 
+// --- User & Role Schemas ---
+export const UserRoleEnum = z.enum(["tenant", "owner"]);
+export type UserRole = z.infer<typeof UserRoleEnum>;
+
+export const UserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().email(),
+  role: UserRoleEnum,
+  assigned_property_id: z.string().optional(),
+  owned_properties: z.array(z.string()).default([]),
+  created_at: z.string(),
+});
+export type User = z.infer<typeof UserSchema>;
+
 // --- Database Entity Schemas ---
 export const PropertySchema = z.object({
   id: z.string(),
   address_label: z.string(),
   unit_label: z.string(),
+  owner_id: z.string().optional(),
   created_at: z.string(),
 });
 export type Property = z.infer<typeof PropertySchema>;
+
+export const PropertyCreateSchema = z.object({
+  address_label: z.string().min(1, "Address is required"),
+  unit_label: z.string().min(1, "Unit label is required"),
+  owner_id: z.string().optional(),
+  rooms: z.array(z.object({
+    name: z.string(),
+    category: RoomCategoryEnum,
+  })).optional(),
+});
+export type PropertyCreate = z.infer<typeof PropertyCreateSchema>;
 
 export const RoomSchema = z.object({
   id: z.string(),
@@ -157,10 +184,21 @@ export const ComparisonSchema = z.object({
   current_asset_id: z.string(),
   summary: z.string(),
   changes: z.array(ComparisonChangeSchema),
+  caveats: z.array(z.string()).default([]),
   model_version: z.string(),
   created_at: z.string(),
 });
 export type Comparison = z.infer<typeof ComparisonSchema>;
+
+export const ShareLinkSchema = z.object({
+  token: z.string(),
+  property_id: z.string(),
+  inspection_id: z.string().optional(),
+  created_at: z.string(),
+  expires_at: z.string(),
+  revoked_at: z.string().nullable().optional(),
+});
+export type ShareLink = z.infer<typeof ShareLinkSchema>;
 
 // --- Request / Response Schemas ---
 export const UploadSignRequestSchema = z.object({

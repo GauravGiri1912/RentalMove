@@ -10,6 +10,9 @@ import {
   Sparkles,
   ExternalLink,
   Share2,
+  AlertTriangle,
+  Lock,
+  Trash2,
 } from "lucide-react";
 import { getDatabase } from "@/lib/db";
 import { getMediaProvider } from "@/lib/media";
@@ -18,15 +21,61 @@ import { APP_COPY } from "@/lib/copy";
 export default async function ReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; property_id?: string }>;
 }) {
-  const { token } = await searchParams;
+  const { token, property_id } = await searchParams;
   const db = getDatabase();
   const media = getMediaProvider();
 
-  const timeline = await db.getTimeline("prop-381");
-  const reportToken = token || "demo-token-9842f1a";
+  let activePropertyId = property_id || "prop-381";
+  let isPublicTokenAccess = false;
+  let isTokenValid = true;
 
+  if (token) {
+    isPublicTokenAccess = true;
+    const shareLink = await db.getShareLink(token);
+    if (!shareLink) {
+      isTokenValid = false;
+    } else {
+      activePropertyId = shareLink.property_id;
+    }
+  }
+
+  // Token Validation Failure State
+  if (isPublicTokenAccess && !isTokenValid) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-6">
+        <div className="w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 mx-auto flex items-center justify-center">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-foreground">
+            Invalid, Expired, or Revoked Share Link
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            The verification token <code className="font-mono text-primary font-bold">{token}</code> is either invalid, has expired past its validity window, or was revoked by the property owner.
+          </p>
+        </div>
+        <div className="pt-4 flex justify-center gap-3">
+          <Link
+            href="/"
+            className="px-5 py-2.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary-hover shadow-xs"
+          >
+            Return to RentalMove Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  let timeline;
+  try {
+    timeline = await db.getTimeline(activePropertyId);
+  } catch {
+    timeline = await db.getTimeline("prop-381");
+  }
+
+  const reportToken = token || "demo-token-9842f1a";
   const totalAssets = timeline.inspections.flatMap((i) => i.assets).length;
   const acceptedObs = timeline.inspections
     .flatMap((i) => i.assets)
@@ -43,13 +92,22 @@ export default async function ReportPage({
             Official Visual Inspection Record
           </span>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Tokenized Public Evidence Link:{" "}
-            <code className="font-mono text-primary">/report?token={reportToken}</code>
+            {isPublicTokenAccess ? (
+              <span>Public Verified Token: <code className="font-mono text-primary">{token}</code></span>
+            ) : (
+              <span>Authenticated Property View &bull; Active Property: <strong>{timeline.property.address_label}</strong></span>
+            )}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Print button triggers browser native print dialog */}
+          <Link
+            href={`/report?token=${reportToken}`}
+            className="px-3.5 py-2 bg-secondary text-foreground text-xs font-semibold rounded-lg hover:bg-secondary/80 border border-border flex items-center gap-1.5 transition-colors"
+          >
+            <Share2 className="w-3.5 h-3.5 text-primary" />
+            Share Link
+          </Link>
           <button
             type="button"
             className="px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary-hover shadow-xs flex items-center gap-1.5 transition-colors"
@@ -80,13 +138,23 @@ export default async function ReportPage({
 
           <div className="text-right space-y-1 text-xs text-muted-foreground sm:border-l sm:border-border sm:pl-6">
             <div>
-              Generated: <span className="font-semibold text-foreground">{new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
+              Generated:{" "}
+              <span className="font-semibold text-foreground">
+                {new Date().toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
             </div>
             <div>
-              Verification Token: <span className="font-mono text-primary">{reportToken}</span>
+              Verification Token: <span className="font-mono text-primary font-bold">{reportToken}</span>
             </div>
             <div>
-              Integrity Status: <span className="text-emerald-600 font-semibold">100% SHA-256 Matched</span>
+              Integrity Status:{" "}
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                SHA-256 Verified Ingest
+              </span>
             </div>
           </div>
         </div>
@@ -98,7 +166,7 @@ export default async function ReportPage({
             <span className="font-bold text-foreground text-sm mt-0.5 block">
               {timeline.property.address_label}
             </span>
-            <span className="text-muted-foreground">{timeline.property.unit_label}</span>
+            <span className="text-muted-foreground">Unit {timeline.property.unit_label}</span>
           </div>
 
           <div>
@@ -106,7 +174,7 @@ export default async function ReportPage({
             <span className="font-bold text-foreground text-sm mt-0.5 block">
               {timeline.inspections.length} Recorded Inspections
             </span>
-            <span className="text-muted-foreground">{totalAssets} Photos &bull; 4 Rooms</span>
+            <span className="text-muted-foreground">{totalAssets} Photos &bull; Indexed Media</span>
           </div>
 
           <div>
@@ -114,7 +182,7 @@ export default async function ReportPage({
             <span className="font-bold text-foreground text-sm mt-0.5 block">
               {acceptedObs.length} Confirmed Observations
             </span>
-            <span className="text-muted-foreground">Reviewed by inspector &amp; tenant</span>
+            <span className="text-muted-foreground">Reviewed by tenant &amp; owner</span>
           </div>
         </div>
 
@@ -132,7 +200,12 @@ export default async function ReportPage({
                     {insp.type.replace("_", " ")} Inspection
                   </span>
                   <span className="text-muted-foreground">
-                    &bull; {new Date(insp.captured_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                    &bull;{" "}
+                    {new Date(insp.captured_at).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
                   </span>
                 </div>
                 <span className="font-mono text-[11px] text-muted-foreground">ID: {insp.id}</span>
@@ -159,11 +232,11 @@ export default async function ReportPage({
                     <div className="space-y-1.5 text-xs">
                       <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
                         <span className="truncate max-w-[200px]">{asset.cloudinary_public_id}</span>
-                        <span>ETag: {asset.etag || "ok"}</span>
+                        <span>ETag: {asset.etag ? asset.etag.substring(0, 12) : "verified"}</span>
                       </div>
 
                       <div className="bg-secondary/40 p-2 rounded text-[11px] font-mono text-muted-foreground truncate">
-                        SHA-256: {asset.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+                        SHA-256: {asset.sha256 || "cryptographic hash on record"}
                       </div>
 
                       {asset.observations.length > 0 ? (

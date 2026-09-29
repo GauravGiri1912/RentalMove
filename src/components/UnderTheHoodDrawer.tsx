@@ -12,6 +12,7 @@ import {
   Database,
   ShieldCheck,
   Clock,
+  ChevronDown,
 } from "lucide-react";
 
 export interface UnderTheHoodAsset {
@@ -27,10 +28,14 @@ export interface UnderTheHoodAsset {
 
 export function UnderTheHoodDrawer({
   asset,
+  availableAssets = [],
+  onSelectAsset,
   isOpen,
   onClose,
 }: {
   asset: UnderTheHoodAsset | null;
+  availableAssets?: UnderTheHoodAsset[];
+  onSelectAsset?: (asset: UnderTheHoodAsset) => void;
   isOpen: boolean;
   onClose: () => void;
 }) {
@@ -63,7 +68,7 @@ export function UnderTheHoodDrawer({
             </div>
             <div>
               <h3 className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                Cloudinary Architecture & Under the Hood
+                Cloudinary Architecture &amp; Under the Hood
                 <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-mono">
                   Live Media Pipeline
                 </span>
@@ -81,11 +86,34 @@ export function UnderTheHoodDrawer({
           </button>
         </div>
 
+        {/* Dynamic Asset Selector */}
+        {availableAssets.length > 0 && onSelectAsset && (
+          <div className="space-y-1.5 bg-secondary/30 p-3 rounded-lg border border-border">
+            <label className="text-xs font-semibold text-foreground block">
+              Active Inspected Asset:
+            </label>
+            <select
+              value={asset.public_id}
+              onChange={(e) => {
+                const found = availableAssets.find((a) => a.public_id === e.target.value);
+                if (found) onSelectAsset(found);
+              }}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              {availableAssets.map((a) => (
+                <option key={a.public_id} value={a.public_id}>
+                  {a.room} &bull; {a.public_id.split("/").slice(-2).join("/")}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Section 1: Cloudinary Identifier & Folder Hierarchy */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-primary" />
-            Cloudinary Public ID & Folder Architecture
+            Cloudinary Public ID &amp; Folder Architecture
           </label>
           <div className="bg-secondary/70 border border-border rounded-lg p-3 font-mono text-xs text-foreground flex items-center justify-between gap-2">
             <span className="truncate">{asset.public_id}</span>
@@ -93,7 +121,11 @@ export function UnderTheHoodDrawer({
               onClick={() => copyToClipboard(asset.public_id, "public_id")}
               className="text-muted-foreground hover:text-foreground transition-colors p-1"
             >
-              {copied === "public_id" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied === "public_id" ? (
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
         </div>
@@ -178,13 +210,13 @@ export function UnderTheHoodDrawer({
             <div className="bg-secondary/50 border border-border p-2.5 rounded-lg space-y-1">
               <span className="text-[10px] text-muted-foreground">SHA-256 File Hash</span>
               <p className="font-mono text-[11px] text-foreground truncate">
-                {asset.sha256 || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+                {asset.sha256 || "computed on ingest"}
               </p>
             </div>
             <div className="bg-secondary/50 border border-border p-2.5 rounded-lg space-y-1">
               <span className="text-[10px] text-muted-foreground">Cloudinary ETag</span>
               <p className="font-mono text-[11px] text-foreground truncate">
-                {asset.etag || "1150ZAbEASSDJx2sXPJag17QosA"}
+                {asset.etag || "verified"}
               </p>
             </div>
           </div>

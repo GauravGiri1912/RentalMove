@@ -7,16 +7,26 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const filterInput: Record<string, string> = {};
 
-    if (searchParams.get("room")) filterInput.room = searchParams.get("room")!;
-    if (searchParams.get("inspection_type"))
-      filterInput.inspection_type = searchParams.get("inspection_type")!;
-    if (searchParams.get("issue_category"))
-      filterInput.issue_category = searchParams.get("issue_category")!;
-    if (searchParams.get("review_status"))
-      filterInput.review_status = searchParams.get("review_status")!;
-    if (searchParams.get("date_from")) filterInput.date_from = searchParams.get("date_from")!;
-    if (searchParams.get("date_to")) filterInput.date_to = searchParams.get("date_to")!;
-    if (searchParams.get("free_text")) filterInput.free_text = searchParams.get("free_text")!;
+    const room = searchParams.get("room")?.trim();
+    if (room) filterInput.room = room;
+
+    const inspectionType = searchParams.get("inspection_type")?.trim();
+    if (inspectionType) filterInput.inspection_type = inspectionType;
+
+    const issueCategory = searchParams.get("issue_category")?.trim();
+    if (issueCategory) filterInput.issue_category = issueCategory;
+
+    const reviewStatus = searchParams.get("review_status")?.trim();
+    if (reviewStatus) filterInput.review_status = reviewStatus;
+
+    const dateFrom = searchParams.get("date_from")?.trim();
+    if (dateFrom) filterInput.date_from = dateFrom;
+
+    const dateTo = searchParams.get("date_to")?.trim();
+    if (dateTo) filterInput.date_to = dateTo;
+
+    const freeText = searchParams.get("free_text")?.trim();
+    if (freeText) filterInput.free_text = freeText;
 
     const propertyId = searchParams.get("property_id") || "prop-381";
 

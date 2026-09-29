@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       current_asset_id,
       summary: comparisonResult.summary,
       changes: comparisonResult.changes,
+      caveats: comparisonResult.caveats || [],
       model_version: process.env.VISION_MODEL || "mock-vlm-v1",
     });
 
