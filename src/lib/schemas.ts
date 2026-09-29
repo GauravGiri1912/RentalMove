@@ -1,0 +1,195 @@
+import { z } from "zod";
+
+// --- Enums ---
+export const RoomCategoryEnum = z.enum([
+  "living_room",
+  "kitchen",
+  "bathroom",
+  "bedroom",
+  "exterior",
+  "unknown",
+]);
+export type RoomCategory = z.infer<typeof RoomCategoryEnum>;
+
+export const ImageQualityEnum = z.enum(["ok", "blurry", "too_dark", "not_a_room"]);
+export type ImageQuality = z.infer<typeof ImageQualityEnum>;
+
+export const IssueCategoryEnum = z.enum([
+  "none",
+  "scratch",
+  "stain",
+  "crack",
+  "dent",
+  "mark",
+  "other",
+]);
+export type IssueCategory = z.infer<typeof IssueCategoryEnum>;
+
+export const InspectionTypeEnum = z.enum(["move_in", "inspection", "move_out"]);
+export type InspectionType = z.infer<typeof InspectionTypeEnum>;
+
+export const ReviewStatusEnum = z.enum(["pending", "accepted", "rejected", "edited"]);
+export type ReviewStatus = z.infer<typeof ReviewStatusEnum>;
+
+export const AnalysisStatusEnum = z.enum(["queued", "running", "done", "failed"]);
+export type AnalysisStatus = z.infer<typeof AnalysisStatusEnum>;
+
+export const ObservationSourceEnum = z.enum(["ai", "human"]);
+export type ObservationSource = z.infer<typeof ObservationSourceEnum>;
+
+// --- Observation & AI Analysis Schemas ---
+export const BoundingBoxSchema = z.tuple([
+  z.number().min(0).max(1), // x1
+  z.number().min(0).max(1), // y1
+  z.number().min(0).max(1), // x2
+  z.number().min(0).max(1), // y2
+]);
+export type BoundingBox = z.infer<typeof BoundingBoxSchema>;
+
+export const ObservationItemSchema = z.object({
+  category: z.enum(["scratch", "stain", "crack", "dent", "mark", "other"]),
+  sub_area: z.string().default("general"),
+  description: z.string().min(1),
+  confidence: z.number().min(0).max(1),
+  bbox: BoundingBoxSchema,
+});
+export type ObservationItem = z.infer<typeof ObservationItemSchema>;
+
+export const ImageAnalysisSchema = z.object({
+  room_guess: RoomCategoryEnum,
+  image_quality: ImageQualityEnum,
+  observations: z.array(ObservationItemSchema).default([]),
+});
+export type ImageAnalysis = z.infer<typeof ImageAnalysisSchema>;
+
+export const ComparisonChangeSchema = z.object({
+  description: z.string(),
+  confidence: z.number().min(0).max(1),
+});
+
+export const ComparisonResultSchema = z.object({
+  summary: z.string(),
+  changes: z.array(ComparisonChangeSchema).default([]),
+  caveats: z.array(z.string()).default([]),
+});
+export type ComparisonResult = z.infer<typeof ComparisonResultSchema>;
+
+// --- Search Filter Schema (whitelisted only) ---
+export const SearchFilterSchema = z.object({
+  room: RoomCategoryEnum.optional(),
+  inspection_type: InspectionTypeEnum.optional(),
+  issue_category: IssueCategoryEnum.optional(),
+  review_status: ReviewStatusEnum.optional(),
+  date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date_from format YYYY-MM-DD").optional(),
+  date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date_to format YYYY-MM-DD").optional(),
+  free_text: z.string().max(100).optional(),
+});
+export type SearchFilter = z.infer<typeof SearchFilterSchema>;
+
+// --- Database Entity Schemas ---
+export const PropertySchema = z.object({
+  id: z.string(),
+  address_label: z.string(),
+  unit_label: z.string(),
+  created_at: z.string(),
+});
+export type Property = z.infer<typeof PropertySchema>;
+
+export const RoomSchema = z.object({
+  id: z.string(),
+  property_id: z.string(),
+  name: z.string(),
+  category: RoomCategoryEnum,
+});
+export type Room = z.infer<typeof RoomSchema>;
+
+export const InspectionSchema = z.object({
+  id: z.string(),
+  property_id: z.string(),
+  type: InspectionTypeEnum,
+  captured_at: z.string(),
+  status: z.enum(["in_progress", "completed"]).default("completed"),
+  created_at: z.string(),
+});
+export type Inspection = z.infer<typeof InspectionSchema>;
+
+export const AssetSchema = z.object({
+  id: z.string(),
+  inspection_id: z.string(),
+  room_id: z.string(),
+  cloudinary_public_id: z.string(),
+  secure_url: z.string().url(),
+  etag: z.string().optional(),
+  sha256: z.string().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  captured_at: z.string(),
+  analysis_status: AnalysisStatusEnum.default("queued"),
+  analysis_error: z.string().nullable().optional(),
+  room_guess: RoomCategoryEnum.optional(),
+  image_quality: ImageQualityEnum.optional(),
+  created_at: z.string(),
+});
+export type Asset = z.infer<typeof AssetSchema>;
+
+export const ObservationSchema = z.object({
+  id: z.string(),
+  asset_id: z.string(),
+  category: z.enum(["scratch", "stain", "crack", "dent", "mark", "other"]),
+  sub_area: z.string(),
+  description: z.string(),
+  confidence: z.number().min(0).max(1),
+  bbox: BoundingBoxSchema,
+  review_status: ReviewStatusEnum.default("pending"),
+  reviewer_note: z.string().nullable().optional(),
+  source: ObservationSourceEnum.default("ai"),
+  edited_from: z.any().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type Observation = z.infer<typeof ObservationSchema>;
+
+export const ComparisonSchema = z.object({
+  id: z.string(),
+  property_id: z.string(),
+  room_id: z.string(),
+  prior_asset_id: z.string(),
+  current_asset_id: z.string(),
+  summary: z.string(),
+  changes: z.array(ComparisonChangeSchema),
+  model_version: z.string(),
+  created_at: z.string(),
+});
+export type Comparison = z.infer<typeof ComparisonSchema>;
+
+// --- Request / Response Schemas ---
+export const UploadSignRequestSchema = z.object({
+  property_id: z.string(),
+  inspection_id: z.string(),
+  room: RoomCategoryEnum,
+  timestamp: z.number().optional(),
+});
+export type UploadSignRequest = z.infer<typeof UploadSignRequestSchema>;
+
+export const AssetRegisterRequestSchema = z.object({
+  property_id: z.string(),
+  inspection_id: z.string(),
+  room_id: z.string(),
+  cloudinary_public_id: z.string(),
+  secure_url: z.string().url(),
+  etag: z.string().optional(),
+  sha256: z.string().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  captured_at: z.string().optional(),
+});
+export type AssetRegisterRequest = z.infer<typeof AssetRegisterRequestSchema>;
+
+export const ObservationUpdateSchema = z.object({
+  review_status: ReviewStatusEnum,
+  reviewer_note: z.string().optional(),
+  edited_category: z.enum(["scratch", "stain", "crack", "dent", "mark", "other"]).optional(),
+  edited_description: z.string().optional(),
+  edited_sub_area: z.string().optional(),
+});
+export type ObservationUpdate = z.infer<typeof ObservationUpdateSchema>;

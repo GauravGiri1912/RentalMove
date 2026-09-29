@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 20% 98%;
+  --foreground: 220 20% 12%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 20% 12%;
+
+  --primary: 215 90% 48%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 215 90% 42%;
+
+  --secondary: 215 20% 93%;
+  --secondary-foreground: 220 20% 18%;
+
+  --muted: 215 20% 95%;
+  --muted-foreground: 215 15% 45%;
+
+  --accent: 172 75% 42%;
+  --accent-foreground: 0 0% 100%;
+
+  --border: 215 20% 88%;
+  --input: 215 20% 88%;
+  --ring: 215 90% 48%;
+
+  --radius: 0.625rem;
+
+  --status-success: 152 65% 42%;
+  --status-warning: 38 92% 50%;
+  --status-info: 210 90% 52%;
+  --status-danger: 0 78% 54%;
+}
+
+.dark {
+  --background: 222 25% 10%;
+  --foreground: 210 20% 96%;
+
+  --card: 222 24% 14%;
+  --card-foreground: 210 20% 96%;
+
+  --primary: 215 95% 60%;
+  --primary-foreground: 222 25% 10%;
+  --primary-hover: 215 95% 65%;
+
+  --secondary: 220 20% 20%;
+  --secondary-foreground: 210 20% 90%;
+
+  --muted: 220 20% 18%;
+  --muted-foreground: 215 15% 65%;
+
+  --accent: 172 75% 48%;
+  --accent-foreground: 222 25% 10%;
+
+  --border: 220 20% 22%;
+  --input: 220 20% 22%;
+  --ring: 215 95% 60%;
+}
+
+body {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .glass {
+  background: rgba(20, 26, 38, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
