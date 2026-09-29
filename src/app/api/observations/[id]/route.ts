@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { getMediaProvider } from "@/lib/media";
 import { ObservationUpdateSchema } from "@/lib/schemas";
+import { getSessionUser } from "@/lib/auth";
 
 export async function PATCH(
   req: NextRequest,
@@ -19,6 +20,7 @@ export async function PATCH(
       );
     }
 
+    const user = await getSessionUser(req);
     const db = getDatabase();
     const media = getMediaProvider();
 
@@ -28,6 +30,7 @@ export async function PATCH(
       category: parsed.data.edited_category,
       description: parsed.data.edited_description,
       sub_area: parsed.data.edited_sub_area,
+      reviewed_by: user?.id,
     });
 
     if (!updated) {

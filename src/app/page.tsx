@@ -27,6 +27,8 @@ import { getMediaProvider } from "@/lib/media";
 import { APP_COPY } from "@/lib/copy";
 import { cookies } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const db = getDatabase();
   const media = getMediaProvider();

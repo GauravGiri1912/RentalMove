@@ -39,6 +39,10 @@ async function runRealityAudit() {
   const db = getDatabase();
   const media = getMediaProvider();
   const vision = getVisionProvider();
+  const cloudName =
+    process.env.CLOUDINARY_CLOUD_NAME ||
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+    "demo";
 
   // -------------------------------------------------------------
   // STEP 1: REAL LOCAL FILE & HASH CALCULATION
@@ -65,8 +69,8 @@ async function runRealityAudit() {
     room: "kitchen",
   });
   console.log(`✓ Signature generated for folder: ${signResult.folder}`);
-  console.log(`✓ Signature: ${signResult.signature.slice(0, 8)}... (truncated for security)`);
-  console.log(`✓ API Key: ${signResult.apiKey.slice(0, 4)}... (masked for security)`);
+  console.log(`✓ Signature generated successfully (masked)`);
+  console.log(`✓ API Key present and masked`);
 
   // -------------------------------------------------------------
   // STEP 3: REAL DIRECT UPLOAD TO CLOUDINARY API
@@ -207,8 +211,7 @@ async function runRealityAudit() {
   // -------------------------------------------------------------
   // STEP 9: COMPARATIVE AI ANALYSIS
   // -------------------------------------------------------------
-  console.log("\n--- 9. MULTIMODAL BEFORE / AFTER COMPARISON ---");
-  const baselineUrl = "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679808/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg";
+  const baselineUrl = `https://res.cloudinary.com/${cloudName}/image/upload/v1/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg`;
   const comparison = await vision.compareImages({
     priorUrl: baselineUrl,
     currentUrl: cldData.secure_url,

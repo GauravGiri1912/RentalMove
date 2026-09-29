@@ -43,7 +43,11 @@ export function UnderTheHoodDrawer({
 
   if (!isOpen || !asset) return null;
 
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "yxrdw0hc";
+  const cloudName =
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+    (asset.secure_url && asset.secure_url.includes("res.cloudinary.com")
+      ? asset.secure_url.split("/")[3]
+      : "demo");
   const thumbUrl = `https://res.cloudinary.com/${cloudName}/image/upload/c_fill,w_400,h_300,f_auto,q_auto/${asset.public_id}.jpg`;
   const reviewUrl = `https://res.cloudinary.com/${cloudName}/image/upload/c_limit,w_1600,h_1200,f_auto,q_auto/${asset.public_id}.jpg`;
   const vlmCopyUrl = `https://res.cloudinary.com/${cloudName}/image/upload/c_limit,w_1024,q_auto,f_jpg/${asset.public_id}.jpg`;

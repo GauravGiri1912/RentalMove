@@ -15,6 +15,8 @@ import { getDatabase } from "@/lib/db";
 import { getMediaProvider } from "@/lib/media";
 import { APP_COPY } from "@/lib/copy";
 
+export const dynamic = "force-dynamic";
+
 export default async function TimelinePage() {
   const db = getDatabase();
   const media = getMediaProvider();

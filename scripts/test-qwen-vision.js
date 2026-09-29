@@ -10,7 +10,8 @@ if (fs.existsSync('.env.local')) {
 }
 const key = process.env.GROQ_API_KEY;
 if (!key) throw new Error('GROQ_API_KEY not found in environment.');
-const imgUrl = 'https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679808/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg';
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo';
+const imgUrl = `https://res.cloudinary.com/${cloudName}/image/upload/v1/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg`;
 
 const prompt = `You are an objective AI property inspection assistant. Inspect this rental property photo and output ONLY valid JSON matching this schema:
 {

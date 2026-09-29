@@ -122,11 +122,20 @@ export const PropertyCreateSchema = z.object({
 });
 export type PropertyCreate = z.infer<typeof PropertyCreateSchema>;
 
+export const PropertyTenantSchema = z.object({
+  id: z.string(),
+  property_id: z.string(),
+  tenant_id: z.string(),
+  created_at: z.string(),
+});
+export type PropertyTenant = z.infer<typeof PropertyTenantSchema>;
+
 export const RoomSchema = z.object({
   id: z.string(),
   property_id: z.string(),
   name: z.string(),
   category: RoomCategoryEnum,
+  created_at: z.string().optional(),
 });
 export type Room = z.infer<typeof RoomSchema>;
 
@@ -135,6 +144,7 @@ export const InspectionSchema = z.object({
   property_id: z.string(),
   type: InspectionTypeEnum,
   captured_at: z.string(),
+  created_by: z.string().nullable().optional(),
   status: z.enum(["in_progress", "completed"]).default("completed"),
   created_at: z.string(),
 });
@@ -146,10 +156,13 @@ export const AssetSchema = z.object({
   room_id: z.string(),
   cloudinary_public_id: z.string(),
   secure_url: z.string().url(),
-  etag: z.string().optional(),
-  sha256: z.string().optional(),
+  resource_type: z.enum(["image", "video"]).default("image").optional(),
+  format: z.string().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
+  bytes: z.number().optional(),
+  etag: z.string().optional(),
+  sha256: z.string().optional(),
   captured_at: z.string(),
   analysis_status: AnalysisStatusEnum.default("queued"),
   analysis_error: z.string().nullable().optional(),
@@ -169,6 +182,8 @@ export const ObservationSchema = z.object({
   bbox: BoundingBoxSchema,
   review_status: ReviewStatusEnum.default("pending"),
   reviewer_note: z.string().nullable().optional(),
+  reviewed_by: z.string().nullable().optional(),
+  reviewed_at: z.string().nullable().optional(),
   source: ObservationSourceEnum.default("ai"),
   edited_from: z.any().nullable().optional(),
   created_at: z.string(),
@@ -185,15 +200,20 @@ export const ComparisonSchema = z.object({
   summary: z.string(),
   changes: z.array(ComparisonChangeSchema),
   caveats: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(1).optional(),
+  review_required: z.boolean().default(true).optional(),
   model_version: z.string(),
   created_at: z.string(),
 });
 export type Comparison = z.infer<typeof ComparisonSchema>;
 
 export const ShareLinkSchema = z.object({
+  id: z.string().optional(),
   token: z.string(),
+  token_hash: z.string().optional(),
   property_id: z.string(),
   inspection_id: z.string().optional(),
+  created_by: z.string().nullable().optional(),
   created_at: z.string(),
   expires_at: z.string(),
   revoked_at: z.string().nullable().optional(),
@@ -215,6 +235,7 @@ export const AssetRegisterRequestSchema = z.object({
   room_id: z.string(),
   cloudinary_public_id: z.string(),
   secure_url: z.string().url(),
+  resource_type: z.enum(["image", "video"]).default("image").optional(),
   etag: z.string().optional(),
   sha256: z.string().optional(),
   width: z.number().optional(),

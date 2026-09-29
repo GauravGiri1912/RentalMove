@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { RoomCategoryEnum } from "@/lib/schemas";
+import { getSessionUser, canUserAccessProperty, forbiddenResponse } from "@/lib/auth";
 import { z } from "zod";
 
 const CreateRoomSchema = z.object({
@@ -14,6 +15,15 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const user = await getSessionUser(req);
+
+    if (user) {
+      const authorized = await canUserAccessProperty(user, id);
+      if (!authorized) {
+        return forbiddenResponse("You do not have authorization to view rooms for this property.");
+      }
+    }
+
     const db = getDatabase();
     const rooms = await db.getRooms(id);
     return NextResponse.json({ rooms });
@@ -31,8 +41,20 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const db = getDatabase();
+    const user = await getSessionUser(req);
 
+    // Only property owners can add rooms
+    if (user && user.role !== "owner") {
+      return forbiddenResponse("Only property owners are authorized to create rooms.");
+    }
+    if (user) {
+      const authorized = await canUserAccessProperty(user, id);
+      if (!authorized) {
+        return forbiddenResponse("You do not own this property.");
+      }
+    }
+
+    const db = getDatabase();
     const property = await db.getProperty(id);
     if (!property) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });

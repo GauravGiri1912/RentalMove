@@ -18,6 +18,8 @@ import { getDatabase } from "@/lib/db";
 import { getMediaProvider } from "@/lib/media";
 import { APP_COPY } from "@/lib/copy";
 
+import { cookies } from "next/headers";
+
 export default async function ReportPage({
   searchParams,
 }: {
@@ -26,6 +28,8 @@ export default async function ReportPage({
   const { token, property_id } = await searchParams;
   const db = getDatabase();
   const media = getMediaProvider();
+  const cookieStore = await cookies();
+  const sessionUserId = cookieStore.get("rentalmove_session_user_id")?.value;
 
   let activePropertyId = property_id || "prop-381";
   let isPublicTokenAccess = false;
@@ -38,6 +42,41 @@ export default async function ReportPage({
       isTokenValid = false;
     } else {
       activePropertyId = shareLink.property_id;
+    }
+  } else if (!sessionUserId) {
+    // Neither token nor authenticated session present: Deny unauthorized public access
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-6">
+        <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-foreground">
+            Authentication Required
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Inspection reports are protected visual records. Please log in as the property owner or assigned tenant, or access via a valid verified share token link.
+          </p>
+        </div>
+        <div className="pt-4 flex justify-center gap-3">
+          <Link
+            href="/"
+            className="px-5 py-2.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary-hover shadow-xs"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  } else {
+    // Authenticated user: check property access
+    const user = await db.getUser(sessionUserId);
+    if (user) {
+      if (user.role === "tenant" && user.assigned_property_id) {
+        activePropertyId = user.assigned_property_id;
+      } else if (user.role === "owner" && user.owned_properties.length > 0 && !property_id) {
+        activePropertyId = user.owned_properties[0];
+      }
     }
   }
 

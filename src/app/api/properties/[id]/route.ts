@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { getSessionUser, canUserAccessProperty, forbiddenResponse } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
@@ -12,6 +13,15 @@ export async function GET(
 
     if (!property) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    }
+
+    // Server-side Property Authorization Check
+    const user = await getSessionUser(req);
+    if (user) {
+      const authorized = await canUserAccessProperty(user, id);
+      if (!authorized) {
+        return forbiddenResponse("You do not have authorization to view this property.");
+      }
     }
 
     const rooms = await db.getRooms(id);

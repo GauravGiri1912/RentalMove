@@ -28,28 +28,30 @@ interface PriorRoomImage {
   year: string;
 }
 
+const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo";
+
 const PRIOR_IMAGES: Record<string, PriorRoomImage> = {
   kitchen: {
     room: "kitchen",
-    url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
+    url: `https://res.cloudinary.com/${cloudName}/image/upload/v1/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg`,
     inspectionTitle: "Move-In Baseline 2024",
     year: "2024",
   },
   bathroom: {
     room: "bathroom",
-    url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01.jpg",
+    url: `https://res.cloudinary.com/${cloudName}/image/upload/v1/properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01.jpg`,
     inspectionTitle: "Move-In Baseline 2024",
     year: "2024",
   },
   living_room: {
     room: "living_room",
-    url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/insp-2024-move-in/living_room/living-floor-01.jpg",
+    url: `https://res.cloudinary.com/${cloudName}/image/upload/v1/properties/prop-381/insp-2024-move-in/living_room/living-floor-01.jpg`,
     inspectionTitle: "Move-In Baseline 2024",
     year: "2024",
   },
   bedroom: {
     room: "bedroom",
-    url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1/properties/prop-381/insp-2024-move-in/bedroom/bedroom-wall-01.jpg",
+    url: `https://res.cloudinary.com/${cloudName}/image/upload/v1/properties/prop-381/insp-2024-move-in/bedroom/bedroom-wall-01.jpg`,
     inspectionTitle: "Move-In Baseline 2024",
     year: "2024",
   },

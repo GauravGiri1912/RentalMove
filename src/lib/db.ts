@@ -21,7 +21,7 @@ export interface DatabaseService {
 
   // Properties
   getProperty(id: string): Promise<Property | null>;
-  listProperties(ownerId?: string): Promise<Property[]>;
+  listProperties(userId?: string, role?: string): Promise<Property[]>;
   createProperty(data: {
     address_label: string;
     unit_label: string;
@@ -63,6 +63,8 @@ export interface DatabaseService {
       category?: any;
       description?: string;
       sub_area?: string;
+      reviewed_by?: string | null;
+      reviewed_at?: string | null;
     }
   ): Promise<Observation | null>;
 
@@ -82,7 +84,12 @@ export interface DatabaseService {
 
   // Share Links
   getShareLink(token: string): Promise<ShareLink | null>;
-  createShareLink(propertyId: string, token: string, inspectionId?: string): Promise<ShareLink>;
+  createShareLink(
+    propertyId: string,
+    token: string,
+    inspectionId?: string,
+    createdBy?: string
+  ): Promise<ShareLink>;
   revokeShareLink(token: string): Promise<boolean>;
 }
 
@@ -102,7 +109,10 @@ export interface StoreData {
 // =========================================================================
 
 function getDefaultSeedData(): StoreData {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "yxrdw0hc";
+  const cloudName =
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+    process.env.CLOUDINARY_CLOUD_NAME ||
+    "demo";
 
   return {
     users: [
@@ -452,10 +462,22 @@ export class PersistentDatabaseService implements DatabaseService {
     return this.memoryCache.properties.find((p) => p.id === id) || null;
   }
 
-  async listProperties(ownerId?: string): Promise<Property[]> {
-    if (ownerId) {
+  async listProperties(userId?: string, role?: string): Promise<Property[]> {
+    if (userId) {
+      if (role === "owner") {
+        return this.memoryCache.properties.filter(
+          (p) => !p.owner_id || p.owner_id === userId
+        );
+      } else if (role === "tenant") {
+        const user = this.memoryCache.users.find((u) => u.id === userId);
+        if (user?.assigned_property_id) {
+          return this.memoryCache.properties.filter(
+            (p) => p.id === user.assigned_property_id
+          );
+        }
+      }
       return this.memoryCache.properties.filter(
-        (p) => !p.owner_id || p.owner_id === ownerId
+        (p) => !p.owner_id || p.owner_id === userId
       );
     }
     return [...this.memoryCache.properties];
@@ -616,6 +638,8 @@ export class PersistentDatabaseService implements DatabaseService {
       category?: any;
       description?: string;
       sub_area?: string;
+      reviewed_by?: string | null;
+      reviewed_at?: string | null;
     }
   ): Promise<Observation | null> {
     const obs = this.memoryCache.observations.find((o) => o.id === id);
@@ -634,6 +658,8 @@ export class PersistentDatabaseService implements DatabaseService {
 
     obs.review_status = update.review_status;
     if (update.reviewer_note !== undefined) obs.reviewer_note = update.reviewer_note;
+    if (update.reviewed_by !== undefined) obs.reviewed_by = update.reviewed_by;
+    obs.reviewed_at = update.reviewed_at || new Date().toISOString();
     obs.updated_at = new Date().toISOString();
     this.flushToDisk();
     return obs;
@@ -707,13 +733,15 @@ export class PersistentDatabaseService implements DatabaseService {
   async createShareLink(
     propertyId: string,
     token: string,
-    inspectionId?: string
+    inspectionId?: string,
+    createdBy?: string
   ): Promise<ShareLink> {
     const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const newLink: ShareLink = {
       token,
       property_id: propertyId,
       inspection_id: inspectionId,
+      created_by: createdBy || null,
       created_at: new Date().toISOString(),
       expires_at: expires,
       revoked_at: null,
@@ -736,11 +764,29 @@ export class PersistentDatabaseService implements DatabaseService {
 // SINGLETON / FACTORY
 // =========================================================================
 
+import { isSupabaseConfigured } from "./supabase";
+import { SupabaseDatabaseService } from "./supabase-db";
+
 let dbInstance: DatabaseService | null = null;
 
 export function getDatabase(): DatabaseService {
   if (!dbInstance) {
-    dbInstance = new PersistentDatabaseService();
+    if (isSupabaseConfigured() && process.env.DEVELOPMENT_MOCK_MODE !== "true") {
+      console.log("[Database] Initializing Real Supabase Application Database.");
+      const fallback = new PersistentDatabaseService();
+      dbInstance = new SupabaseDatabaseService(undefined, fallback);
+    } else {
+      if (process.env.DEVELOPMENT_MOCK_MODE === "true") {
+        console.log("[Database] Running in explicit DEVELOPMENT_MOCK_MODE=true.");
+      } else {
+        console.warn(
+          "[Database] Supabase credentials not set or placeholder. Operating in fallback mode."
+        );
+      }
+      dbInstance = new PersistentDatabaseService();
+    }
   }
   return dbInstance;
 }
+
+export { SupabaseDatabaseService };

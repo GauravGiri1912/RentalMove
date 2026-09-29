@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AssetRegisterRequestSchema } from "@/lib/schemas";
 import { registerAsset } from "@/lib/pipeline";
+import { getSessionUser, canUserAccessProperty, forbiddenResponse } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +13,14 @@ export async function POST(req: NextRequest) {
         { error: "Invalid asset registration payload", details: parsed.error.format() },
         { status: 400 }
       );
+    }
+
+    const user = await getSessionUser(req);
+    if (user) {
+      const authorized = await canUserAccessProperty(user, parsed.data.property_id);
+      if (!authorized) {
+        return forbiddenResponse("You do not have permission to register assets for this property.");
+      }
     }
 
     const asset = await registerAsset(parsed.data);

@@ -10,8 +10,9 @@ if (fs.existsSync('.env.local')) {
 }
 const key = process.env.GROQ_API_KEY;
 if (!key) throw new Error('GROQ_API_KEY not found in environment.');
-const priorUrl = 'https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679808/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg';
-const currentUrl = 'https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679815/properties/prop-381/insp-2026-move-out/kitchen/cabinet-base-03.jpg';
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'demo';
+const priorUrl = `https://res.cloudinary.com/${cloudName}/image/upload/v1/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg`;
+const currentUrl = `https://res.cloudinary.com/${cloudName}/image/upload/v1/properties/prop-381/insp-2026-move-out/kitchen/cabinet-base-03.jpg`;
 
 const prompt = `Compare these two condition inspection photos of the kitchen (Prior Baseline vs Current Move-Out).
 RULES:

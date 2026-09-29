@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { getVisionProvider } from "@/lib/vision";
 import { getMediaProvider } from "@/lib/media";
+import { getSessionUser, canUserAccessProperty, forbiddenResponse } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,6 +27,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Assets not found" }, { status: 404 });
     }
 
+    const targetPropId = property_id || "prop-381";
+    const user = await getSessionUser(req);
+    if (user) {
+      const authorized = await canUserAccessProperty(user, targetPropId);
+      if (!authorized) {
+        return forbiddenResponse("You do not have authorization to run comparisons on this property.");
+      }
+    }
+
     const priorUrl = media.vlmCopy(prior.cloudinary_public_id || prior.secure_url);
     const currentUrl = media.vlmCopy(current.cloudinary_public_id || current.secure_url);
 
@@ -36,14 +46,16 @@ export async function POST(req: NextRequest) {
     });
 
     const comparison = await db.createComparison({
-      property_id: property_id || "prop-381",
+      property_id: targetPropId,
       room_id: room_id || prior.room_id,
       prior_asset_id,
       current_asset_id,
       summary: comparisonResult.summary,
       changes: comparisonResult.changes,
       caveats: comparisonResult.caveats || [],
-      model_version: process.env.VISION_MODEL || "mock-vlm-v1",
+      confidence: 0.88,
+      review_required: true,
+      model_version: process.env.VISION_MODEL || "qwen/qwen3.8-27b",
     });
 
     return NextResponse.json({

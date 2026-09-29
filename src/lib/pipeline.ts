@@ -35,6 +35,7 @@ export async function registerAsset(data: AssetRegisterRequest): Promise<Asset> 
     room_id: data.room_id,
     cloudinary_public_id: data.cloudinary_public_id,
     secure_url: data.secure_url,
+    resource_type: data.resource_type || "image",
     etag: data.etag,
     sha256: sha256 || undefined,
     width: data.width,

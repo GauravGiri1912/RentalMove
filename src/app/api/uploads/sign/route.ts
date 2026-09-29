@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UploadSignRequestSchema } from "@/lib/schemas";
 import { getMediaProvider } from "@/lib/media";
+import { getSessionUser, canUserAccessProperty, forbiddenResponse } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,12 +16,21 @@ export async function POST(req: NextRequest) {
     }
 
     const { property_id, inspection_id, room } = parsed.data;
-    const media = getMediaProvider();
 
+    // Check user authorization to upload for this property
+    const user = await getSessionUser(req);
+    if (user) {
+      const authorized = await canUserAccessProperty(user, property_id);
+      if (!authorized) {
+        return forbiddenResponse("You do not have permission to upload media to this property.");
+      }
+    }
+
+    const media = getMediaProvider();
     const signResult = await media.signUpload({
       propertyId: property_id,
       inspectionId: inspection_id,
-      inspectionType: "inspection", // Default inspection type or derived
+      inspectionType: "inspection",
       room,
     });
 

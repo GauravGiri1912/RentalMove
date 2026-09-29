@@ -109,7 +109,7 @@ export class MockMediaProvider implements MediaProvider {
     this.mockStore = [
       {
         public_id: "properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01",
-        secure_url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679808/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
+        secure_url: "https://res.cloudinary.com/demo/image/upload/v1790679808/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
         created_at: "2024-06-01T10:00:00Z",
         format: "jpg",
         width: 1920,
@@ -129,7 +129,7 @@ export class MockMediaProvider implements MediaProvider {
       },
       {
         public_id: "properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01",
-        secure_url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679810/properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01.jpg",
+        secure_url: "https://res.cloudinary.com/demo/image/upload/v1790679810/properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01.jpg",
         created_at: "2024-06-01T10:15:00Z",
         format: "jpg",
         width: 1920,
@@ -149,7 +149,7 @@ export class MockMediaProvider implements MediaProvider {
       },
       {
         public_id: "properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02",
-        secure_url: "https://res.cloudinary.com/yxrdw0hc/image/upload/v1790679812/properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02.jpg",
+        secure_url: "https://res.cloudinary.com/demo/image/upload/v1790679812/properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02.jpg",
         created_at: "2025-06-01T11:00:00Z",
         format: "jpg",
         width: 1920,

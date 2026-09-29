@@ -4,6 +4,8 @@ import { History, Layers, ArrowRight, ShieldCheck, Sparkles, Building } from "lu
 import { getDatabase } from "@/lib/db";
 import { getMediaProvider } from "@/lib/media";
 
+export const dynamic = "force-dynamic";
+
 export default async function RoomHistoryPage({
   searchParams,
 }: {
