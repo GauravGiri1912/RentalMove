@@ -14,7 +14,7 @@ import { rateLimit } from "@/lib/rate-limit";
 export async function GET(req: NextRequest) {
   // Reading the session happens on every page load; it gets a generous limit of its own.
   // Credential endpoints (sign-in / sign-up) keep the strict auth limit.
-  const rl = rateLimit(req, { limit: 120, windowMs: 60_000, prefix: "session" });
+  const rl = await rateLimit(req, { limit: 120, windowMs: 60_000, prefix: "session" });
   if (!rl.success) return rl.response;
 
   try {

@@ -10,7 +10,7 @@ import { signVoiceUpload } from "@/lib/voice";
  * The note itself is posted through POST /api/observations/:id/comments with `voice`.
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const rl = uploadRateLimit(req);
+  const rl = await uploadRateLimit(req);
   if (!rl.success) return rl.response;
   try {
     const { id } = await params;

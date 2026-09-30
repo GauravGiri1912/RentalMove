@@ -45,7 +45,7 @@ export async function POST(
     }
 
     // Re-running a finished analysis would stack duplicate findings on the photo.
-    if (asset.analysis_status === "done") {
+    if (asset.analysis_status === "done" || asset.analysis_status === "completed") {
       return NextResponse.json(
         { error: "Analysis already completed for this asset", asset },
         { status: 409 }

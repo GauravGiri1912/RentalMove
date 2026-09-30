@@ -3,19 +3,61 @@
 // citation. It is deliberately rule-based: answers are reproducible and cost no model
 // tokens; an LLM could be swapped in behind the same contract (text + citations + actions).
 
-import { getAssets, getComparisons, getInspections, getRooms, parseQuery, reportPair, observationsFor } from "./view";
+import { getAssets, getComparisons, getInspections, getRooms, parseQuery, reportPair, observationsFor, hasView } from "./view";
 import type { Asset, BBox, Observation, RoomCategory } from "./view-types";
 import { CATEGORY_META_LABEL, INSPECTION_LABEL, fmtDate, shortHash } from "./utils";
 import { certaintyFor, photoAbstain, photoTimeOf, roomCoverage, trendLabel, trendOf, workOrderOf } from "./insights";
 
 export interface Cite { asset_id: string; bbox?: BBox; caption: string }
 export type Block = { kind: "text"; text: string } | { kind: "cites"; items: Cite[] } | { kind: "list"; items: string[] };
-export interface Answer { blocks: Block[]; actions: { label: string; href: string }[] }
+export interface Answer {
+  blocks: Block[];
+  actions: { label: string; href: string }[];
+  engine?: "rule-based" | "llm";
+  provenance?: "grounded_snapshot" | "llm_grounded";
+}
 
-interface Ctx {
+export interface AssistantContext {
   observations: Observation[];
   stances: Record<string, Partial<Record<"tenant" | "owner", "agree" | "dispute">>>;
   threads: Record<string, { author: string; text: string }[]>;
+}
+
+export type Ctx = AssistantContext;
+
+export interface AssistantProvider {
+  readonly name: string;
+  readonly capability: "rule-based" | "llm";
+  answer(q: string, ctx: AssistantContext): Answer;
+}
+
+/**
+ * Builds structured retrieval context for the property, suitable for either
+ * deterministic inspection or LLM grounding.
+ */
+export function buildPropertyContext(ctx: AssistantContext) {
+  if (!hasView()) {
+    return {
+      roomsCount: 0,
+      assetsCount: 0,
+      inspectionsCount: 0,
+      observationsCount: ctx.observations.length,
+      comparisonsCount: 0,
+      summary: `View not loaded (0 room(s), 0 visit(s), 0 photo(s), ${ctx.observations.length} observation(s))`,
+    };
+  }
+  const rooms = getRooms();
+  const assets = getAssets();
+  const inspections = getInspections();
+  const comparisons = getComparisons();
+  return {
+    roomsCount: rooms.length,
+    assetsCount: assets.length,
+    inspectionsCount: inspections.length,
+    observationsCount: ctx.observations.length,
+    comparisonsCount: comparisons.length,
+    summary: `${rooms.length} room(s), ${inspections.length} visit(s), ${assets.length} photo(s), ${ctx.observations.length} observation(s)`,
+  };
 }
 
 export const SUGGESTED = [
@@ -32,7 +74,42 @@ export const SUGGESTED = [
   "How do I know the photos weren't edited?",
 ];
 
-export function answer(q: string, ctx: Ctx): Answer {
+export class RuleBasedAssistantProvider implements AssistantProvider {
+  readonly name = "rule-based";
+  readonly capability = "rule-based" as const;
+
+  answer(q: string, ctx: AssistantContext): Answer {
+    const raw = runRuleBasedAnswer(q, ctx);
+    return {
+      ...raw,
+      engine: "rule-based",
+      provenance: "grounded_snapshot",
+    };
+  }
+}
+
+let activeAssistantProvider: AssistantProvider | null = null;
+
+export function getAssistantProvider(): AssistantProvider {
+  if (activeAssistantProvider) return activeAssistantProvider;
+  return new RuleBasedAssistantProvider();
+}
+
+export function setAssistantProvider(provider: AssistantProvider | null): void {
+  activeAssistantProvider = provider;
+}
+
+export function answer(q: string, ctx: AssistantContext): Answer {
+  return getAssistantProvider().answer(q, ctx);
+}
+
+function runRuleBasedAnswer(q: string, ctx: AssistantContext): Answer {
+  if (!hasView()) {
+    return {
+      blocks: [{ kind: "text", text: "Property records are loading. Please try again once loaded." }],
+      actions: [],
+    };
+  }
   const s = q.toLowerCase();
   const rooms = getRooms();
   const assets = getAssets();

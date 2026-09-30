@@ -14,7 +14,7 @@ const Body = z.object({ items: z.array(z.object({ asset_id: z.string().min(1), r
  * transformation URLs itself, and generative edits are owner-only.
  */
 export async function POST(req: NextRequest) {
-  const rl = rateLimit(req, { limit: 120, windowMs: 60_000, prefix: "media-sign" });
+  const rl = await rateLimit(req, { limit: 120, windowMs: 60_000, prefix: "media-sign" });
   if (!rl.success) return rl.response;
   try {
     const user = await getAuthenticatedUserOrThrow(req);

@@ -83,3 +83,30 @@ Live tests fail (not skip) when credentials are missing.
 - **Not run:** the tiled comparison and the matched two-photo comparison against the live model, the seed script after its rewrite, a real-photo face-pixelation check, and a browser click-through with a logged-in account.
 - **Latency:** every Supabase query costs ~230 ms round trip from the current region; moving the project closer removes most of the remaining delay (`scripts/migrate-supabase-region.mjs`).
 - **Webhook** needs a public HTTPS `CLOUDINARY_NOTIFICATION_URL`; it cannot be reached on `localhost`.
+
+---
+
+## Remediation Progress Tracker
+
+### Completed Phases
+- **Phase 0: Baseline & Safety Check** — Initial baseline recorded: 84 tests passing, TypeScript 0 errors, branch `main`.
+- **Phase 1: Critical Authorization & IDOR Protection** — Restricted observation reviews to owner only (`user.role === 'owner'`), removed hardcoded `"prop-381"` fallbacks from `auth.ts`, `signup/route.ts`, and `db.ts`. Added `tests/idor-auth.test.ts` (5 tests passing).
+- **Phase 2: Database & Scoped RLS Architecture** — Migration `0004_tighten_rls_and_sha_index.sql` created, scoped RLS DB clients `getScopedDatabase` and `getScopedServerDatabase` added. Added `tests/rls-database.test.ts` (3 tests passing).
+- **Phase 3: Auth Session Invalidation & Cloudinary Client Configuration** — Fixed session signout with dynamic Supabase SSR cookie deletion in `DELETE /api/auth/session`, updated `getCloudName()` to fail explicitly if unconfigured rather than falling back to "demo". Added `tests/session-signout.test.ts` (3 tests passing).
+- **Phase 4: Cloudinary Upload Security & Media Optimization** — Hardened signed uploads with strict 20MB limit and `jpg|png|webp` format whitelist; client pre-scaling to max 2400px preserving SHA-256 evidence integrity; optimized `loadGray` in pixel pipeline. Added `tests/upload-security.test.ts` (3 tests passing).
+- **Phase 5: Present Mode Performance Rewrite** — Rewrote `tour.tsx`: eliminated 60-120fps RAF `setRect()` React rendering loop (replaced with direct DOM ref style updates); removed `document.body.innerText` scraping; replaced 9999px shadow with SVG mask + ring; throttled elapsed timer to 200ms; added visibility listener and `motion-reduce:transition-none`. Added `tests/tour-performance.test.ts` (2 tests passing).
+- **Phase 6: Light/Dark Theme & Accessibility** — Defined `--presentation-*` tokens in `globals.css` and `tailwind.config.ts`; updated `tour.tsx` for full WCAG AA contrast in light and dark mode, added `:focus-visible:ring-signal` on all controls, full `aria-label` coverage. Added `tests/theme-accessibility.test.ts` (4 tests passing).
+- **Phase 7: Startup Performance & Waterfall Elimination** — Pre-fetched authenticated session and initial snapshot on server in `layout.tsx` via `getServerSessionUser()`, hydrated `StudioProvider` with `initialData` eliminating 3 sequential client API hops (`session` -> `properties` -> `snapshot`). Optimized hero with `IntersectionObserver` pause, tab visibility pause, and priority preloading. Added `tests/startup-performance.test.ts` (4 tests passing).
+- **Phase 8: Database & API Query Optimization** — Added `getAssetBySha256`, `getInspectionById`, `getRoomById`, and `getAssetsForInspections` to `DatabaseService`. Optimized `POST /api/verify` with direct indexed SHA-256 lookup, eliminating $O(P \times I \times A)$ nested table scan loops. Optimized `GET /api/search` with batched queries. Added `tests/db-optimization.test.ts` (4 tests passing).
+- **Phase 9: State Management & Realtime Consolidation** — Consolidated realtime transport with Supabase Realtime as primary and SSE as lazy fallback only when Realtime fails or is unconfigured. Eliminated 24KB full snapshot downloads on mutation via targeted local optimistic state reconciliation. Exported `clearView()`/`getView()` from `view.ts` and cleared singleton on `signOut()`. Added `tests/state-realtime.test.ts` (4 tests passing).
+- **Phase 10: Reliability, Rate Limiting & AI Failure Handling** —
+  - Expanded `AnalysisStatus` to include `completed`, `quota_limited`, and `retryable`.
+  - Created migration `0005_analysis_status_and_reliability.sql` for PostgreSQL check constraint update.
+  - Added `VisionQuotaError` and `VisionRetryableError` error hierarchy. Detected Groq daily quota (TPD) exhaustion and 429 limits, setting status to `"quota_limited"`, and transient server/network failures to `"retryable"`.
+  - Prevented token-burning infinite retry loops: `recoverStalledAssets` deliberately skips `quota_limited` and `failed` assets, while manual retry via `POST /api/assets/[id]/analyze` remains available.
+  - Implemented `RateLimitStore` abstraction with `MemoryRateLimitStore` (sliding window, max entries, periodic purge) and `UpstashRedisRateLimitStore` (distributed REST pipeline with automatic memory fallback). Updated all 9 route callers to `await rateLimit(...)`.
+  - Formalized `AssistantProvider` architecture (`RuleBasedAssistantProvider` with deterministic grounded answers, `buildPropertyContext`, and explicit engine provenance `rule-based` / `grounded_snapshot`).
+  - Added `tests/reliability-rate-limit.test.ts` (9 tests passing).
+  - Total passing tests: 22 test files, 125 tests passing, 0 TypeScript errors.
+- **Next Phase:** Phase 11 — Maintainability / Dead Code / Architecture Cleanup.
+

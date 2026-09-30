@@ -17,7 +17,7 @@ import { uploadRateLimit } from "@/lib/rate-limit";
  * Requires authentication and property access authorization.
  */
 export async function POST(req: NextRequest) {
-  const rl = uploadRateLimit(req);
+  const rl = await uploadRateLimit(req);
   if (!rl.success) return rl.response;
 
   try {

@@ -11,7 +11,7 @@ const Body = z.object({ sha256: z.string().regex(/^[a-f0-9]{64}$/i) });
  * device). A match reveals only room, inspection type and capture time — never the address.
  */
 export async function POST(req: NextRequest) {
-  const rl = authRateLimit(req);
+  const rl = await authRateLimit(req);
   if (!rl.success) return rl.response;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Send { sha256: <64 hex chars> }" }, { status: 400 });

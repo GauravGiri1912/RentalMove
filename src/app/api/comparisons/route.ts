@@ -19,7 +19,7 @@ const ComparisonRequestSchema = z.object({
  * Both assets must belong to the property the caller is authorised for.
  */
 export async function POST(req: NextRequest) {
-  const rl = aiRateLimit(req);
+  const rl = await aiRateLimit(req);
   if (!rl.success) return rl.response;
 
   try {

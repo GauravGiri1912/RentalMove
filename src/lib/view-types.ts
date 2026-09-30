@@ -4,7 +4,14 @@ export type RoomCategory = "living_room" | "kitchen" | "bathroom" | "bedroom" | 
 export type IssueCategory = "scratch" | "stain" | "crack" | "dent" | "mark" | "other";
 export type InspectionType = "move_in" | "inspection" | "move_out";
 export type ReviewStatus = "pending" | "accepted" | "rejected" | "edited";
-export type AnalysisStatus = "queued" | "running" | "done" | "failed";
+export type AnalysisStatus =
+  | "queued"
+  | "running"
+  | "done"
+  | "completed"
+  | "failed"
+  | "quota_limited"
+  | "retryable";
 export type UserRole = "tenant" | "owner";
 /** Normalized [x1, y1, x2, y2], each 0..1. */
 export type BBox = [number, number, number, number];

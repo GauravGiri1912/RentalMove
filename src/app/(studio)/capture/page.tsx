@@ -237,10 +237,14 @@ function Capture() {
   const liveAsset = run?.assetId && view ? view.assets.find((a) => a.id === run.assetId) : undefined;
   useEffect(() => {
     if (!run?.assetId || run.stages.analyze !== "run" || !liveAsset) return;
-    if (liveAsset.analysis_status === "done") {
+    if (liveAsset.analysis_status === "done" || liveAsset.analysis_status === "completed") {
       const n = observationsFor(liveAsset.id).length;
       setRun((r) => r && { ...r, stages: { ...r.stages, analyze: "done" }, detail: { ...r.detail, analyze: `${n} finding${n === 1 ? "" : "s"}${liveAsset.reused_of ? " · RE-USED PHOTO" : ""}` } });
       toast({ title: `${room?.name} captured`, detail: `${n} finding${n === 1 ? "" : "s"} · sha256 ${liveAsset.sha256.slice(0, 10)}…`, tone: "signal" });
+    } else if (liveAsset.analysis_status === "quota_limited") {
+      setRun((r) => r && { ...r, stages: { ...r.stages, analyze: "warn" }, detail: { ...r.detail, analyze: "AI quota limited (daily limit reached; manual retry available)" } });
+    } else if (liveAsset.analysis_status === "retryable") {
+      setRun((r) => r && { ...r, stages: { ...r.stages, analyze: "warn" }, detail: { ...r.detail, analyze: "Analysis interrupted (retryable)" } });
     } else if (liveAsset.analysis_status === "failed") {
       setRun((r) => r && { ...r, stages: { ...r.stages, analyze: "warn" }, detail: { ...r.detail, analyze: `Analysis failed: ${(liveAsset.analysis_error ?? "").slice(0, 140)}` } });
     }

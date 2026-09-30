@@ -31,7 +31,15 @@ export type InspectionType = z.infer<typeof InspectionTypeEnum>;
 export const ReviewStatusEnum = z.enum(["pending", "accepted", "rejected", "edited"]);
 export type ReviewStatus = z.infer<typeof ReviewStatusEnum>;
 
-export const AnalysisStatusEnum = z.enum(["queued", "running", "done", "failed"]);
+export const AnalysisStatusEnum = z.enum([
+  "queued",
+  "running",
+  "done",
+  "completed",
+  "failed",
+  "quota_limited",
+  "retryable",
+]);
 export type AnalysisStatus = z.infer<typeof AnalysisStatusEnum>;
 
 export const ObservationSourceEnum = z.enum(["ai", "human"]);

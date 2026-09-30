@@ -215,6 +215,10 @@ export default function Overview() {
                       <div className="text-[14px] font-semibold">{r.name}</div>
                       {running ? (
                         <span className="chip border-signal/30 text-signal"><Loader2 className="size-3 animate-spin" /> Analysing</span>
+                      ) : cur.analysis_status === "quota_limited" ? (
+                        <span className="chip border-warn/30 text-warn">AI quota limited</span>
+                      ) : cur.analysis_status === "retryable" ? (
+                        <span className="chip border-signal/30 text-ink-3">Analysis retryable</span>
                       ) : cur.analysis_status === "failed" ? (
                         <span className="chip border-warn/30 text-warn">Analysis failed</span>
                       ) : cur.reused_of ? (

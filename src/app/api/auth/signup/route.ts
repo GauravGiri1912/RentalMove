@@ -17,7 +17,7 @@ const SignupSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const rl = authRateLimit(req);
+  const rl = await authRateLimit(req);
   if (!rl.success) return rl.response;
 
   try {
