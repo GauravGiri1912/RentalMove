@@ -128,4 +128,50 @@ Live tests fail (not skip) when credentials are missing.
   - Added correlation/request ID propagation and error serialization with safe sanitized metadata.
   - Added `tests/observability-logger.test.ts` (8 tests passing).
   - Total passing tests: 25 test files, 143 tests passing, 0 TypeScript errors.
-- **Next Phase:** Phase 14 — Full Regression, Security, and Performance Validation.
+- **Phase 14: Full Regression, Security & Performance Validation** —
+  - **Full Test Suite:** 25 test files, 143 passed tests (`vitest run` exit 0).
+  - **TypeScript Verification:** `npx tsc --noEmit` exit 0 with 0 compilation errors.
+  - **Next.js Production Build:** `npm run build` compiled 36 static and dynamic routes in 16.4s with 0 errors.
+  - **Forensic Audit Checklist Verified:**
+    - [x] **Observation Authorization:** Observation review restricted to verified owners (`user.role === 'owner'`).
+    - [x] **IDOR Elimination:** Hardcoded `prop-381` fallback eradicated from all auth, signup, and db logic.
+    - [x] **Scoped Database / RLS:** Scoped authenticated RLS database access (`getScopedDatabase`, `getScopedServerDatabase`) with owner/participant isolation.
+    - [x] **Database Migration:** Migration `0004_tighten_rls_and_sha_index.sql` created for owner-only mutation policies and SHA-256 index.
+    - [x] **Session Sign-out:** Dynamic SSR cookie clearing in `DELETE /api/auth/session` prevents session resurrection across chunked cookies.
+    - [x] **Cloudinary Config:** `getCloudName()` throws explicit configuration error if unconfigured, eliminating silent "demo" fallback.
+    - [x] **Upload Security:** Signed uploads enforce strict 20MB limit and `jpg|png|webp` format whitelist; client pre-scaling to max 2400px with SHA-256 evidence integrity.
+    - [x] **Present Mode Performance:** Eliminated 60-120fps RAF `setRect()` React render loop (replaced with direct DOM ref style mutation); eliminated `document.body.innerText` polling; replaced 9999px box shadow with GPU-accelerated SVG spotlight mask.
+    - [x] **Theme & Accessibility:** Defined `--presentation-*` semantic tokens; guaranteed WCAG AA contrast in light and dark mode; full `:focus-visible:ring-signal` and `aria-label` coverage.
+    - [x] **Startup Performance:** Eliminated 3-hop client waterfall via server-side session pre-fetch and initial snapshot pre-hydration in `layout.tsx`; visibility/intersection-aware hero autoplay.
+    - [x] **Query Optimization:** SHA-256 indexed direct lookup in `POST /api/verify`, eliminating nested table scan loops; batched queries in `GET /api/search`.
+    - [x] **State & Realtime:** Supabase Realtime consolidated as primary with lazy SSE fallback; targeted optimistic state reconciliation eliminating full 24KB snapshot refetches.
+    - [x] **Reliability & Rate Limiting:** Added `quota_limited` and `retryable` status handling; prevented infinite retry loops; distributed rate limiter with memory fallback.
+    - [x] **Maintainability & Routes:** Canonicalized `/api/report/[token]` into `/api/share/[token]` with HTTP 307; eliminated React hook stale closures with `useRef`.
+    - [x] **Product Capabilities:** Centralized pixel matching thresholds in `matching-config.ts`; data-driven floor-plan synthesis in `floorplan.ts`; clarified interactive presentation terminology.
+    - [x] **Observability:** Structured logger with recursive secret redaction and correlation IDs.
+
+---
+
+## 3. Remediated Architecture Summary
+
+| Subsystem | Audited State | Remediated State |
+| :--- | :--- | :--- |
+| **Observation Review Auth** | Tenants could mutate observation review status | Strictly Owner-only (`user.role === 'owner'`), returns HTTP 403 Forbidden |
+| **Property Isolation** | Defaulted to `"prop-381"`, leaking demo property | Empty/null default; unassigned users have empty accessible property lists |
+| **Database Access** | Global service-role client bypassed RLS | Scoped authenticated client with user context and RLS policies |
+| **Session Sign-out** | Hardcoded cookie names missed chunked cookies | Dynamic `setAll` cookie clearing over all Supabase SSR cookies |
+| **Cloudinary Client** | Silently defaulted to `"demo"` cloud name | Throws descriptive configuration error; cloud name validated |
+| **Upload Pipeline** | Insecure upload params, unbounded file size | 20MB maximum, `jpg\|png\|webp` whitelist, client 2400px pre-scale |
+| **Present Mode** | 60-120fps `setState` loop, 9999px shadow, text polling | Direct DOM ref styling, SVG mask overlay, throttled timers, reduced-motion |
+| **Light Theme** | Hardcoded white text, unreadable contrast | Semantic `--presentation-*` tokens, WCAG AA compliant |
+| **Startup Flow** | 3 sequential client API hops | Server Component pre-fetched session + initial snapshot pre-hydration |
+| **Verification Query** | $O(P \times I \times A)$ nested table scan loops | Direct $O(1)$ indexed SHA-256 asset lookup |
+| **Search Query** | N+1 queries (`inspections.map(getAssets)`) | Batched asset lookup (`getAssetsForInspections`) |
+| **Realtime Transport** | Redundant SSE and Supabase Realtime | Supabase Realtime primary, SSE lazy fallback only |
+| **AI Reliability** | Infinite retries on Groq quota limits | `quota_limited` & `retryable` states; recovery skips failed/quota-limited |
+| **Rate Limiting** | Ephemeral unbounded in-memory map | `RateLimitStore` with `MemoryRateLimitStore` & `UpstashRedisRateLimitStore` |
+| **Report Routes** | Duplicated `/api/report` and `/api/share` | Canonical `/api/share/[token]` with HTTP 307 redirect |
+| **Hook Closures** | Stale closures in `voice-note` & `compare-viewer` | `useRef` for callbacks and preview cleanup |
+| **Floor Plan** | Hardcoded Unit 4B geometry | Data-driven proportional grid synthesis for any property |
+| **Pixel Thresholds** | Magic numbers in multiple files | Centralized in `matching-config.ts` with geometric rationale |
+| **Observability** | Ad-hoc `console.error`, unredacted errors | Structured JSON logging with recursive secret redaction |
