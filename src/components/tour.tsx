@@ -324,7 +324,9 @@ export function TourOverlay() {
               y="0"
               width="100%"
               height="100%"
-              fill="rgba(10, 10, 12, 0.60)"
+              fill="rgb(var(--presentation-overlay))"
+              fillOpacity="0.55"
+              className="dark:fill-opacity-70 transition-opacity duration-300"
               mask="url(#rm-spotlight-mask)"
             />
           </svg>
@@ -332,7 +334,7 @@ export function TourOverlay() {
           <div
             ref={spotlightRingRef}
             aria-hidden
-            className="pointer-events-none fixed z-[65] rounded-2xl ring-2 ring-signal/80 transition-all duration-300 ease-out motion-reduce:transition-none"
+            className="pointer-events-none fixed z-[65] rounded-2xl ring-2 ring-signal shadow-[0_0_20px_rgb(var(--signal)/0.3)] transition-all duration-300 ease-out motion-reduce:transition-none"
             style={{ display: "none" }}
           />
         </>
@@ -340,38 +342,87 @@ export function TourOverlay() {
 
       {/* Chapter title card. */}
       {inCard && (
-        <div className="pointer-events-none fixed inset-0 z-[66] grid place-items-center bg-[#0b0c0e]/80 backdrop-blur-sm" data-testid="tour-card">
-          <div className="px-6 text-center text-white animate-fade-up" key={beat.ci}>
-            <div className="font-mono text-[12px] uppercase tracking-[0.3em] text-white/50">Chapter {beat.ci + 1} of {CHAPTERS.length}</div>
+        <div className="pointer-events-none fixed inset-0 z-[66] grid place-items-center bg-bg/85 dark:bg-[#0b0c0e]/85 backdrop-blur-md transition-colors duration-200" data-testid="tour-card">
+          <div className="px-6 text-center text-ink dark:text-white animate-fade-up" key={beat.ci}>
+            <div className="font-mono text-[12px] uppercase tracking-[0.3em] text-ink-3 dark:text-white/60">Chapter {beat.ci + 1} of {CHAPTERS.length}</div>
             <div className="mt-3 font-display text-[56px] leading-none md:text-[80px]">{chapter.name}</div>
-            <p className="mx-auto mt-4 max-w-xl text-[18px] text-white/75">{chapter.purpose}</p>
+            <p className="mx-auto mt-4 max-w-xl text-[18px] text-ink-2 dark:text-white/80">{chapter.purpose}</p>
           </div>
         </div>
       )}
 
       {/* Caption bar. */}
       <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[70] flex justify-center px-4">
-        <div className="pointer-events-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-[#111214]/92 text-white shadow-2xl backdrop-blur-xl" data-testid="tour-bar">
+        <div
+          className="pointer-events-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-presentation-border bg-presentation-surface/95 text-presentation-text shadow-2xl backdrop-blur-xl transition-colors duration-200"
+          data-testid="tour-bar"
+        >
           <div className="flex gap-1 px-4 pt-3">
             {CHAPTERS.map((c, ci) => (
-              <button key={c.name} onClick={() => setTour({ step: FLAT.findIndex((b) => b.ci === ci) })} className="h-1 flex-1 overflow-hidden rounded-full bg-white/15" aria-label={`Chapter ${ci + 1}: ${c.name}`} title={c.name}>
-                <span className="block h-full bg-white transition-[width] duration-100" style={{ width: `${chapterDone(ci) * 100}%` }} />
+              <button
+                key={c.name}
+                onClick={() => setTour({ step: FLAT.findIndex((b) => b.ci === ci) })}
+                className="h-1 flex-1 overflow-hidden rounded-full bg-presentation-border hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-signal"
+                aria-label={`Chapter ${ci + 1}: ${c.name}`}
+                title={c.name}
+              >
+                <span
+                  className="block h-full bg-presentation-text transition-[width] duration-100"
+                  style={{ width: `${chapterDone(ci) * 100}%` }}
+                />
               </button>
             ))}
           </div>
           <div className="flex items-center gap-4 px-5 py-4">
             <div className="min-w-0 flex-1" key={tour.step}>
-              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/45">
+              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-presentation-muted">
                 {String(beat.ci + 1).padStart(2, "0")} · {chapter.name}{chapterBeats > 1 ? ` · ${beat.bi + 1}/${chapterBeats}` : ""}
               </div>
-              <p className={cn("mt-1 text-[15px] leading-relaxed text-white/90 transition-opacity duration-500", ready ? "opacity-100" : "opacity-40")} data-testid="tour-text">{beat.text}</p>
+              <p
+                className={cn("mt-1 text-[15px] leading-relaxed text-presentation-text transition-opacity duration-300 font-medium", ready ? "opacity-100" : "opacity-40")}
+                data-testid="tour-text"
+              >
+                {beat.text}
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <button onClick={changeSpeed} className="h-8 rounded-full px-2.5 font-mono text-[11px] text-white/70 hover:bg-white/10 hover:text-white" aria-label="Playback speed" title="Playback speed" data-testid="tour-speed">{speed}×</button>
-              <button onClick={() => setTour({ step: Math.max(0, tour.step - 1) })} className="grid size-9 place-items-center rounded-full hover:bg-white/10" aria-label="Previous"><ChevronLeft className="size-4" /></button>
-              <button onClick={() => setTour({ playing: !tour.playing })} className="grid size-10 place-items-center rounded-full bg-white text-black" aria-label={tour.playing ? "Pause" : "Play"}>{tour.playing ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4" />}</button>
-              <button onClick={() => setTour({ step: Math.min(FLAT.length - 1, tour.step + 1) })} className="grid size-9 place-items-center rounded-full hover:bg-white/10" aria-label="Next"><ChevronRight className="size-4" /></button>
-              <button onClick={() => setTour({ active: false })} className="ml-1 grid size-9 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white" aria-label="Exit tour"><X className="size-4" /></button>
+              <button
+                onClick={changeSpeed}
+                className="h-8 rounded-full px-2.5 font-mono text-[11px] font-medium text-presentation-muted hover:bg-presentation-control hover:text-presentation-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label="Playback speed"
+                title="Playback speed"
+                data-testid="tour-speed"
+              >
+                {speed}×
+              </button>
+              <button
+                onClick={() => setTour({ step: Math.max(0, tour.step - 1) })}
+                className="grid size-9 place-items-center rounded-full text-presentation-muted hover:bg-presentation-control hover:text-presentation-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label="Previous step"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                onClick={() => setTour({ playing: !tour.playing })}
+                className="grid size-10 place-items-center rounded-full bg-ink text-bg hover:bg-ink/90 dark:bg-white dark:text-black dark:hover:bg-white/90 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label={tour.playing ? "Pause walkthrough" : "Play walkthrough"}
+              >
+                {tour.playing ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4" />}
+              </button>
+              <button
+                onClick={() => setTour({ step: Math.min(FLAT.length - 1, tour.step + 1) })}
+                className="grid size-9 place-items-center rounded-full text-presentation-muted hover:bg-presentation-control hover:text-presentation-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label="Next step"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+              <button
+                onClick={() => setTour({ active: false })}
+                className="ml-1 grid size-9 place-items-center rounded-full text-presentation-muted hover:bg-presentation-control hover:text-presentation-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label="Exit walkthrough"
+              >
+                <X className="size-4" />
+              </button>
             </div>
           </div>
         </div>
