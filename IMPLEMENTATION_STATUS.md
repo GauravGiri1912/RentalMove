@@ -6,8 +6,8 @@
 |---|---|---|---|
 | **Phase 0** | Baseline & Safety Verification | **COMPLETED** | TypeScript: 0 errors; Unit/Integration: 84/84 tests passed; Next.js 15 build: 36 routes generated. |
 | **Phase 1** | Critical Authorization & IDOR Protection | **COMPLETED** | `src/app/api/observations/[id]/route.ts` strictly enforces `user.role === 'owner'`. `prop-381` fallbacks removed from `auth.ts`, `signup/route.ts`, and `db.ts`. New suite `tests/idor-auth.test.ts` (5 tests) passed. Full suite: 89/89 tests passed. |
-| **Phase 2** | Database / Scoped RLS Architecture | **PENDING** | Next phase. |
-| **Phase 3** | Auth / Session / Cloudinary Config | **PENDING** | |
+| **Phase 2** | Database / Scoped RLS Architecture | **COMPLETED** | Migration `0004_tighten_rls_and_sha_index.sql` created (tightening observations, rooms, inspections, assets RLS to owner-only write, and creating `idx_assets_sha256`). Added scoped database factory `getScopedDatabase` and `getScopedServerDatabase`. Added `tests/rls-database.test.ts`. Full suite: 92/92 tests passed. |
+| **Phase 3** | Auth / Session / Cloudinary Config | **PENDING** | Next phase. |
 | **Phase 4** | Upload Security + Media Pipeline | **PENDING** | |
 | **Phase 5** | Present Mode Performance Rewrite | **PENDING** | |
 | **Phase 6** | Theme / Accessibility Contrast | **PENDING** | |

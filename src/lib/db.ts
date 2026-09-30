@@ -843,6 +843,7 @@ export class PersistentDatabaseService implements DatabaseService {
 
 import { isSupabaseConfigured } from "./supabase";
 import { SupabaseDatabaseService } from "./supabase-db";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 let dbInstance: DatabaseService | null = null;
 
@@ -869,6 +870,16 @@ export function getDatabase(): DatabaseService {
     }
   }
   return dbInstance;
+}
+
+export function getScopedDatabase(client?: SupabaseClient): DatabaseService {
+  const mock = process.env.DEVELOPMENT_MOCK_MODE === "true";
+  if (isSupabaseConfigured() && !mock && client) {
+    const fallback =
+      process.env.ENABLE_LOCAL_FALLBACK === "true" ? new PersistentDatabaseService() : undefined;
+    return new SupabaseDatabaseService(client, fallback);
+  }
+  return getDatabase();
 }
 
 export { SupabaseDatabaseService };

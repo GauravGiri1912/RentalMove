@@ -73,3 +73,14 @@ export async function getServerUser() {
   if (error || !user) return null;
   return user;
 }
+
+/**
+ * Get a DatabaseService instance bound to the caller's authenticated session.
+ * Uses the user's JWT from cookies, enforcing RLS on all operations.
+ */
+export async function getScopedServerDatabase() {
+  const { getScopedDatabase } = await import("./db");
+  const supabase = await createSupabaseServerClient();
+  return getScopedDatabase(supabase);
+}
+
