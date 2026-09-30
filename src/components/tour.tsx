@@ -122,9 +122,12 @@ export function TourOverlay() {
   const router = useRouter();
   const [elapsed, setElapsed] = useState(0);
   const [ready, setReady] = useState(false);
-  const [rect, setRect] = useState<DOMRect | null>(null);
+  const [hasTarget, setHasTarget] = useState(false);
   const [speed, setSpeed] = useState<number>(1);
   const targetEl = useRef<Element | null>(null);
+  const maskCutoutRef = useRef<SVGRectElement>(null);
+  const spotlightRingRef = useRef<HTMLDivElement>(null);
+
   const beat = FLAT[Math.min(tour.step, FLAT.length - 1)];
   const chapter = CHAPTERS[beat.ci];
   const showsCard = beat.bi === 0;
@@ -134,10 +137,46 @@ export function TourOverlay() {
     if (new URLSearchParams(window.location.search).get("present")) setTour({ active: true, step: 0, playing: true });
     try { const s = Number(localStorage.getItem("rm:tour-speed")); if (SPEEDS.includes(s as any)) setSpeed(s); } catch {}
   }, [setTour]);
+
   const changeSpeed = () => {
     const next = SPEEDS[(SPEEDS.indexOf(speed as any) + 1) % SPEEDS.length];
     setSpeed(next);
     try { localStorage.setItem("rm:tour-speed", String(next)); } catch {}
+  };
+
+  // Direct geometry update directly to DOM without causing React component re-renders
+  const updateGeometry = () => {
+    const el = targetEl.current;
+    if (!el || !el.isConnected) {
+      if (maskCutoutRef.current) {
+        maskCutoutRef.current.setAttribute("width", "0");
+        maskCutoutRef.current.setAttribute("height", "0");
+      }
+      if (spotlightRingRef.current) {
+        spotlightRingRef.current.style.display = "none";
+      }
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    const pad = 10;
+    const x = Math.max(0, r.left - pad);
+    const y = Math.max(0, r.top - pad);
+    const w = r.width + pad * 2;
+    const h = r.height + pad * 2;
+
+    if (maskCutoutRef.current) {
+      maskCutoutRef.current.setAttribute("x", String(x));
+      maskCutoutRef.current.setAttribute("y", String(y));
+      maskCutoutRef.current.setAttribute("width", String(w));
+      maskCutoutRef.current.setAttribute("height", String(h));
+    }
+    if (spotlightRingRef.current) {
+      spotlightRingRef.current.style.display = "block";
+      spotlightRingRef.current.style.left = `${x}px`;
+      spotlightRingRef.current.style.top = `${y}px`;
+      spotlightRingRef.current.style.width = `${w}px`;
+      spotlightRingRef.current.style.height = `${h}px`;
+    }
   };
 
   // Navigate when entering a chapter.
@@ -147,18 +186,18 @@ export function TourOverlay() {
     if (window.location.pathname + window.location.search !== href) router.push(href);
   }, [tour.active, beat.ci]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Set up the beat: wait for its target, scroll to it, run its action. The clock starts
-  // only once the page is ready, so slow loads never cut a caption short.
+  // Set up the beat: wait for its target, scroll to it, run its action.
   useEffect(() => {
     if (!tour.active) return;
     setElapsed(0);
     setReady(false);
-    setRect(null);
+    setHasTarget(false);
     targetEl.current = null;
     let cancelled = false;
     let clicked = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
     const t0 = performance.now();
+
     const find = () => {
       if (cancelled) return;
       if (beat.click) {
@@ -166,33 +205,50 @@ export function TourOverlay() {
         if (c && !clicked) { clicked = true; c.click(); }
       }
       const el = beat.target ? document.querySelector(beat.target) : null;
-      const loading = document.body.innerText.includes("Loading your property memory");
+      const loading = document.querySelector("[data-tour-loading='true'], [data-loading='true']") !== null;
       if ((beat.target && !el) || loading) {
-        if (performance.now() - t0 < 8000) { timers.push(setTimeout(find, 200)); return; }
+        if (performance.now() - t0 < 8000) { timers.push(setTimeout(find, 150)); return; }
       }
       targetEl.current = el;
+      setHasTarget(Boolean(el));
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       if (beat.event) timers.push(setTimeout(() => window.dispatchEvent(new CustomEvent("rm:tour", { detail: beat.event })), 900));
       setReady(true);
     };
+
     timers.push(setTimeout(find, showsCard ? 600 : 150));
     return () => { cancelled = true; timers.forEach(clearTimeout); };
   }, [tour.active, tour.step]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep the spotlight on the target while the page scrolls or animates.
+  // Coalesced, event-driven geometry updates without per-frame React state dispatching
   useEffect(() => {
     if (!tour.active || !ready) return;
+    updateGeometry();
+
     let raf = 0;
-    const loop = () => {
-      const el = targetEl.current;
-      setRect(el && el.isConnected ? el.getBoundingClientRect() : null);
-      raf = requestAnimationFrame(loop);
+    const onScrollOrResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateGeometry);
     };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize);
+
+    let ro: ResizeObserver | null = null;
+    if (targetEl.current && typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(onScrollOrResize);
+      ro.observe(targetEl.current);
+    }
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+      ro?.disconnect();
+    };
   }, [tour.active, ready, tour.step]);
 
-  // Clock.
+  // Clock with coalesced 200ms tick interval (reduces renders by 75%)
   useEffect(() => {
     if (!tour.active || !tour.playing || !ready) return;
     const base = elapsed;
@@ -205,10 +261,23 @@ export function TourOverlay() {
         if (tour.step < FLAT.length - 1) setTour({ step: tour.step + 1 });
         else setTour({ playing: false });
       }
-    }, 50);
+    }, 200);
     return () => clearInterval(id);
   }, [tour.active, tour.playing, tour.step, ready, speed]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Pause playback when tab is hidden
+  useEffect(() => {
+    if (!tour.active) return;
+    const onVisibility = () => {
+      if (document.hidden && tour.playing) {
+        setTour({ playing: false });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [tour.active, tour.playing, setTour]);
+
+  // Keyboard controls
   useEffect(() => {
     if (!tour.active) return;
     const onKey = (e: KeyboardEvent) => {
@@ -223,19 +292,50 @@ export function TourOverlay() {
 
   if (!tour.active) return null;
   const inCard = showsCard && elapsed < CARD_MS && ready;
-  const pad = 10;
   const chapterBeats = chapter.beats.length;
   const chapterDone = (ci: number) => (ci < beat.ci ? 1 : ci > beat.ci ? 0 : (beat.bi + Math.min(1, elapsed / total)) / chapterBeats);
 
   return (
     <div className="no-print">
-      {/* Spotlight: a rounded hole in a dim layer, following the target. */}
-      {!inCard && rect && rect.width > 0 && (
-        <div
-          aria-hidden
-          className="pointer-events-none fixed z-[65] rounded-2xl ring-2 ring-signal/80 transition-all duration-500 ease-out"
-          style={{ left: rect.left - pad, top: rect.top - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, boxShadow: "0 0 0 9999px rgba(10,10,12,.55)" }}
-        />
+      {/* Hardware-accelerated SVG spotlight mask & boundary ring (eliminates giant box shadow) */}
+      {!inCard && hasTarget && (
+        <>
+          <svg
+            aria-hidden
+            className="pointer-events-none fixed inset-0 z-[64] h-full w-full"
+          >
+            <defs>
+              <mask id="rm-spotlight-mask">
+                <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                <rect
+                  ref={maskCutoutRef}
+                  x="0"
+                  y="0"
+                  width="0"
+                  height="0"
+                  rx="16"
+                  fill="black"
+                  className="transition-all duration-300 ease-out motion-reduce:transition-none"
+                />
+              </mask>
+            </defs>
+            <rect
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              fill="rgba(10, 10, 12, 0.60)"
+              mask="url(#rm-spotlight-mask)"
+            />
+          </svg>
+
+          <div
+            ref={spotlightRingRef}
+            aria-hidden
+            className="pointer-events-none fixed z-[65] rounded-2xl ring-2 ring-signal/80 transition-all duration-300 ease-out motion-reduce:transition-none"
+            style={{ display: "none" }}
+          />
+        </>
       )}
 
       {/* Chapter title card. */}
