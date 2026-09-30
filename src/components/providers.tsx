@@ -185,38 +185,73 @@ export function StudioProvider({
     try { await loadSnapshot(propertyId); } catch (e: any) { toast({ title: "Could not refresh", detail: e?.message, tone: "danger" }); }
   }, [propertyId, loadSnapshot, toast]);
 
-  // Live updates, two transports feeding one debounced refresh:
-  //  - Supabase Realtime broadcast (works across server instances and devices; production)
-  //  - Server-sent events from this server's in-process bus (local development)
+  // Live updates with Supabase Realtime as primary transport,
+  // falling back to SSE only if Supabase Realtime is unavailable or not configured.
   useEffect(() => {
-    if (status !== "ready" || !propertyId) return;
+    const pid = propertyId;
+    if (status !== "ready" || !pid) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const bump = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => { void loadSnapshot(propertyId).catch(() => {}); }, 400);
-    };
-    let sseOpen = false, rtOpen = false;
-    const update = () => setLive(sseOpen || rtOpen);
-
-    const es = new EventSource(`/api/properties/${encodeURIComponent(propertyId)}/stream`);
-    es.onopen = () => { sseOpen = true; update(); };
-    es.onerror = () => { sseOpen = false; update(); };
-    es.onmessage = (m) => {
-      try { if (JSON.parse(m.data).type !== "hello") bump(); } catch {}
+      timer = setTimeout(() => { void loadSnapshot(pid).catch(() => {}); }, 400);
     };
 
     let channel: any = null;
+    let es: EventSource | null = null;
     let cancelled = false;
-    import("@/lib/supabase-client").then(({ getSupabaseBrowserClient }) => {
-      if (cancelled) return;
-      const sb = getSupabaseBrowserClient();
-      channel = sb.channel(`rm-${propertyId}`).on("broadcast", { event: "change" }, bump).subscribe((st: string) => { rtOpen = st === "SUBSCRIBED"; update(); });
-    }).catch(() => {});
+
+    const hasSupabase = Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+
+    function initSSE() {
+      if (es || cancelled || !pid) return;
+      try {
+        es = new EventSource(`/api/properties/${encodeURIComponent(pid)}/stream`);
+        es.onopen = () => { setLive(true); };
+        es.onerror = () => { setLive(false); };
+        es.onmessage = (m) => {
+          try { if (JSON.parse(m.data).type !== "hello") bump(); } catch {}
+        };
+      } catch {}
+    }
+
+    if (hasSupabase) {
+      import("@/lib/supabase-client").then(({ getSupabaseBrowserClient }) => {
+        if (cancelled) return;
+        try {
+          const sb = getSupabaseBrowserClient();
+          channel = sb.channel(`rm-${pid}`)
+            .on("broadcast", { event: "change" }, bump)
+            .subscribe((st: string) => {
+              if (cancelled) return;
+              if (st === "SUBSCRIBED") {
+                setLive(true);
+                // Primary Supabase Realtime connected: close redundant SSE fallback if open
+                if (es) {
+                  es.close();
+                  es = null;
+                }
+              } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") {
+                // Realtime failed: fallback to SSE
+                if (!es && !cancelled) initSSE();
+              }
+            });
+        } catch {
+          if (!cancelled) initSSE();
+        }
+      }).catch(() => {
+        if (!cancelled) initSSE();
+      });
+    } else {
+      initSSE();
+    }
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
-      es.close();
+      if (es) es.close();
       if (channel) void channel.unsubscribe();
       setLive(false);
     };
@@ -234,6 +269,8 @@ export function StudioProvider({
       await getSupabaseBrowserClient().auth.signOut();
     } catch {}
     await api("/api/auth/session", { method: "DELETE" }).catch(() => {});
+    setView(null);
+    setViewState(null);
     window.location.href = "/welcome";
   }, []);
 
@@ -246,24 +283,24 @@ export function StudioProvider({
     });
   }, []);
 
-  /** Optimistically patch the in-memory view, run the request, roll back on failure. */
-  const optimistic = useCallback(async (mutate: (v: View) => View, request: () => Promise<unknown>, failTitle: string) => {
+  /** Optimistically patch the in-memory view, run the request, roll back on failure. Avoids downloading full snapshot on every mutation. */
+  const optimistic = useCallback(async <T,>(mutate: (v: View) => View, request: () => Promise<T>, failTitle: string): Promise<T> => {
     const before = hasView() ? view : null;
     if (before) applyView(mutate(before));
     try {
-      await request();
-      if (propertyId) await loadSnapshot(propertyId);
+      const res = await request();
+      return res;
     } catch (e: any) {
       if (before) applyView(before);
       toast({ title: failTitle, detail: e?.message, tone: "danger" });
       throw e;
     }
-  }, [view, applyView, propertyId, loadSnapshot, toast]);
+  }, [view, applyView, toast]);
 
   const review = useCallback(async (id: string, status: ReviewStatus, patch: Partial<Observation> = {}) => {
-    await optimistic(
+    const updated = await optimistic(
       (v) => ({ ...v, observations: v.observations.map((o) => (o.id === id ? { ...o, ...patch, review_status: status } : o)) }),
-      () => api(`/api/observations/${encodeURIComponent(id)}`, {
+      () => api<Observation>(`/api/observations/${encodeURIComponent(id)}`, {
         method: "PATCH",
         json: {
           review_status: status,
@@ -274,7 +311,14 @@ export function StudioProvider({
       }),
       "Review not saved"
     );
-  }, [optimistic]);
+    // Reconcile server truth into in-memory view without refetching snapshot
+    if (updated && hasView() && view) {
+      applyView({
+        ...view,
+        observations: view.observations.map((o) => (o.id === id ? { ...o, ...updated } : o)),
+      });
+    }
+  }, [optimistic, view, applyView]);
 
   const setStance = useCallback(async (obsId: string, s: Stance | null) => {
     const role = sessionUser?.role ?? "tenant";
