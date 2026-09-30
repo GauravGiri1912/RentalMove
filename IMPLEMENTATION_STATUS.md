@@ -122,7 +122,10 @@ Live tests fail (not skip) when credentials are missing.
   - Clarified guided presentation terminology across components (DOM-based interactive walkthrough without falsely claiming pre-recorded video stream).
   - Added `tests/product-capabilities.test.ts` (7 tests passing).
   - Total passing tests: 24 test files, 135 tests passing, 0 TypeScript errors.
-- **Next Phase:** Phase 13 — Observability & Structured Logging.
-
-
-
+- **Phase 13: Observability & Structured Logging** —
+  - Created `src/lib/logger.ts` with structured JSON/console logging and automatic recursive secret redaction for sensitive keys (`password`, `secret`, `token`, `authorization`, `cookie`, `bearer`, etc.) and environment variable values.
+  - Implemented high-level domain helpers for critical failure paths: `authFailure`, `authzFailure`, `uploadFailure`, `analysisFailure`, `analysisSuccess`, `dbError`, `cloudinaryError`, `verifyReport`, `shareLinkAccess`.
+  - Added correlation/request ID propagation and error serialization with safe sanitized metadata.
+  - Added `tests/observability-logger.test.ts` (8 tests passing).
+  - Total passing tests: 25 test files, 143 tests passing, 0 TypeScript errors.
+- **Next Phase:** Phase 14 — Full Regression, Security, and Performance Validation.
