@@ -116,6 +116,13 @@ Live tests fail (not skip) when credentials are missing.
     - Fixed `useMemo` in `review/page.tsx` by scoping `currentIds` properly inside memoization and including reactive fields on `sel`.
   - Added `tests/maintainability-routes.test.ts` (3 tests passing).
   - Total passing tests: 23 test files, 128 tests passing, 0 TypeScript errors.
-- **Next Phase:** Phase 12 — Product Capability Corrections.
+- **Phase 12: Product Capability Corrections** —
+  - Centralized pixel matching thresholds in `src/lib/matching-config.ts` (`SAME_SPOT_IOU: 0.2`, `SAME_SPOT_DIST: 0.08`), documenting geometric rationale (area overlap vs centroid distance for small pinpoint defects) and enabling dynamic testing / threshold tuning.
+  - Made the floor-plan system data-driven via `getFloorPlanForProperty(...)` in `src/lib/floorplan.ts`: uses dynamic property unit labels (`aria-label={`Floor plan of ${unitLabel}`}`) and synthesizes proportional multi-room grid layouts for non-standard properties.
+  - Clarified guided presentation terminology across components (DOM-based interactive walkthrough without falsely claiming pre-recorded video stream).
+  - Added `tests/product-capabilities.test.ts` (7 tests passing).
+  - Total passing tests: 24 test files, 135 tests passing, 0 TypeScript errors.
+- **Next Phase:** Phase 13 — Observability & Structured Logging.
+
 
 
