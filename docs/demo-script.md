@@ -10,8 +10,8 @@
 ## 2. Baseline & Timeline Walkthrough (60 seconds)
 - Point to **Property #381 Elmwood Ave (Apt 4B)** on the screen.
 - Show the chronological timeline:
-  - **Move-In 2024**: Kitchen baseline photo with assistive observation *"Possible scratch visible on lower cabinet"*.
-  - Point out the **Original Preserved (SHA-256 Verified)** badge proving image immutability.
+  - **Move-In 2024**: Kitchen baseline photo with the assistive observations the vision model produced (marked pending until a person reviews them).
+  - Point out the **Original Kept (SHA-256 recorded)** badge: a fingerprint of the original file is stored so later changes can be detected.
   - **Inspection 2025**: The follow-up inspection photo of the same cabinet where the observation notes *"Existing cabinet mark reviewed, consistent with baseline move-in capture"*.
 - Switch between **Tenant Mode** and **Manager Mode** in the top navigation.
 

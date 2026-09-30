@@ -3,7 +3,7 @@
  * 
  * Hard Rule: AI outputs are assistive observations using neutral language.
  * Never assign blame, intent, legal responsibility, or monetary amounts.
- * Original media is strictly immutable and preserved.
+ * Original media is never modified by the app; views are on-demand transformations.
  */
 
 export const APP_COPY = {
@@ -22,9 +22,9 @@ export const APP_COPY = {
     noObservationsFound: 
       "No visible changes or surface irregularities detected in this capture.",
     originalPreservedBadge: 
-      "Original Preserved (SHA-256 Verified)",
+      "Original Kept (SHA-256 recorded)",
     originalPreservedTooltip: 
-      "Original image file is cryptographically hashed and stored immutably. Transformations are rendered on-demand.",
+      "A SHA-256 fingerprint of the original file is recorded at upload so later changes to it can be detected. The app never modifies the original; every view is a Cloudinary transformation rendered on demand.",
     comparisonDisclaimer: 
       "Comparison highlights visible visual variations between captures. It is not an assessment of fault, wear-and-tear legality, or repair costs.",
     statusLabels: {
@@ -45,7 +45,7 @@ export const APP_COPY = {
   roles: {
     tenant: {
       label: "Tenant Mode",
-      description: "Document move-in baseline, periodic inspections, and preserve immutable condition records.",
+      description: "Document move-in baseline, periodic inspections, and keep timestamped condition records.",
     },
     manager: {
       label: "Property Manager Mode",

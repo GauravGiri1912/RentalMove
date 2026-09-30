@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildCloudinarySearchExpression } from "@/lib/search";
+import { buildCloudinarySearchExpression, filterByCaptureDate } from "@/lib/search";
+import { getDatabase } from "@/lib/db";
 import { getMediaProvider } from "@/lib/media";
 import {
   getAuthenticatedUserOrThrow,
@@ -76,11 +77,24 @@ export async function GET(req: NextRequest) {
     const media = getMediaProvider();
     const searchResult = await media.search(expression);
 
+    // Dates come from the database (when the photo was captured), not Cloudinary's upload time.
+    let resources = searchResult.resources;
+    if (validatedFilter.date_from || validatedFilter.date_to) {
+      const db = getDatabase();
+      const inspections = await db.getInspections(propertyId);
+      const assetLists = await Promise.all(inspections.map((i) => db.getAssets(i.id)));
+      const captured = new Map<string, string>();
+      for (const a of assetLists.flat()) {
+        if (a.cloudinary_public_id) captured.set(a.cloudinary_public_id, a.captured_at);
+      }
+      resources = filterByCaptureDate(resources, captured, validatedFilter);
+    }
+
     return NextResponse.json({
       expression,
       filter: validatedFilter,
-      total_count: searchResult.total_count,
-      resources: searchResult.resources,
+      total_count: resources.length,
+      resources,
       is_mock: media.isMock(),
     });
   } catch (err: any) {

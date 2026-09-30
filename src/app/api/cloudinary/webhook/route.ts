@@ -17,18 +17,22 @@ export async function POST(req: NextRequest) {
     const timestamp = req.headers.get("x-cld-timestamp");
     const signature = req.headers.get("x-cld-signature");
 
-    // Verify Cloudinary webhook signature if secret is configured
+    // The signature is mandatory: without it anyone could register arbitrary assets.
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    if (apiSecret && timestamp && signature) {
-      const isValid = cloudinary.utils.verifyNotificationSignature(
-        rawBody,
-        Number(timestamp),
-        signature
-      );
-      if (!isValid) {
-        console.warn("[Cloudinary Webhook] Invalid webhook signature from IP:", req.headers.get("x-forwarded-for"));
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-      }
+    if (!apiSecret) {
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    }
+    if (!timestamp || !signature) {
+      return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+    }
+    const isValid = cloudinary.utils.verifyNotificationSignature(
+      rawBody,
+      Number(timestamp),
+      signature
+    );
+    if (!isValid) {
+      console.warn("[Cloudinary Webhook] Invalid webhook signature from IP:", req.headers.get("x-forwarded-for"));
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     const payload = JSON.parse(rawBody);
@@ -56,6 +60,16 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getDatabase();
+
+    // Only attach uploads to a property and inspection that already exist.
+    const property = await db.getProperty(propertyId);
+    const inspection = property
+      ? (await db.getInspections(propertyId)).find((i) => i.id === inspectionId)
+      : undefined;
+    if (!property || !inspection) {
+      console.warn("[Cloudinary Webhook] Unknown property/inspection for", publicId);
+      return NextResponse.json({ received: true, ignored: "unknown_property_or_inspection" });
+    }
 
     // Resolve room_id
     const rooms = await db.getRooms(propertyId);
@@ -90,3 +104,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+/** Vision calls can take several seconds; allow the host to keep the function alive. */
+export const maxDuration = 60;

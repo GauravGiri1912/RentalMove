@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { recoverStalledAssets } from "@/lib/pipeline";
 import {
   getAuthenticatedUserOrThrow,
   canUserAccessProperty,
@@ -27,6 +28,12 @@ export async function GET(
 
     const db = getDatabase();
     const timeline = await db.getTimeline(id);
+
+    // Photos whose analysis never finished (host restart / killed run) get re-queued.
+    recoverStalledAssets(timeline.inspections.flatMap((i) => i.assets)).catch((err) =>
+      console.warn("[Timeline] Stalled-asset recovery failed:", err)
+    );
+
     return NextResponse.json(timeline);
   } catch (err: any) {
     if (err?.statusCode === 401) return unauthorizedResponse();

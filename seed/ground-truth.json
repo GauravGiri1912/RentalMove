@@ -1,0 +1,196 @@
+{
+  "_comment": "Staged demo changes made by seed/make_staged.py. Boxes are exact, in each current photo's frame, normalised [x1,y1,x2,y2]. Real-world photos have no ground truth.",
+  "pairs": [
+    {
+      "room": "kitchen",
+      "prior": "2024/kitchen/cabinet-base-01.jpg",
+      "current": "2025/kitchen/cabinet-base-02.jpg",
+      "capture": {
+        "zoom": 1.03,
+        "crop_offset_px": [
+          22,
+          14
+        ],
+        "exposure": 1.04,
+        "warmth": 0.02,
+        "noise_sigma": 2.0
+      },
+      "changes": []
+    },
+    {
+      "room": "kitchen",
+      "prior": "2024/kitchen/cabinet-base-01.jpg",
+      "current": "2026/kitchen/cabinet-base-03.jpg",
+      "capture": {
+        "zoom": 1.045,
+        "crop_offset_px": [
+          40,
+          24
+        ],
+        "exposure": 0.97,
+        "warmth": -0.015,
+        "noise_sigma": 2.2
+      },
+      "changes": [
+        {
+          "label": "cluster of fine scratches",
+          "category": "scratch",
+          "bbox": [
+            0.494,
+            0.626,
+            0.604,
+            0.767
+          ]
+        },
+        {
+          "label": "small chip",
+          "category": "dent",
+          "bbox": [
+            0.489,
+            0.885,
+            0.503,
+            0.9
+          ]
+        }
+      ]
+    },
+    {
+      "room": "bathroom",
+      "prior": "2024/bathroom/shower-tile-01.jpg",
+      "current": "2025/bathroom/shower-tile-02.jpg",
+      "capture": {
+        "zoom": 1.025,
+        "crop_offset_px": [
+          16,
+          10
+        ],
+        "exposure": 0.98,
+        "warmth": 0.01,
+        "noise_sigma": 2.0
+      },
+      "changes": [
+        {
+          "label": "early grout discolouration",
+          "category": "stain",
+          "bbox": [
+            0.418,
+            0.658,
+            0.832,
+            0.79
+          ]
+        }
+      ]
+    },
+    {
+      "room": "bathroom",
+      "prior": "2024/bathroom/shower-tile-01.jpg",
+      "current": "2026/bathroom/shower-tile-03.jpg",
+      "capture": {
+        "zoom": 1.04,
+        "crop_offset_px": [
+          34,
+          26
+        ],
+        "exposure": 1.03,
+        "warmth": 0.02,
+        "noise_sigma": 2.2
+      },
+      "changes": [
+        {
+          "label": "grout discolouration spread",
+          "category": "stain",
+          "bbox": [
+            0.405,
+            0.644,
+            0.838,
+            0.789
+          ]
+        },
+        {
+          "label": "hairline floor-tile crack",
+          "category": "crack",
+          "bbox": [
+            0.228,
+            0.86,
+            0.367,
+            0.913
+          ]
+        }
+      ]
+    },
+    {
+      "room": "bedroom",
+      "prior": "2024/bedroom/bedroom-wall-01.jpg",
+      "current": "2026/bedroom/bedroom-wall-03.jpg",
+      "capture": {
+        "zoom": 1.035,
+        "crop_offset_px": [
+          30,
+          18
+        ],
+        "exposure": 0.96,
+        "warmth": 0.0,
+        "noise_sigma": 2.4
+      },
+      "changes": [
+        {
+          "label": "small wall dent",
+          "category": "dent",
+          "bbox": [
+            0.375,
+            0.452,
+            0.394,
+            0.477
+          ]
+        },
+        {
+          "label": "scuff marks on lower wall",
+          "category": "mark",
+          "bbox": [
+            0.443,
+            0.575,
+            0.542,
+            0.615
+          ]
+        }
+      ]
+    },
+    {
+      "room": "living_room",
+      "prior": "2024/living_room/living-floor-01.jpg",
+      "current": "2026/living_room/living-floor-03.jpg",
+      "capture": {
+        "zoom": 1.03,
+        "crop_offset_px": [
+          20,
+          20
+        ],
+        "exposure": 1.02,
+        "warmth": -0.01,
+        "noise_sigma": 2.0
+      },
+      "changes": [
+        {
+          "label": "floor scratches",
+          "category": "scratch",
+          "bbox": [
+            0.574,
+            0.786,
+            0.739,
+            0.856
+          ]
+        },
+        {
+          "label": "wall mark",
+          "category": "mark",
+          "bbox": [
+            0.784,
+            0.443,
+            0.812,
+            0.473
+          ]
+        }
+      ]
+    }
+  ]
+}

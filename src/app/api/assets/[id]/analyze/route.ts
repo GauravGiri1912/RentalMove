@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
-import { runAnalysisForAsset } from "@/lib/pipeline";
-import { getDatabase as getDB } from "@/lib/db";
+import { scheduleAnalysis } from "@/lib/pipeline";
 import {
   getAuthenticatedUserOrThrow,
   canUserAccessProperty,
@@ -30,22 +29,11 @@ export async function POST(
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
-    // Look up the property via inspection to verify access
-    const inspections = await db.getInspections(
-      // We need the property_id — query via inspection
-      (await db.getAssetById(id))?.inspection_id || ""
-    );
-
-    // Find the property_id from the inspection
+    // Find the property that owns this asset's inspection (in parallel across the user's properties)
     const allProps = await db.listProperties(user.id, user.role);
-    let propertyId: string | null = null;
-    for (const prop of allProps) {
-      const inspList = await db.getInspections(prop.id);
-      if (inspList.some((i) => i.id === asset.inspection_id)) {
-        propertyId = prop.id;
-        break;
-      }
-    }
+    const inspectionLists = await Promise.all(allProps.map((p) => db.getInspections(p.id)));
+    const owner = allProps.find((_, i) => inspectionLists[i].some((insp) => insp.id === asset.inspection_id));
+    const propertyId: string | null = owner?.id ?? null;
 
     if (!propertyId) {
       return forbiddenResponse("You do not have access to this asset.");
@@ -56,11 +44,17 @@ export async function POST(
       return forbiddenResponse("You do not have access to this asset.");
     }
 
+    // Re-running a finished analysis would stack duplicate findings on the photo.
+    if (asset.analysis_status === "done") {
+      return NextResponse.json(
+        { error: "Analysis already completed for this asset", asset },
+        { status: 409 }
+      );
+    }
+
     // Reset status to queued for manual retry
     await db.updateAssetStatus(asset.id, "queued", null);
-    runAnalysisForAsset(asset.id).catch((err) => {
-      console.error(`[Analyze] Background analysis failed for asset ${asset.id}:`, err);
-    });
+    scheduleAnalysis(asset.id);
 
     return NextResponse.json({
       asset: { ...asset, analysis_status: "queued" },
@@ -75,3 +69,6 @@ export async function POST(
     );
   }
 }
+
+/** Vision calls can take several seconds; allow the host to keep the function alive. */
+export const maxDuration = 60;

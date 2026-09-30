@@ -7,22 +7,23 @@ import { v2 as cloudinary } from "cloudinary";
 for (const envFileName of [".env.local", ".env"]) {
   const envPath = path.resolve(process.cwd(), envFileName);
   if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, "utf8");
-    for (const line of envContent.split(/\r?\n/)) {
+    // A key repeated within one file: the last line wins (same as dotenv / Next.js).
+    const parsed: Record<string, string> = {};
+    for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
       const trimmed = line.trim();
       if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
         const idx = trimmed.indexOf("=");
         const key = trimmed.slice(0, idx).trim();
-        const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
-        if (key && !process.env[key]) {
-          process.env[key] = val;
-        }
+        if (key) parsed[key] = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
       }
+    }
+    for (const [key, val] of Object.entries(parsed)) {
+      if (!process.env[key]) process.env[key] = val;
     }
   }
 }
 
-import { GroqVisionProvider, MockVisionProvider } from "../src/lib/vision";
+import { GroqVisionProvider } from "../src/lib/vision";
 import { computeManagedTags } from "../src/lib/tags";
 import { filterObservations } from "../src/lib/observation-filter";
 import { getMediaProvider } from "../src/lib/media";
@@ -153,12 +154,13 @@ async function seedDemoAssets() {
     secure: true,
   });
 
-  const vision = groqKey
-    ? new GroqVisionProvider(groqKey, visionModel)
-    : new MockVisionProvider();
+  if (!groqKey) {
+    throw new Error("GROQ_API_KEY is required: the seed data must come from the real vision model, never a mock.");
+  }
+  const vision = new GroqVisionProvider(groqKey, visionModel);
 
   console.log(`✓ Cloudinary connected: ${cloudName}`);
-  console.log(`✓ Vision Provider: ${groqKey ? `Groq Vision (${visionModel})` : "Mock"}`);
+  console.log(`✓ Vision Provider: Groq Vision (${visionModel})`);
 
   // 1. Upload & provision 1x1 UI pixel for evidence drawings
   const whitePx = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
@@ -239,27 +241,14 @@ async function seedDemoAssets() {
 
     // Call Real Vision Model on VLM-sized Cloudinary transformation
     const vlmUrl = media.vlmCopy(publicId);
-    const analysisJsonPath = path.resolve(process.cwd(), "seed/analysis.json");
-    const cachedAnalysis = fs.existsSync(analysisJsonPath) ? JSON.parse(fs.readFileSync(analysisJsonPath, "utf8")) : {};
-
-    let analysis: any = null;
-    try {
-      console.log(`    🤖 Calling Groq Vision (${visionModel}) on Cloudinary URL...`);
-      const startTime = Date.now();
-      analysis = await vision.analyzeImage({
-        imageUrl: vlmUrl,
-        roomHint: def.roomCategory,
-      });
-      const analysisDuration = Date.now() - startTime;
-      console.log(`    ✓ AI Vision completed in ${analysisDuration}ms. Findings: ${analysis.observations.length}`);
-    } catch (visErr: any) {
-      if (cachedAnalysis[publicId]) {
-        console.warn(`    ⚠️ Live model rate-limited; using verified Qwen model findings: ${visErr?.message}`);
-        analysis = cachedAnalysis[publicId];
-      } else {
-        throw visErr;
-      }
-    }
+    // Real model call — if it fails after retries the seed stops; nothing is substituted.
+    console.log(`    🤖 Calling Groq Vision (${visionModel}) on Cloudinary URL...`);
+    const startTime = Date.now();
+    const analysis = await vision.analyzeImage({
+      imageUrl: vlmUrl,
+      roomHint: def.roomCategory,
+    });
+    console.log(`    ✓ AI Vision completed in ${Date.now() - startTime}ms. Findings: ${analysis.observations.length}`);
 
     // Create database asset entry
     assetsTable.push({
@@ -295,14 +284,14 @@ async function seedDemoAssets() {
         description: obs.description,
         confidence: obs.confidence,
         bbox: obs.bbox,
-        review_status: "accepted", // Initial baseline/periodic observations accepted
-        reviewer_note: `AI observation confirmed during ${def.year} inspection.`,
-        reviewed_by: "user-owner-1",
-        reviewed_at: `${def.captureDate}T11:00:00Z`,
+        review_status: "pending", // no human has reviewed these; do that in the app
+        reviewer_note: null,
+        reviewed_by: null,
+        reviewed_at: null,
         source: "ai",
         edited_from: null,
         created_at: `${def.captureDate}T10:05:00Z`,
-        updated_at: `${def.captureDate}T11:00:00Z`,
+        updated_at: `${def.captureDate}T10:05:00Z`,
       };
       observationsTable.push(obsEntry);
       assetObservations.push(obsEntry);
@@ -326,7 +315,7 @@ async function seedDemoAssets() {
           sub_area: primaryObs?.sub_area || def.roomCategory,
           capture_date: def.captureDate,
           issue_category: primaryObs?.category || "none",
-          review_status: "accepted",
+          review_status: "pending",
           ai_confidence: primaryObs ? Math.round(primaryObs.confidence * 100) : 100,
         },
         [publicId]
@@ -341,36 +330,18 @@ async function seedDemoAssets() {
   console.log("\n--- Running Real Matched Comparison (2024 Move-In vs 2026 Move-Out) ---");
   const priorPublicId = "properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01";
   const currentPublicId = "properties/prop-381/insp-2026-move-out/kitchen/cabinet-base-03";
-  let compResult: any = null;
-  try {
-    compResult = await vision.compareImages({
-      priorUrl: priorPublicId,
-      currentUrl: currentPublicId,
-      room: "kitchen",
-      tiled: false,
-    });
-  } catch (compErr: any) {
-    console.warn("  ⚠️ Comparison model call reached rate limit, generating assistive baseline:", compErr?.message);
-    compResult = {
-      summary: "Visual comparison completed for Kitchen. Surface marks on lower cabinet door remain consistent between 2024 baseline and 2026 move-out.",
-      changes: [
-        {
-          description: "Superficial surface mark on lower cabinet door finish remains visible, consistent with baseline move-in capture.",
-          confidence: 0.85,
-          region: "general",
-        },
-      ],
-      caveats: [
-        "Diff analysis is influenced by ambient lighting and angle variations.",
-        "Assistive observation only; does not establish liability or condition classification.",
-      ],
-    };
-  }
+  // Real matched comparison; a failure stops the seed instead of inventing a result.
+  const compResult: any = await vision.compareImages({
+    priorUrl: priorPublicId,
+    currentUrl: currentPublicId,
+    room: "kitchen",
+    tiled: false,
+  });
 
   console.log(`✓ Real comparison generated: "${compResult.summary}"`);
   console.log(`  Changes detected: ${compResult.changes.length}`);
 
-  let compConfidence = 0.85;
+  let compConfidence: number | undefined; // no scored changes => no confidence to report
   if (compResult.changes.length > 0) {
     compConfidence = Number(
       (compResult.changes.reduce((s: number, c: any) => s + c.confidence, 0) / compResult.changes.length).toFixed(2)
@@ -389,7 +360,7 @@ async function seedDemoAssets() {
       caveats: compResult.caveats,
       confidence: compConfidence,
       review_required: true,
-      model_version: visionModel,
+      model_version: vision.name,
       created_at: "2026-06-01T12:00:00Z",
     },
   ];

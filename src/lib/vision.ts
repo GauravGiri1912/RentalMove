@@ -10,8 +10,22 @@ import { sanitizeObservationText } from "./copy";
 import { filterObservations, filterComparisonChanges } from "./observation-filter";
 import { getMediaProvider } from "./media";
 import { TileSpec, tileLabel } from "./cloudinary-urls";
+import { AREAS, cleanAreas } from "./coverage";
+
+/**
+ * Raised when no real vision result can be produced. Callers must surface it
+ * (mark the asset failed / return a 5xx) — never substitute a made-up finding.
+ */
+export class VisionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "VisionError";
+  }
+}
 
 export interface VisionProvider {
+  /** Recorded on comparisons so it is always clear which engine produced a result. */
+  readonly name: string;
   analyzeImage(input: { imageUrl: string; roomHint?: string }): Promise<ImageAnalysis>;
   compareImages(input: {
     priorUrl: string;
@@ -28,6 +42,8 @@ export interface VisionProvider {
 // =========================================================================
 
 export class MockVisionProvider implements VisionProvider {
+  readonly name = "mock";
+
   async analyzeImage(input: { imageUrl: string; roomHint?: string }): Promise<ImageAnalysis> {
     const { imageUrl, roomHint } = input;
     const lower = (imageUrl || "").toLowerCase();
@@ -161,17 +177,31 @@ export class MockVisionProvider implements VisionProvider {
   }
 }
 
+/** Accepts [x1,y1,x2,y2] as 0..1, 0..100 or 0..1000 and returns a valid normalised box. */
+export function normaliseBox(b: unknown): [number, number, number, number] | null {
+  if (!Array.isArray(b) || b.length !== 4) return null;
+  let v = b.map(Number);
+  if (v.some((n) => !Number.isFinite(n))) return null;
+  const max = Math.max(...v);
+  if (max > 1) v = v.map((n) => n / (max > 100 ? 1000 : 100));
+  const [x1, y1, x2, y2] = v.map((n) => Math.min(1, Math.max(0, n)));
+  if (x2 <= x1 || y2 <= y1) return null;
+  return [x1, y1, x2, y2].map((n) => Number(n.toFixed(3))) as [number, number, number, number];
+}
+
 // =========================================================================
 // GROQ VISION / LLM PROVIDER (Real Multimodal Vision with Qwen)
 // =========================================================================
 
 export class GroqVisionProvider implements VisionProvider {
+  readonly name: string;
   private apiKey: string;
   private modelName: string;
 
   constructor(apiKey: string, modelName = "qwen/qwen3.8-27b") {
     this.apiKey = apiKey;
     this.modelName = modelName;
+    this.name = `groq:${modelName}`;
   }
 
   /**
@@ -225,11 +255,12 @@ export class GroqVisionProvider implements VisionProvider {
         return JSON.parse(cleanJson);
       } catch (err: any) {
         lastError = err;
-        if (attempt === maxRetries) break;
+        // A daily quota will not recover within a retry window; fail fast with the real reason.
+        if (attempt === maxRetries || /daily token limit/i.test(String(err?.message))) break;
       }
     }
 
-    throw lastError || new Error("Failed to communicate with Groq Vision API");
+    throw new VisionError(lastError?.message || "Failed to communicate with Groq Vision API");
   }
 
   async analyzeImage(input: { imageUrl: string; roomHint?: string }): Promise<ImageAnalysis> {
@@ -244,11 +275,17 @@ Inspect this photo and output ONLY valid JSON matching this schema:
       "sub_area": "string (e.g. lower_cabinet, floor, baseboard, shower_wall, counter)",
       "description": "neutral description of visible surface feature",
       "confidence": number between 0 and 1,
-      "bbox": [x1, y1, x2, y2]
+      "bbox": [x1, y1, x2, y2],
+      "certainty": "clear" | "unsure"
     }
-  ]
+  ],
+  "can_assess": true | false,
+  "assess_note": "short reason when can_assess is false (e.g. glare on the floor, surface too far away, view blocked)",
+  "visible_areas": [zero or more of: ${AREAS.join(", ")}]
 }
 STRICT RULES:
+0. visible_areas lists every one of those room areas that is clearly visible in the photo, even with no findings.
+0b. It is better to say you are unsure than to guess: mark a finding "unsure" when it could be a shadow, reflection, texture or pattern. Set can_assess to false when glare, darkness, distance or clutter stops you judging the surfaces.
 1. Provide neutral, objective condition observations only.
 2. NEVER use blame, fault, damage claims, tenant liability, deposit deduction language, or repair costs.
 3. Always prefix descriptions with "Possible", "Visible", "Observed", or "Noted".
@@ -311,6 +348,7 @@ Room hint: ${input.roomHint || "unknown"}`;
           description: sanitizeObservationText(obs.description || ""),
           confidence: typeof obs.confidence === "number" ? Math.min(1, Math.max(0, obs.confidence)) : 0.7,
           bbox,
+          unsure: obs.certainty === "unsure",
         };
       });
     }
@@ -323,7 +361,47 @@ Room hint: ${input.roomHint || "unknown"}`;
       room_guess: parsed.room_guess || (input.roomHint as any) || "unknown",
       image_quality: imageQuality,
       observations: kept,
+      visible_areas: cleanAreas(parsed.visible_areas),
+      can_assess: parsed.can_assess === false ? false : true,
+      assess_note: parsed.can_assess === false && typeof parsed.assess_note === "string" ? parsed.assess_note.slice(0, 200) : undefined,
     });
+  }
+
+  /**
+   * Translates short report strings. Output order and count must match the input; the caller
+   * falls back to English for anything missing. Tone rules are the same as for findings.
+   */
+  async translate(texts: string[], language: string): Promise<(string | null)[]> {
+    const parsed = await this.postChat({
+      model: this.modelName,
+      messages: [{ role: "user", content: `Translate each string in this JSON array into ${language}. Rules:
+- Keep numbers, units (cm, m², ‱), dates, sha256 values and product names (Cloudinary, RentalMove) unchanged.
+- Keep the neutral, factual tone: never add blame, fault, liability, cost or deposit language.
+- Room-part names (e.g. "shower base", "lower cabinet") should be natural everyday words.
+- Write only in the target script (Devanagari for Hindi): never Arabic or Urdu script, e.g. grey = स्लेटी/धूसर.
+Output ONLY JSON: {"t": [translated strings, same count and order]}
+${JSON.stringify(texts)}` }],
+      response_format: { type: "json_object" },
+      max_tokens: Math.min(6000, 200 + texts.reduce((n, t) => n + t.length, 0) * 3),
+      temperature: 0,
+    });
+    const arr = Array.isArray(parsed?.t) ? parsed.t : [];
+    return texts.map((_, i) => (typeof arr[i] === "string" && arr[i].trim() ? String(arr[i]).trim().slice(0, 2000) : null));
+  }
+
+  /** Which room areas a photo shows (small prompt, used to backfill coverage). */
+  async detectVisibleAreas(imageUrl: string): Promise<string[]> {
+    const parsed = await this.postChat({
+      model: this.modelName,
+      messages: [{ role: "user", content: [
+        { type: "text", text: `List the room areas clearly visible in this photo. Output ONLY JSON: {"visible_areas": [zero or more of: ${AREAS.join(", ")}]}` },
+        { type: "image_url", image_url: { url: imageUrl } },
+      ] }],
+      response_format: { type: "json_object" },
+      max_tokens: 200,
+      temperature: 0,
+    });
+    return cleanAreas(parsed.visible_areas);
   }
 
   async compareImages(input: {
@@ -353,7 +431,9 @@ SYSTEM RULES:
 2. NEVER make legal claims, fault assessments, tenant liability allegations, or cost estimates.
 3. List visible variations observed in the current image that were NOT visible in the baseline.
 4. Do NOT report "no change", "looks identical", or "consistent condition" as a change item. If no new variations are evident, return an empty changes array: [].
-5. For each change, specify description and confidence (0.0 to 1.0).
+5. For each change, specify description, confidence (0.0 to 1.0), kind and an approximate box.
+   kind = "new" if it is not visible in Image 1 at all, "worsened" if it is visible in Image 1 but larger or stronger in Image 2.
+   bbox = [x1, y1, x2, y2] in Image 2, normalised 0..1 (approximate is fine; it is refined with pixel comparison).
 6. Output JSON only:
 {
   "summary": string,
@@ -361,6 +441,8 @@ SYSTEM RULES:
     {
       "description": string,
       "confidence": number,
+      "kind": "new" | "worsened",
+      "bbox": [x1, y1, x2, y2],
       "region": "top-left" | "top-right" | "bottom-left" | "bottom-right" | "general"
     }
   ],
@@ -387,11 +469,15 @@ SYSTEM RULES:
     const parsed = await this.postChat(payload);
     let rawChanges: any[] = [];
     if (Array.isArray(parsed.changes)) {
-      rawChanges = parsed.changes.map((c: any) => ({
-        description: sanitizeObservationText(c.description || ""),
-        confidence: typeof c.confidence === "number" ? Math.min(1, Math.max(0, c.confidence)) : 0.75,
-        region: c.region || "general",
-      }));
+      rawChanges = parsed.changes
+        .filter((c: any) => typeof c?.confidence === "number") // unscored claims are dropped, not defaulted
+        .map((c: any) => ({
+          description: sanitizeObservationText(c.description || ""),
+          confidence: Math.min(1, Math.max(0, c.confidence)),
+          region: c.region || "general",
+          kind: c.kind === "worsened" ? "worsened" : "new",
+          ...(normaliseBox(c.bbox) ? { bbox: normaliseBox(c.bbox)! } : {}),
+        }));
     }
 
     const filteredChanges = filterComparisonChanges(rawChanges);
@@ -425,6 +511,8 @@ SYSTEM RULES:
     ];
 
     const allChanges: any[] = [];
+    const failedRegions: string[] = [];
+    let analysedRegions = 0;
     const caveats: string[] = [
       "Tile-by-tile Cloudinary matched crop analysis applied (4 quadrants).",
       "Assistive reference only; does not establish legal liability or repair cost.",
@@ -439,7 +527,7 @@ SYSTEM RULES:
 Tile 1: Prior baseline.
 Tile 2: Current inspection.
 Highlight any visible variations appearing in Tile 2 not present in Tile 1.
-If no differences exist, return empty changes: [].
+Ignore lighting, exposure and small framing shifts. If no differences exist, return empty changes: [].
 Output JSON only:
 {
   "changes": [{ "description": string, "confidence": number }]
@@ -462,25 +550,37 @@ Output JSON only:
           max_tokens: 350,
           temperature: 0.1,
         });
+        analysedRegions++;
 
         if (Array.isArray(parsed.changes)) {
           for (const c of parsed.changes) {
+            if (typeof c?.confidence !== "number") continue; // an unscored claim is not a finding
             allChanges.push({
               description: sanitizeObservationText(c.description || ""),
-              confidence: typeof c.confidence === "number" ? Math.min(1, Math.max(0, c.confidence)) : 0.75,
+              confidence: Math.min(1, Math.max(0, c.confidence)),
               region,
             });
           }
         }
       } catch (err) {
+        failedRegions.push(region);
         console.warn(`[GroqVision] Tiled comparison failed for quadrant ${region}:`, err);
       }
     }
 
+    // If nothing could be analysed we must not claim "no variations" — surface the failure.
+    if (analysedRegions === 0) {
+      throw new VisionError("Tiled comparison failed for every region; no result was produced.");
+    }
+    if (failedRegions.length > 0) {
+      caveats.push(`Region(s) not analysed after retries: ${failedRegions.join(", ")}.`);
+    }
+
     const filtered = filterComparisonChanges(allChanges);
+    const scope = `${analysedRegions} of ${tiles.length} regions analysed`;
     const summary = filtered.length > 0
-      ? `Tiled comparison completed for ${input.room}: ${filtered.length} visual variation(s) observed across quadrants.`
-      : `Tiled comparison completed for ${input.room}: No significant visual variations detected across quadrants.`;
+      ? `Tiled comparison of ${input.room}: ${filtered.length} possible visual variation(s) observed (${scope}).`
+      : `Tiled comparison of ${input.room}: no visual variations were noted (${scope}).`;
 
     return ComparisonResultSchema.parse({
       summary,
@@ -521,13 +621,14 @@ Omit any keys not mentioned. JSON only, no markdown:`;
 // =========================================================================
 
 export function getVisionProvider(): VisionProvider {
-  const isMockExplicit = process.env.VISION_PROVIDER === "mock";
+  // Canned results are only ever produced when explicitly requested.
+  if (process.env.VISION_PROVIDER === "mock") return new MockVisionProvider();
+
   const groqKey = process.env.GROQ_API_KEY || process.env.XAI_API_KEY;
-
-  if (!isMockExplicit && groqKey) {
-    const model = process.env.VISION_MODEL || "qwen/qwen3.8-27b";
-    return new GroqVisionProvider(groqKey, model);
+  if (!groqKey) {
+    throw new VisionError(
+      "No vision provider configured. Set GROQ_API_KEY (or VISION_PROVIDER=mock for an offline demo)."
+    );
   }
-
-  return new MockVisionProvider();
+  return new GroqVisionProvider(groqKey, process.env.VISION_MODEL || "qwen/qwen3.8-27b");
 }

@@ -2,7 +2,7 @@
 
 ## 1. Provider Abstraction Pattern (Offline First & Hackathon Resilience)
 - **Problem**: Missing API keys or network latency during local evaluation could block development or judge review.
-- **Decision**: Implemented `MockMediaProvider` and `MockVisionProvider` alongside live Cloudinary and Gemini implementations. The app seamlessly runs fully offline with deterministic seed data for Property #381, while switching to live Cloudinary and VLM calls as soon as credentials are provided in `.env.local`.
+- **Decision**: Implemented `MockMediaProvider` and `MockVisionProvider` alongside live Cloudinary and Groq implementations. The mock vision provider is used ONLY when `VISION_PROVIDER=mock` is set explicitly; with no key and no explicit mock the app reports that no vision provider is configured (assets are marked failed) instead of returning canned findings.
 
 ## 2. Server-Constructed Cloudinary Search Expressions
 - **Problem**: Allowing arbitrary client or LLM input directly into Cloudinary search queries could cause syntax errors or expression injection.

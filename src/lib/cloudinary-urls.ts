@@ -45,10 +45,10 @@ export const TRANSFORMS = {
   shared: "c_limit,w_1600,h_1200,e_pixelate_faces:20,f_auto,q_auto",
 } as const;
 
-export const thumbUrl = (id: string) => buildUrl(id, TRANSFORMS.thumb);
-export const reviewUrl = (id: string) => buildUrl(id, TRANSFORMS.review);
-export const vlmUrl = (id: string) => buildUrl(id, TRANSFORMS.vlm);
-export const sharedUrl = (id: string) => buildUrl(id, TRANSFORMS.shared);
+export const thumbUrl = (id: string) => named(id, "rm_thumb");
+export const reviewUrl = (id: string) => named(id, "rm_review");
+export const vlmUrl = (id: string) => named(id, "rm_vlm");
+export const sharedUrl = (id: string) => named(id, "rm_shared");
 export const originalUrl = (id: string) => buildUrl(id, "f_auto,q_auto");
 
 // ---------------------------------------------------------------------------
@@ -78,7 +78,37 @@ export function tileLabel({ col, row, grid }: TileSpec): string {
 
 /** Matched rendition of the whole frame, sized for the vision model. */
 export function matchedUrl(id: string): string {
-  return buildUrl(id, `${MATCHED_BASE}/c_limit,w_1024,f_jpg,q_auto`);
+  return named(id, "rm_matched");
+}
+
+// ---------------------------------------------------------------------------
+// Named transformations (Strict Transformations–ready)
+// ---------------------------------------------------------------------------
+
+/**
+ * Every FIXED rendition the app uses, registered in Cloudinary as a named transformation
+ * (scripts/provision-named-transformations.ts) and allowed under Strict Transformations.
+ * Dynamic recipes (listing edits, lab, watermarks, evidence boxes) are signed server-side.
+ */
+export const NAMED_TRANSFORMATIONS = {
+  rm_review: "c_limit,w_1600,h_1200/f_auto,q_auto",
+  rm_thumb: "c_limit,w_720/f_auto,q_auto",
+  rm_tile: "c_fill,g_auto,w_96,h_96/f_auto,q_auto",
+  rm_ghost: "c_limit,w_640/f_jpg,q_auto",
+  rm_jpeg: "f_jpg,q_100",
+  rm_pixel: "c_limit,w_1200/f_jpg,q_auto:best",
+  rm_vlm: "c_limit,w_1024/f_jpg,q_auto",
+  rm_matched: `${MATCHED_BASE}/c_limit,w_1024,f_jpg,q_auto`,
+  rm_shared: "c_limit,w_1600,h_1200,e_pixelate_faces:20/f_auto,q_auto",
+  rm_evidence: "c_limit,w_1400/e_sharpen:60/f_auto,q_auto",
+  rm_privacy: "e_pixelate_faces:18/c_limit,w_1600/f_auto,q_auto",
+  rm_portrait: "c_fill,g_auto,w_1200,h_1400,e_pixelate_faces:18/f_auto,q_auto",
+} as const;
+export type NamedRendition = keyof typeof NAMED_TRANSFORMATIONS;
+
+/** t_rm_* once provisioned (NEXT_PUBLIC_CLOUDINARY_NAMED=1); the equivalent raw recipe before. */
+export function named(id: string, name: NamedRendition): string {
+  return buildUrl(id, process.env.NEXT_PUBLIC_CLOUDINARY_NAMED === "1" ? `t_${name}` : NAMED_TRANSFORMATIONS[name]);
 }
 
 /** Matched rendition of one tile of a `grid x grid` split of the frame. */

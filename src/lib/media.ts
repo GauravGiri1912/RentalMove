@@ -25,13 +25,18 @@ function loadEnvFiles() {
     try {
       const envFile = path.resolve(process.cwd(), name);
       if (!fs.existsSync(envFile)) continue;
+      // A key repeated within one file is won by the LAST line (same as dotenv / Next.js);
+      // values already in process.env, or loaded from an earlier file, are never overridden.
+      const parsed: Record<string, string> = {};
       for (const line of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
         const idx = trimmed.indexOf("=");
         const key = trimmed.slice(0, idx).trim();
-        const value = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
-        if (key && process.env[key] === undefined) process.env[key] = value;
+        if (key) parsed[key] = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+      }
+      for (const [key, value] of Object.entries(parsed)) {
+        if (process.env[key] === undefined) process.env[key] = value;
       }
     } catch {
       /* best effort */
@@ -49,7 +54,7 @@ export function isCloudinaryConfigured(): boolean {
   );
 }
 
-function ensureCloudinaryConfig() {
+export function ensureCloudinaryConfig() {
   if (isCloudinaryConfigured()) {
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -318,4 +323,14 @@ export function getMediaProvider(): MediaProvider {
     }
   }
   return mediaInstance;
+}
+
+/**
+ * Signed delivery URL for a dynamic recipe (server-only: uses the API secret). With Strict
+ * Transformations enabled, Cloudinary renders only named transformations and signed URLs,
+ * so an edited URL (e.g. someone adding e_gen_remove) is refused instead of billed.
+ */
+export function signedDeliveryUrl(publicId: string, transformation: string): string {
+  ensureCloudinaryConfig();
+  return cloudinary.url(publicId, { raw_transformation: transformation, sign_url: true, secure: true });
 }

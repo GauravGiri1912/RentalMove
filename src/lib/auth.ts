@@ -13,6 +13,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createSupabaseAdminClient } from "./supabase-server";
 import { User } from "./schemas";
+import crypto from "crypto";
+
+// ---------------------------------------------------------------------------
+// Short-lived caches. Every Supabase round trip costs ~0.25 s; without these each API
+// request paid ~4 of them just to learn who the caller is.
+//  - Verified sessions: 30 s, keyed by a hash of the auth cookies/header (a revoked
+//    session keeps working for at most 30 s).
+//  - Profiles (role, property assignments): 60 s, keyed by auth uid.
+// ---------------------------------------------------------------------------
+const SESSION_TTL_MS = 30_000;
+const PROFILE_TTL_MS = 60_000;
+const sessionCache = new Map<string, { user: User; exp: number }>();
+const profileCache = new Map<string, { user: User | null; exp: number }>();
+
+function sessionKey(req: NextRequest): string | null {
+  const cookies = req.cookies.getAll().filter((c) => c.name.startsWith("sb-")).map((c) => `${c.name}=${c.value}`).join(";");
+  const header = req.headers.get("authorization") || "";
+  if (!cookies && !header) return null;
+  return crypto.createHash("sha256").update(`${cookies}|${header}`).digest("hex");
+}
+
+/** Drops cached profiles (e.g. after a role or assignment change). */
+export function invalidateAuthCaches() {
+  sessionCache.clear();
+  profileCache.clear();
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -22,6 +48,19 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  * Used in API Route Handlers (which receive NextRequest, not Next.js cookies()).
  */
 export async function getSessionUser(req: NextRequest): Promise<User | null> {
+  const key = sessionKey(req);
+  if (!key) return null;
+  const hit = sessionCache.get(key);
+  if (hit && hit.exp > Date.now()) return hit.user;
+  const user = await resolveSessionUser(req);
+  if (user) {
+    if (sessionCache.size > 500) sessionCache.clear();
+    sessionCache.set(key, { user, exp: Date.now() + SESSION_TTL_MS });
+  }
+  return user;
+}
+
+async function resolveSessionUser(req: NextRequest): Promise<User | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   const supabase = createServerClient(url, key, {
@@ -88,6 +127,14 @@ export async function fetchUserProfile(
   authUid: string,
   email?: string | null
 ): Promise<User | null> {
+  const hit = profileCache.get(authUid);
+  if (hit && hit.exp > Date.now()) return hit.user;
+  const user = await loadUserProfile(authUid, email);
+  profileCache.set(authUid, { user, exp: Date.now() + PROFILE_TTL_MS });
+  return user;
+}
+
+async function loadUserProfile(authUid: string, email?: string | null): Promise<User | null> {
   const admin = createSupabaseAdminClient();
 
   // 1. Try finding by authUid in `users`

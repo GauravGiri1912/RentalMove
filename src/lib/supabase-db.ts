@@ -86,6 +86,11 @@ export class SupabaseDatabaseService implements DatabaseService {
 
   private logSchemaWarning(tableName: string) {
     this.schemaMissing = true;
+    if (!this.fallback) {
+      throw new Error(
+        `Supabase table '${tableName}' not found. Apply supabase/migrations/*.sql to the project.`
+      );
+    }
     if (!this.warnedSchemaMissing) {
       this.warnedSchemaMissing = true;
       console.warn(
@@ -113,6 +118,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("users");
           return this.fallback ? this.fallback.getUser(id) : null;
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return null;
       }
       if (!user) {
@@ -143,7 +149,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         owned_properties,
         created_at: user.created_at,
       };
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getUser(id) : null;
     }
   }
@@ -161,13 +168,15 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("users");
           return this.fallback ? this.fallback.getUserByEmail(email) : null;
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return null;
       }
       if (!user) {
         return this.fallback ? this.fallback.getUserByEmail(email) : null;
       }
       return this.getUser(user.id);
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getUserByEmail(email) : null;
     }
   }
@@ -184,6 +193,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("users");
           return this.fallback ? this.fallback.listUsers() : [];
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return [];
       }
       if (!users || users.length === 0) {
@@ -192,7 +202,8 @@ export class SupabaseDatabaseService implements DatabaseService {
 
       const detailedUsers = await Promise.all(users.map((u) => this.getUser(u.id)));
       return detailedUsers.filter((u): u is User => u !== null);
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.listUsers() : [];
     }
   }
@@ -214,6 +225,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("properties");
           return this.fallback ? this.fallback.getProperty(id) : null;
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return null;
       }
       if (!data) {
@@ -227,7 +239,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         owner_id: data.owner_id || undefined,
         created_at: data.created_at,
       };
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getProperty(id) : null;
     }
   }
@@ -269,6 +282,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("properties");
           return this.fallback ? this.fallback.listProperties(userId, role as any) : [];
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return [];
       }
       if (!data || data.length === 0) {
@@ -282,7 +296,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         owner_id: p.owner_id || undefined,
         created_at: p.created_at,
       }));
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.listProperties(userId, role as any) : [];
     }
   }
@@ -353,6 +368,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("rooms");
           return this.fallback ? this.fallback.getRooms(propertyId) : [];
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return [];
       }
       if (!data || data.length === 0) {
@@ -366,7 +382,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         category: r.category,
         created_at: r.created_at,
       }));
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getRooms(propertyId) : [];
     }
   }
@@ -419,6 +436,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("inspections");
           return this.fallback ? this.fallback.getInspections(propertyId) : [];
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return [];
       }
       if (!data || data.length === 0) {
@@ -434,7 +452,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         created_by: i.created_by,
         created_at: i.created_at,
       }));
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getInspections(propertyId) : [];
     }
   }
@@ -491,6 +510,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("assets");
           return this.fallback ? this.fallback.getAssets(inspectionId, roomId) : [];
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return [];
       }
       if (!data || data.length === 0) {
@@ -517,9 +537,30 @@ export class SupabaseDatabaseService implements DatabaseService {
         image_quality: a.image_quality,
         created_at: a.created_at,
       }));
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getAssets(inspectionId, roomId) : [];
     }
+  }
+
+  async getAssetsForInspections(inspectionIds: string[]): Promise<Asset[]> {
+    if (!inspectionIds.length) return [];
+    const { data, error } = await this.client.from("assets").select("*").in("inspection_id", inspectionIds).order("captured_at", { ascending: true });
+    if (error) {
+      if (this.fallback) return this.fallback.getAssetsForInspections(inspectionIds);
+      throw new Error(`Supabase query failed: ${error.message}`);
+    }
+    return (data || []).map(mapAssetRow);
+  }
+
+  async getObservationsForAssets(assetIds: string[]): Promise<Observation[]> {
+    if (!assetIds.length) return [];
+    const { data, error } = await this.client.from("observations").select("*").in("asset_id", assetIds).order("created_at", { ascending: true });
+    if (error) {
+      if (this.fallback) return this.fallback.getObservationsForAssets(assetIds);
+      throw new Error(`Supabase query failed: ${error.message}`);
+    }
+    return (data || []).map(mapObservationRow);
   }
 
   async getAssetById(id: string): Promise<Asset | null> {
@@ -535,6 +576,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("assets");
           return this.fallback ? this.fallback.getAssetById(id) : null;
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return null;
       }
       if (!data) {
@@ -561,7 +603,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         image_quality: data.image_quality,
         created_at: data.created_at,
       };
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getAssetById(id) : null;
     }
   }
@@ -579,13 +622,15 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("assets");
           return this.fallback ? this.fallback.getAssetByPublicId(publicId) : null;
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return null;
       }
       if (!data) {
         return this.fallback ? this.fallback.getAssetByPublicId(publicId) : null;
       }
       return this.getAssetById(data.id);
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getAssetByPublicId(publicId) : null;
     }
   }
@@ -675,9 +720,11 @@ export class SupabaseDatabaseService implements DatabaseService {
       if (roomGuess) updates.room_guess = roomGuess;
       if (imageQuality) updates.image_quality = imageQuality;
 
-      await this.client.from("assets").update(updates).eq("id", id);
-    } catch {
-      // ignore
+      const { error: updateError } = await this.client.from("assets").update(updates).eq("id", id);
+      if (updateError) throw new Error(`Failed to update asset status: ${updateError.message}`);
+    } catch (err) {
+      // A status write that silently fails leaves assets stuck in "running" forever.
+      if (!this.fallback) throw err;
     } finally {
       if (this.fallback) {
         await this.fallback.updateAssetStatus(id, status, error, roomGuess, imageQuality).catch(() => {});
@@ -702,6 +749,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("observations");
           return this.fallback ? this.fallback.getObservations(assetId) : [];
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return [];
       }
       if (!data || data.length === 0) {
@@ -725,7 +773,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         created_at: o.created_at,
         updated_at: o.updated_at,
       }));
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getObservations(assetId) : [];
     }
   }
@@ -823,6 +872,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("observations");
           return this.fallback ? this.fallback.updateObservation(id, update) : null;
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return null;
       }
       if (!data) {
@@ -850,7 +900,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         created_at: data.created_at,
         updated_at: data.updated_at,
       };
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.updateObservation(id, update) : null;
     }
   }
@@ -1020,6 +1071,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("comparisons");
           return this.fallback ? this.fallback.getComparisons(propertyId) : [];
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return [];
       }
       if (!data || data.length === 0) {
@@ -1040,7 +1092,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         model_version: c.model_version,
         created_at: c.created_at,
       }));
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getComparisons(propertyId) : [];
     }
   }
@@ -1066,6 +1119,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("share_links");
           return this.fallback ? this.fallback.getShareLink(token) : null;
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return null;
       }
       if (!data) {
@@ -1083,7 +1137,8 @@ export class SupabaseDatabaseService implements DatabaseService {
         expires_at: data.expires_at,
         revoked_at: data.revoked_at,
       };
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getShareLink(token) : null;
     }
   }
@@ -1092,10 +1147,11 @@ export class SupabaseDatabaseService implements DatabaseService {
     propertyId: string,
     token: string,
     inspectionId?: string,
-    createdBy?: string
+    createdBy?: string,
+    expiresAt?: string
   ): Promise<ShareLink> {
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const expires = expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const newLink: ShareLink = {
       id: `share-${Date.now()}`,
       token,
@@ -1114,22 +1170,45 @@ export class SupabaseDatabaseService implements DatabaseService {
         if (this.isSchemaMissingError(error)) {
           this.logSchemaWarning("share_links");
           return this.fallback
-            ? this.fallback.createShareLink(propertyId, token, inspectionId)
+            ? this.fallback.createShareLink(propertyId, token, inspectionId, createdBy, expires)
             : newLink;
         }
         throw new Error(`Failed to create share link in Supabase: ${error.message}`);
       }
 
       if (this.fallback) {
-        await this.fallback.createShareLink(propertyId, token, inspectionId).catch(() => {});
+        await this.fallback.createShareLink(propertyId, token, inspectionId, createdBy, expires).catch(() => {});
       }
       return newLink;
     } catch (err: any) {
       if (this.fallback) {
-        return this.fallback.createShareLink(propertyId, token, inspectionId);
+        return this.fallback.createShareLink(propertyId, token, inspectionId, createdBy, expires);
       }
       throw err;
     }
+  }
+
+  async listShareLinks(propertyId: string): Promise<ShareLink[]> {
+    const { data, error } = await this.client
+      .from("share_links")
+      .select("*")
+      .eq("property_id", propertyId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      if (this.isSchemaMissingError(error) && this.fallback) return this.fallback.listShareLinks(propertyId);
+      throw new Error(`Supabase query failed: ${error.message}`);
+    }
+    return (data || []).map((d: any) => ({
+      id: d.id,
+      token: d.token,
+      token_hash: d.token_hash,
+      property_id: d.property_id,
+      inspection_id: d.inspection_id,
+      created_by: d.created_by,
+      created_at: d.created_at,
+      expires_at: d.expires_at,
+      revoked_at: d.revoked_at,
+    }));
   }
 
   async revokeShareLink(token: string): Promise<boolean> {
@@ -1145,6 +1224,7 @@ export class SupabaseDatabaseService implements DatabaseService {
           this.logSchemaWarning("share_links");
           return this.fallback ? this.fallback.revokeShareLink(token) : false;
         }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
         return false;
       }
 
@@ -1152,14 +1232,16 @@ export class SupabaseDatabaseService implements DatabaseService {
         await this.fallback.revokeShareLink(token).catch(() => {});
       }
       return true;
-    } catch {
+    } catch (err) {
+      if (!this.fallback) throw err;
       return this.fallback ? this.fallback.revokeShareLink(token) : false;
     }
   }
 
   async deleteProperty(id: string): Promise<boolean> {
     try {
-      await this.client.from("properties").delete().eq("id", id);
+      const { error } = await this.client.from("properties").delete().eq("id", id);
+      if (error) return false;
       if (this.fallback && "deleteProperty" in this.fallback) {
         await (this.fallback as any).deleteProperty(id).catch(() => {});
       }
@@ -1171,7 +1253,8 @@ export class SupabaseDatabaseService implements DatabaseService {
 
   async deleteAsset(id: string): Promise<boolean> {
     try {
-      await this.client.from("assets").delete().eq("id", id);
+      const { error } = await this.client.from("assets").delete().eq("id", id);
+      if (error) return false;
       if (this.fallback && "deleteAsset" in this.fallback) {
         await (this.fallback as any).deleteAsset(id).catch(() => {});
       }
@@ -1183,7 +1266,8 @@ export class SupabaseDatabaseService implements DatabaseService {
 
   async deleteShareLink(token: string): Promise<boolean> {
     try {
-      await this.client.from("share_links").delete().eq("token", token);
+      const { error } = await this.client.from("share_links").delete().eq("token", token);
+      if (error) return false;
       if (this.fallback && "deleteShareLink" in this.fallback) {
         await (this.fallback as any).deleteShareLink(token).catch(() => {});
       }

@@ -1,4 +1,5 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import {
   Property,
@@ -50,8 +51,13 @@ export interface DatabaseService {
     imageQuality?: any
   ): Promise<void>;
 
+  /** Batched: all assets of several inspections in one round trip. */
+  getAssetsForInspections(inspectionIds: string[]): Promise<Asset[]>;
+
   // Observations
   getObservations(assetId: string): Promise<Observation[]>;
+  /** Batched: all observations of several assets in one round trip. */
+  getObservationsForAssets(assetIds: string[]): Promise<Observation[]>;
   createObservation(
     data: Omit<Observation, "id" | "created_at" | "updated_at">
   ): Promise<Observation>;
@@ -88,9 +94,12 @@ export interface DatabaseService {
     propertyId: string,
     token: string,
     inspectionId?: string,
-    createdBy?: string
+    createdBy?: string,
+    expiresAt?: string
   ): Promise<ShareLink>;
   revokeShareLink(token: string): Promise<boolean>;
+  /** All links for a property, including revoked and expired ones (newest first). */
+  listShareLinks(propertyId: string): Promise<ShareLink[]>;
 
   // Teardown / Cleanup
   deleteProperty?(id: string): Promise<boolean>;
@@ -417,16 +426,35 @@ export class PersistentDatabaseService implements DatabaseService {
   private memoryCache: StoreData;
 
   constructor(filePath?: string) {
-    const dataDir = path.join(process.cwd(), "data");
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    this.dataFilePath = filePath || path.join(dataDir, "rentalmove-store.json");
+    // Where the bundled/initial data lives (read-only on serverless hosts).
+    const seedPath =
+      filePath ||
+      process.env.RENTALMOVE_STORE_PATH ||
+      path.join(process.cwd(), "data", "rentalmove-store.json");
 
-    if (fs.existsSync(this.dataFilePath)) {
+    // Where we can actually write. Serverless file systems are read-only outside the temp
+    // dir (and wiped on restart), so fall back to it instead of crashing at startup.
+    this.dataFilePath = seedPath;
+    try {
+      fs.mkdirSync(path.dirname(seedPath), { recursive: true });
+      fs.accessSync(path.dirname(seedPath), fs.constants.W_OK);
+    } catch {
+      this.dataFilePath = path.join(os.tmpdir(), "rentalmove-store.json");
+      console.warn(
+        `[Database] ${path.dirname(seedPath)} is not writable; the local store is ephemeral (${this.dataFilePath}). ` +
+          "Use Supabase for anything that must persist."
+      );
+    }
+
+    const loadFrom = fs.existsSync(this.dataFilePath)
+      ? this.dataFilePath
+      : fs.existsSync(seedPath)
+        ? seedPath
+        : null;
+
+    if (loadFrom) {
       try {
-        const raw = fs.readFileSync(this.dataFilePath, "utf8");
-        this.memoryCache = JSON.parse(raw);
+        this.memoryCache = JSON.parse(fs.readFileSync(loadFrom, "utf8"));
       } catch (err) {
         console.warn("[Database] Corrupt store file; initializing from seed data:", err);
         this.memoryCache = getDefaultSeedData();
@@ -617,9 +645,19 @@ export class PersistentDatabaseService implements DatabaseService {
     }
   }
 
+  async getAssetsForInspections(inspectionIds: string[]): Promise<Asset[]> {
+    const ids = new Set(inspectionIds);
+    return this.memoryCache.assets.filter((a) => ids.has(a.inspection_id));
+  }
+
   // --- Observations ---
   async getObservations(assetId: string): Promise<Observation[]> {
     return this.memoryCache.observations.filter((o) => o.asset_id === assetId);
+  }
+
+  async getObservationsForAssets(assetIds: string[]): Promise<Observation[]> {
+    const ids = new Set(assetIds);
+    return this.memoryCache.observations.filter((o) => ids.has(o.asset_id));
   }
 
   async createObservation(
@@ -740,9 +778,10 @@ export class PersistentDatabaseService implements DatabaseService {
     propertyId: string,
     token: string,
     inspectionId?: string,
-    createdBy?: string
+    createdBy?: string,
+    expiresAt?: string
   ): Promise<ShareLink> {
-    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const expires = expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const newLink: ShareLink = {
       token,
       property_id: propertyId,
@@ -755,6 +794,12 @@ export class PersistentDatabaseService implements DatabaseService {
     this.memoryCache.share_links.push(newLink);
     this.flushToDisk();
     return newLink;
+  }
+
+  async listShareLinks(propertyId: string): Promise<ShareLink[]> {
+    return this.memoryCache.share_links
+      .filter((s) => s.property_id === propertyId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
   }
 
   async revokeShareLink(token: string): Promise<boolean> {
@@ -798,18 +843,23 @@ let dbInstance: DatabaseService | null = null;
 
 export function getDatabase(): DatabaseService {
   if (!dbInstance) {
-    if (isSupabaseConfigured() && process.env.DEVELOPMENT_MOCK_MODE !== "true") {
-      console.log("[Database] Initializing Real Supabase Application Database.");
-      const fallback = new PersistentDatabaseService();
+    const mock = process.env.DEVELOPMENT_MOCK_MODE === "true";
+    if (isSupabaseConfigured() && !mock) {
+      // Supabase is the single source of truth. A local JSON fallback is opt-in only
+      // (ENABLE_LOCAL_FALLBACK=true): silently mixing two stores hides real failures and
+      // does not work on read-only hosts.
+      const fallback =
+        process.env.ENABLE_LOCAL_FALLBACK === "true" ? new PersistentDatabaseService() : undefined;
+      console.log(
+        `[Database] Using Supabase${fallback ? " (with local JSON fallback)" : " (strict, no local fallback)"}.`
+      );
       dbInstance = new SupabaseDatabaseService(undefined, fallback);
     } else {
-      if (process.env.DEVELOPMENT_MOCK_MODE === "true") {
-        console.log("[Database] Running in explicit DEVELOPMENT_MOCK_MODE=true.");
-      } else {
-        console.warn(
-          "[Database] Supabase credentials not set or placeholder. Operating in fallback mode."
-        );
-      }
+      console.warn(
+        mock
+          ? "[Database] DEVELOPMENT_MOCK_MODE=true: using the local JSON store."
+          : "[Database] Supabase credentials not set: using the local JSON store (ephemeral on read-only hosts)."
+      );
       dbInstance = new PersistentDatabaseService();
     }
   }

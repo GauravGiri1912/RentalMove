@@ -5,7 +5,10 @@ import { ObservationUpdateSchema } from "@/lib/schemas";
 import {
   getAuthenticatedUserOrThrow,
   unauthorizedResponse,
+  forbiddenResponse,
 } from "@/lib/auth";
+import { observationWithProperty } from "@/lib/access";
+import { appendEvent } from "@/lib/events";
 
 /**
  * PATCH /api/observations/[id]
@@ -31,6 +34,10 @@ export async function PATCH(
         { status: 400 }
       );
     }
+
+    // The finding must belong to a property this user can access (was not checked).
+    const found = await observationWithProperty(user, id);
+    if (!found) return forbiddenResponse("You do not have access to this finding.");
 
     const db = getDatabase();
     const media = getMediaProvider();
@@ -68,6 +75,16 @@ export async function PATCH(
         console.warn("[Observations] Failed to sync managed tags to Cloudinary:", err);
       }
     }
+
+    await appendEvent({
+      property_id: found.propertyId,
+      type: "pipeline",
+      resource_id: updated.asset_id,
+      actor_id: user.id,
+      actor_name: user.name,
+      actor_role: user.role,
+      payload: { stage: "review", label: `Finding ${updated.review_status}`, detail: `${updated.category} · review_status=${updated.review_status} → Cloudinary` },
+    }).catch(() => {});
 
     return NextResponse.json(updated);
   } catch (err: any) {
