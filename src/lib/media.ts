@@ -1,25 +1,50 @@
 import fs from "fs";
 import path from "path";
 import { v2 as cloudinary } from "cloudinary";
+import {
+  thumbUrl,
+  reviewUrl,
+  vlmUrl,
+  originalUrl,
+  sharedUrl,
+  matchedUrl,
+  matchedTileUrl,
+  evidenceUrl,
+  TileSpec,
+  EvidenceBox,
+} from "./cloudinary-urls";
+import { diffTags } from "./tags";
 
-// Ensure .env.local is populated if running in Node scripts/tests
-if (typeof window === "undefined" && !process.env.CLOUDINARY_API_SECRET) {
-  try {
-    const envFile = path.resolve(process.cwd(), ".env.local");
-    if (fs.existsSync(envFile)) {
-      const content = fs.readFileSync(envFile, "utf8");
-      for (const line of content.split("\n")) {
+/**
+ * Load env files when running outside Next.js (vitest, tsx scripts). Next.js loads .env,
+ * .env.local etc. itself; here we mirror that so both files are honoured (.env.local wins).
+ */
+function loadEnvFiles() {
+  if (typeof window !== "undefined") return;
+  for (const name of [".env.local", ".env"]) {
+    try {
+      const envFile = path.resolve(process.cwd(), name);
+      if (!fs.existsSync(envFile)) continue;
+      // A key repeated within one file is won by the LAST line (same as dotenv / Next.js);
+      // values already in process.env, or loaded from an earlier file, are never overridden.
+      const parsed: Record<string, string> = {};
+      for (const line of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
         const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
-          const [key, ...vals] = trimmed.split("=");
-          if (!process.env[key.trim()]) {
-            process.env[key.trim()] = vals.join("=").trim();
-          }
-        }
+        if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
+        const idx = trimmed.indexOf("=");
+        const key = trimmed.slice(0, idx).trim();
+        if (key) parsed[key] = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
       }
+      for (const [key, value] of Object.entries(parsed)) {
+        if (process.env[key] === undefined) process.env[key] = value;
+      }
+    } catch {
+      /* best effort */
     }
-  } catch {}
+  }
 }
+
+loadEnvFiles();
 
 export function isCloudinaryConfigured(): boolean {
   return Boolean(
@@ -29,7 +54,7 @@ export function isCloudinaryConfigured(): boolean {
   );
 }
 
-function ensureCloudinaryConfig() {
+export function ensureCloudinaryConfig() {
   if (isCloudinaryConfigured()) {
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -80,18 +105,41 @@ export interface MediaProvider {
     publicId: string,
     metadata: Record<string, string | number | undefined>
   ): Promise<void>;
+  /** Make the asset's managed tags (issue:*, review:*, plain issue category) equal `desired`. */
+  syncManagedTags(publicId: string, desired: string[]): Promise<{ added: string[]; removed: string[] }>;
   search(expression: string, maxResults?: number): Promise<SearchMediaResult>;
+
+  // Delivery renditions — every one is a transformation of the untouched original.
   thumb(publicIdOrUrl: string): string;
   review(publicIdOrUrl: string): string;
   vlmCopy(publicIdOrUrl: string): string;
   fullOriginal(publicIdOrUrl: string): string;
+  /** Faces pixelated; use for anything shown through a share link. */
+  shared(publicIdOrUrl: string): string;
+  /** Same crop + exposure pipeline for both photos of a comparison. */
+  matched(publicIdOrUrl: string): string;
+  matchedTile(publicIdOrUrl: string, tile: TileSpec): string;
+  /** Image with finding boxes and labels drawn by Cloudinary in the URL itself. */
+  evidence(publicIdOrUrl: string, boxes: EvidenceBox[], opts?: { pixelateFaces?: boolean }): string;
+}
+
+/** URL renditions are provider-independent; both providers share this mixin. */
+abstract class RenditionMixin {
+  thumb = thumbUrl;
+  review = reviewUrl;
+  vlmCopy = vlmUrl;
+  fullOriginal = originalUrl;
+  shared = sharedUrl;
+  matched = matchedUrl;
+  matchedTile = matchedTileUrl;
+  evidence = evidenceUrl;
 }
 
 // =========================================================================
-// MOCK MEDIA PROVIDER
+// MOCK MEDIA PROVIDER (only when Cloudinary credentials are absent)
 // =========================================================================
 
-export class MockMediaProvider implements MediaProvider {
+export class MockMediaProvider extends RenditionMixin implements MediaProvider {
   private mockStore: Array<{
     public_id: string;
     secure_url: string;
@@ -103,72 +151,6 @@ export class MockMediaProvider implements MediaProvider {
     metadata: Record<string, any>;
     tags: string[];
   }> = [];
-
-  constructor() {
-    // Seed some initial mock assets for offline testing
-    this.mockStore = [
-      {
-        public_id: "properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01",
-        secure_url: "https://res.cloudinary.com/demo/image/upload/v1790679808/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg",
-        created_at: "2024-06-01T10:00:00Z",
-        format: "jpg",
-        width: 1920,
-        height: 1080,
-        bytes: 420000,
-        tags: ["rentalmove", "room:kitchen", "insp:move_in"],
-        metadata: {
-          property_id: "prop-381",
-          inspection_id: "insp-2024-move-in",
-          inspection_type: "move_in",
-          room: "kitchen",
-          capture_date: "2024-06-01",
-          issue_category: "scratch",
-          review_status: "accepted",
-          ai_confidence: 0.88,
-        },
-      },
-      {
-        public_id: "properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01",
-        secure_url: "https://res.cloudinary.com/demo/image/upload/v1790679810/properties/prop-381/insp-2024-move-in/bathroom/shower-tile-01.jpg",
-        created_at: "2024-06-01T10:15:00Z",
-        format: "jpg",
-        width: 1920,
-        height: 1080,
-        bytes: 380000,
-        tags: ["rentalmove", "room:bathroom", "insp:move_in"],
-        metadata: {
-          property_id: "prop-381",
-          inspection_id: "insp-2024-move-in",
-          inspection_type: "move_in",
-          room: "bathroom",
-          capture_date: "2024-06-01",
-          issue_category: "stain",
-          review_status: "accepted",
-          ai_confidence: 0.84,
-        },
-      },
-      {
-        public_id: "properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02",
-        secure_url: "https://res.cloudinary.com/demo/image/upload/v1790679812/properties/prop-381/insp-2025-periodic/kitchen/cabinet-base-02.jpg",
-        created_at: "2025-06-01T11:00:00Z",
-        format: "jpg",
-        width: 1920,
-        height: 1080,
-        bytes: 430000,
-        tags: ["rentalmove", "room:kitchen", "insp:inspection"],
-        metadata: {
-          property_id: "prop-381",
-          inspection_id: "insp-2025-periodic",
-          inspection_type: "inspection",
-          room: "kitchen",
-          capture_date: "2025-06-01",
-          issue_category: "scratch",
-          review_status: "accepted",
-          ai_confidence: 0.89,
-        },
-      },
-    ];
-  }
 
   isMock(): boolean {
     return true;
@@ -182,7 +164,7 @@ export class MockMediaProvider implements MediaProvider {
   }): Promise<UploadSignatureResult> {
     const timestamp = Math.round(Date.now() / 1000);
     const folder = `properties/${params.propertyId}/${params.inspectionId}/${params.room}`;
-    const tags = `rentalmove,room:${params.room},insp:${params.inspectionType}`;
+    const tags = `rentalmove,${params.room},${params.inspectionType},room:${params.room},insp:${params.inspectionType}`;
 
     return {
       signature: `mock_sig_${timestamp}`,
@@ -205,49 +187,17 @@ export class MockMediaProvider implements MediaProvider {
     }
   }
 
-  async search(expression: string, maxResults = 50): Promise<SearchMediaResult> {
-    // Basic filter matching on mock resources
-    const exprLower = expression.toLowerCase();
-    const filtered = this.mockStore.filter((res) => {
-      if (exprLower.includes("room=kitchen") && res.metadata.room !== "kitchen") return false;
-      if (exprLower.includes("room=bathroom") && res.metadata.room !== "bathroom") return false;
-      if (exprLower.includes("room=bedroom") && res.metadata.room !== "bedroom") return false;
-      if (exprLower.includes("room=living_room") && res.metadata.room !== "living_room") return false;
-      if (exprLower.includes("inspection_type=move_in") && res.metadata.inspection_type !== "move_in") return false;
-      if (exprLower.includes("inspection_type=move_out") && res.metadata.inspection_type !== "move_out") return false;
-      if (exprLower.includes("2024") && !res.metadata.capture_date?.includes("2024")) return false;
-      if (exprLower.includes("2025") && !res.metadata.capture_date?.includes("2025")) return false;
-      return true;
-    });
-
-    return {
-      total_count: filtered.length,
-      resources: filtered.slice(0, maxResults),
-    };
+  async syncManagedTags(publicId: string, desired: string[]) {
+    const item = this.mockStore.find((m) => m.public_id === publicId);
+    if (!item) return { added: [], removed: [] };
+    const { add, remove } = diffTags(item.tags, desired);
+    item.tags = [...item.tags.filter((t) => !remove.includes(t)), ...add];
+    return { added: add, removed: remove };
   }
 
-  thumb(publicIdOrUrl: string): string {
-    if (publicIdOrUrl.startsWith("http")) return publicIdOrUrl;
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo";
-    return `https://res.cloudinary.com/${cloudName}/image/upload/c_fill,w_400,h_300,f_auto,q_auto/${publicIdOrUrl}.jpg`;
-  }
-
-  review(publicIdOrUrl: string): string {
-    if (publicIdOrUrl.startsWith("http")) return publicIdOrUrl;
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo";
-    return `https://res.cloudinary.com/${cloudName}/image/upload/c_limit,w_1600,h_1200,f_auto,q_auto/${publicIdOrUrl}.jpg`;
-  }
-
-  vlmCopy(publicIdOrUrl: string): string {
-    if (publicIdOrUrl.startsWith("http")) return publicIdOrUrl;
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo";
-    return `https://res.cloudinary.com/${cloudName}/image/upload/c_limit,w_1024,q_auto,f_jpg/${publicIdOrUrl}.jpg`;
-  }
-
-  fullOriginal(publicIdOrUrl: string): string {
-    if (publicIdOrUrl.startsWith("http")) return publicIdOrUrl;
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo";
-    return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${publicIdOrUrl}`;
+  async search(_expression: string, _maxResults = 50): Promise<SearchMediaResult> {
+    // Offline mode has no media index: an honest empty result instead of canned assets.
+    return { total_count: 0, resources: [] };
   }
 }
 
@@ -255,7 +205,7 @@ export class MockMediaProvider implements MediaProvider {
 // REAL CLOUDINARY MEDIA PROVIDER
 // =========================================================================
 
-export class CloudinaryMediaProvider implements MediaProvider {
+export class CloudinaryMediaProvider extends RenditionMixin implements MediaProvider {
   isMock(): boolean {
     return false;
   }
@@ -300,8 +250,9 @@ export class CloudinaryMediaProvider implements MediaProvider {
     publicId: string,
     metadata: Record<string, string | number | undefined>
   ): Promise<void> {
-    // Cloudinary Admin API: metadata update
-    // e.g. update structured metadata values on asset
+    // Structured metadata is best-effort: fields must be provisioned in the account
+    // (scripts/provision-cloudinary.ts). Tags — not metadata — drive search, so a failure
+    // here must not fail the pipeline.
     try {
       const metadataPayload: Record<string, any> = {};
       for (const [k, v] of Object.entries(metadata)) {
@@ -309,13 +260,24 @@ export class CloudinaryMediaProvider implements MediaProvider {
           metadataPayload[k] = v;
         }
       }
-      // Note: Cloudinary Admin API uses update_metadata
       if (Object.keys(metadataPayload).length > 0) {
         await (cloudinary.uploader as any).update_metadata(metadataPayload, [publicId]);
       }
-    } catch (err) {
-      console.warn("Cloudinary updateMetadata warning:", err);
+    } catch (err: any) {
+      console.warn("[Media] updateMetadata warning:", err?.message || err?.error?.message || err);
     }
+  }
+
+  async syncManagedTags(publicId: string, desired: string[]) {
+    const resource = await cloudinary.api.resource(publicId);
+    const { add, remove } = diffTags(resource.tags || [], desired);
+    for (const tag of remove) {
+      await cloudinary.uploader.remove_tag(tag, [publicId]);
+    }
+    if (add.length > 0) {
+      await cloudinary.uploader.add_tag(add.join(","), [publicId]);
+    }
+    return { added: add, removed: remove };
   }
 
   async search(expression: string, maxResults = 50): Promise<SearchMediaResult> {
@@ -343,47 +305,6 @@ export class CloudinaryMediaProvider implements MediaProvider {
       })),
     };
   }
-
-  thumb(publicIdOrUrl: string): string {
-    if (publicIdOrUrl.startsWith("http")) return publicIdOrUrl;
-    return cloudinary.url(publicIdOrUrl, {
-      transformation: [
-        { width: 400, height: 300, crop: "fill" },
-        { fetch_format: "auto", quality: "auto" },
-      ],
-      secure: true,
-    });
-  }
-
-  review(publicIdOrUrl: string): string {
-    if (publicIdOrUrl.startsWith("http")) return publicIdOrUrl;
-    return cloudinary.url(publicIdOrUrl, {
-      transformation: [
-        { width: 1600, height: 1200, crop: "limit" },
-        { fetch_format: "auto", quality: "auto" },
-      ],
-      secure: true,
-    });
-  }
-
-  vlmCopy(publicIdOrUrl: string): string {
-    if (publicIdOrUrl.startsWith("http")) return publicIdOrUrl;
-    return cloudinary.url(publicIdOrUrl, {
-      transformation: [
-        { width: 1024, crop: "limit" },
-        { fetch_format: "jpg", quality: "auto" },
-      ],
-      secure: true,
-    });
-  }
-
-  fullOriginal(publicIdOrUrl: string): string {
-    if (publicIdOrUrl.startsWith("http")) return publicIdOrUrl;
-    return cloudinary.url(publicIdOrUrl, {
-      transformation: [{ fetch_format: "auto", quality: "auto" }],
-      secure: true,
-    });
-  }
 }
 
 // =========================================================================
@@ -402,4 +323,14 @@ export function getMediaProvider(): MediaProvider {
     }
   }
   return mediaInstance;
+}
+
+/**
+ * Signed delivery URL for a dynamic recipe (server-only: uses the API secret). With Strict
+ * Transformations enabled, Cloudinary renders only named transformations and signed URLs,
+ * so an edited URL (e.g. someone adding e_gen_remove) is refused instead of billed.
+ */
+export function signedDeliveryUrl(publicId: string, transformation: string): string {
+  ensureCloudinaryConfig();
+  return cloudinary.url(publicId, { raw_transformation: transformation, sign_url: true, secure: true });
 }

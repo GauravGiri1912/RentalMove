@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 import { getDatabase } from "../src/lib/db";
 import { getMediaProvider } from "../src/lib/media";
 import { registerAsset } from "../src/lib/pipeline";
@@ -9,8 +9,29 @@ import {
 } from "../src/lib/schemas";
 import { buildCloudinarySearchExpression } from "../src/lib/search";
 
+/** Live services are required unless the run is explicitly offline. */
+const OFFLINE = process.env.OFFLINE_TESTS === "1";
+
 describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => {
   const db = getDatabase();
+  const uploadedPublicIds: string[] = [];
+
+  // Anything a test uploads to the real Cloudinary account is removed afterwards.
+  afterAll(async () => {
+    if (uploadedPublicIds.length === 0) return;
+    const { v2: cloudinary } = await import("cloudinary");
+    for (const id of uploadedPublicIds) {
+      await cloudinary.uploader.destroy(id).catch(() => {});
+    }
+  });
+
+  it("0. live services are configured (Cloudinary + vision model)", async () => {
+    if (OFFLINE) return;
+    const { isCloudinaryConfigured } = await import("../src/lib/media");
+    const { getVisionProvider } = await import("../src/lib/vision");
+    expect(isCloudinaryConfigured(), "Cloudinary credentials missing (.env / .env.local)").toBe(true);
+    expect(getVisionProvider().name, "vision provider must be the real model, not mock").toMatch(/^groq:/);
+  });
 
   // 1. Authentication
   it("1. authenticates tenant and owner users properly", async () => {
@@ -59,6 +80,9 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
 
     const fetched = await db.getProperty(property.id);
     expect(fetched?.address_label).toBe("456 Test Blvd");
+
+    // Clean up test property to prevent test junk pollution
+    await (db as any).deleteProperty?.(property.id);
   });
 
   // 4. Inspection Creation
@@ -118,6 +142,8 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
 
     const { isCloudinaryConfigured } = await import("../src/lib/media");
 
+    if (!OFFLINE) expect(isCloudinaryConfigured(), "Cloudinary must be configured for this test").toBe(true);
+
     if (isCloudinaryConfigured()) {
       // 4. Perform actual Cloudinary Upload via FormData when live credentials present
       const formData = new FormData();
@@ -143,6 +169,7 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
       const cldData = await uploadRes.json();
 
       expect(cldData.public_id).toBeDefined();
+      uploadedPublicIds.push(cldData.public_id);
       expect(cldData.public_id).toMatch(/^properties\/prop-381\/insp-2024-move-in\/kitchen\//);
       expect(cldData.secure_url).toMatch(/^https:\/\/res\.cloudinary\.com\//);
       expect(cldData.etag).toBeDefined();
@@ -173,6 +200,10 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
       expect(dbAsset?.id).toBe(asset.id);
       expect(dbAsset?.etag).toBe(cldData.etag);
       expect(dbAsset?.sha256).toBe(computedSha256);
+
+      // Clean up test asset so Vitest runs do not leave junk behind
+      await cloudinary.uploader.destroy(cldData.public_id).catch(() => {});
+      await (db as any).deleteAsset?.(asset.id);
     } else {
       // Offline/placeholder mode: validate cryptographic SHA-256 and ingestion contract
       expect(signResult.signature).toBeDefined();
@@ -200,26 +231,29 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
   }, 25000);
 
   // 9. AI Vision Model Image Analysis
-  it("9. runs real vision analysis on Cloudinary image using configured VLM", async () => {
+  it("9. runs real vision analysis on a Cloudinary image and returns only well-formed, filtered findings", async () => {
     const { getVisionProvider } = await import("../src/lib/vision");
+    const { MAX_BOX_AREA, MIN_CONFIDENCE } = await import("../src/lib/observation-filter");
     const vision = getVisionProvider();
-    const testCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME || "demo";
-    const testImageUrl = `https://res.cloudinary.com/${testCloudName}/image/upload/v1/properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01.jpg`;
+    if (!OFFLINE) expect(vision.name).toMatch(/^groq:/);
 
+    const media = getMediaProvider();
     const analysis = await vision.analyzeImage({
-      imageUrl: testImageUrl,
+      imageUrl: media.vlmCopy("properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-01"),
       roomHint: "kitchen",
     });
 
-    expect(analysis).toBeDefined();
     expect(analysis.room_guess).toBe("kitchen");
-    expect(analysis.observations.length).toBeGreaterThanOrEqual(1);
-
-    // Validate with strict schema
-    const parsed = ObservationItemSchema.safeParse(analysis.observations[0]);
-    expect(parsed.success).toBe(true);
-    expect(analysis.observations[0].description).toBeDefined();
-  }, 25000);
+    expect(analysis.image_quality).toBe("ok");
+    // A model may legitimately find nothing; what it returns must be valid and non-hallucinated.
+    for (const obs of analysis.observations) {
+      expect(ObservationItemSchema.safeParse(obs).success).toBe(true);
+      expect(obs.confidence).toBeGreaterThanOrEqual(MIN_CONFIDENCE);
+      const [x1, y1, x2, y2] = obs.bbox;
+      expect((x2 - x1) * (y2 - y1)).toBeLessThanOrEqual(MAX_BOX_AREA);
+      expect(obs.description).not.toMatch(/analysis unavailable/i);
+    }
+  }, 60000);
 
   // 10. Review Persistence
   it("10. updates and persists observation review status and reviewer notes", async () => {
@@ -298,36 +332,31 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
   });
 
   // 15. NL Query Parsing
-  it("15. parses natural language search queries into structured criteria", () => {
-    const query = "Show kitchen scratches from move in";
-    // Check keyword matching logic
-    const lower = query.toLowerCase();
-    const hasKitchen = lower.includes("kitchen");
-    const hasScratch = lower.includes("scratch");
-    const hasMoveIn = lower.includes("move in");
+  it("15. parses a natural language search query into a validated structured filter", async () => {
+    const { getVisionProvider } = await import("../src/lib/vision");
+    const filter = await getVisionProvider().parseSearchQuery("Show kitchen scratches from move in");
 
-    expect(hasKitchen).toBe(true);
-    expect(hasScratch).toBe(true);
-    expect(hasMoveIn).toBe(true);
-  });
+    expect(SearchFilterSchema.safeParse(filter).success).toBe(true);
+    expect(filter.room).toBe("kitchen");
+    expect(filter.issue_category).toBe("scratch");
+    expect(filter.inspection_type).toBe("move_in");
+  }, 60000);
 
   // 16. Report Generation
-  it("16. generates structured inspection report with neutral language", async () => {
+  it("16. report data contains no blame / liability / cost language", async () => {
+    const { BLAME_WORDS } = await import("../src/lib/copy");
     const timeline = await db.getTimeline("prop-381");
-    const targetInspection =
-      timeline.inspections.find((i) => i.assets && i.assets.length > 0) || timeline.inspections[0];
-
-    expect(targetInspection).toBeDefined();
-    const reportData = {
-      property_id: "prop-381",
-      inspection_id: targetInspection.id,
-      inspection_type: targetInspection.type,
-      asset_count: targetInspection.assets.length,
-      observations_disclaimer: "AI-assisted observations are non-binding visual references requiring human verification.",
-    };
-
-    expect(reportData.asset_count).toBeGreaterThanOrEqual(1);
-    expect(reportData.observations_disclaimer).toContain("non-binding");
+    const texts = timeline.inspections.flatMap((i) =>
+      i.assets.flatMap((a) => a.observations.map((o) => o.description))
+    );
+    expect(texts.length).toBeGreaterThanOrEqual(1);
+    for (const text of texts) {
+      for (const word of BLAME_WORDS) {
+        expect(text.toLowerCase(), `"${word}" found in: ${text}`).not.toMatch(
+          new RegExp("\\b" + word + "\\b")
+        );
+      }
+    }
   }, 20000);
 
   // 17. Share Token Validation
@@ -349,6 +378,9 @@ describe("RentalMove Comprehensive Acceptance Suite (18 Critical Tests)", () => 
     // Validate revoked token returns null
     const revokedLink = await db.getShareLink(token);
     expect(revokedLink).toBeNull();
+
+    // Clean up test token so it does not pollute store
+    await (db as any).deleteShareLink?.(token);
   });
 
   // 18. Authorization

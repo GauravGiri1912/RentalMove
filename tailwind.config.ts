@@ -1,59 +1,55 @@
 import type { Config } from "tailwindcss";
 
-const config: Config = {
-  content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
+export default {
   darkMode: "class",
+  content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-          hover: "hsl(var(--primary-hover))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        status: {
-          success: "hsl(var(--status-success))",
-          warning: "hsl(var(--status-warning))",
-          info: "hsl(var(--status-info))",
-          danger: "hsl(var(--status-danger))",
-        }
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        bg: token("bg"),
+        surface: token("surface"),
+        "surface-2": token("surface-2"),
+        line: token("line"),
+        ink: token("ink"),
+        "ink-2": token("ink-2"),
+        "ink-3": token("ink-3"),
+        signal: token("signal"),
+        ok: token("ok"),
+        warn: token("warn"),
+        danger: token("danger"),
+        info: token("info"),
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "ui-serif", "Georgia", "serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+      },
+      borderRadius: { xl: "14px", "2xl": "20px" },
+      boxShadow: {
+        card: "0 1px 0 rgb(var(--line) / 0.6), 0 1px 2px rgb(0 0 0 / 0.04)",
+        lift: "0 12px 40px -12px rgb(0 0 0 / 0.25), 0 2px 6px rgb(0 0 0 / 0.06)",
+      },
+      keyframes: {
+        "fade-up": { from: { opacity: "0", transform: "translateY(6px)" }, to: { opacity: "1", transform: "none" } },
+        scan: { "0%": { transform: "translateY(-100%)" }, "100%": { transform: "translateY(100%)" } },
+        pulse_ring: { "0%": { boxShadow: "0 0 0 0 rgb(var(--signal) / 0.45)" }, "100%": { boxShadow: "0 0 0 10px rgb(var(--signal) / 0)" } },
+        shimmer: { "100%": { transform: "translateX(100%)" } },
+        "sweep-clip": { "0%, 100%": { clipPath: "inset(0 72% 0 0)" }, "50%": { clipPath: "inset(0 22% 0 0)" } },
+        "sweep-line": { "0%, 100%": { left: "28%" }, "50%": { left: "78%" } },
+        marquee: { to: { transform: "translateX(-50%)" } },
+      },
+      animation: {
+        "fade-up": "fade-up .45s cubic-bezier(.2,.7,.2,1) both",
+        scan: "scan 1.8s cubic-bezier(.4,0,.2,1) infinite",
+        "pulse-ring": "pulse_ring 1.6s ease-out infinite",
+        shimmer: "shimmer 1.6s infinite",
+        "sweep-clip": "sweep-clip 7s cubic-bezier(.65,0,.35,1) infinite",
+        "sweep-line": "sweep-line 7s cubic-bezier(.65,0,.35,1) infinite",
+        marquee: "marquee 40s linear infinite",
       },
     },
   },
   plugins: [],
-};
-
-export default config;
+} satisfies Config;

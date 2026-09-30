@@ -1,60 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDatabase } from "@/lib/db";
-import {
-  getAuthenticatedUserOrThrow,
-  canUserAccessProperty,
-  forbiddenResponse,
-  unauthorizedResponse,
-} from "@/lib/auth";
 import crypto from "crypto";
-import { z } from "zod";
-
-const CreateShareLinkSchema = z.object({
-  property_id: z.string().min(1),
-  inspection_id: z.string().optional(),
-});
+import { getDatabase } from "@/lib/db";
+import { getAuthenticatedUserOrThrow, canUserAccessProperty, forbiddenResponse, unauthorizedResponse } from "@/lib/auth";
+import { ShareCreateSchema } from "@/lib/schemas";
+import { appendEvent } from "@/lib/events";
 
 /**
- * POST /api/share
- * Creates a cryptographically random share link for a property/inspection.
- * Requires authentication and property access authorization.
+ * POST /api/share — creates an unguessable, expiring report link (256-bit token).
+ * Optional `recipient` is burned into every shared image as a watermark (leak tracing).
  */
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUserOrThrow(req);
-
-    const body = await req.json();
-    const parsed = CreateShareLinkSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid request", details: parsed.error.format() },
-        { status: 400 }
-      );
-    }
-
-    const { property_id, inspection_id } = parsed.data;
-
-    // Verify user can access this property
-    const authorized = await canUserAccessProperty(user, property_id);
-    if (!authorized) {
+    const parsed = ShareCreateSchema.safeParse(await req.json());
+    if (!parsed.success) return NextResponse.json({ error: "Invalid request", details: parsed.error.format() }, { status: 400 });
+    const { property_id, inspection_id, expires_in_days, recipient } = parsed.data;
+    if (!(await canUserAccessProperty(user, property_id))) {
       return forbiddenResponse("You do not have authorization to create share links for this property.");
     }
-
-    // Generate cryptographically secure token
-    const token = crypto.randomBytes(32).toString("hex"); // 256-bit entropy
-    const db = getDatabase();
-    await db.createShareLink(property_id, token, inspection_id, user.id);
-
-    return NextResponse.json({
-      token,
-      share_url: `${process.env.NEXT_PUBLIC_APP_URL}/report?token=${token}`,
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + expires_in_days * 864e5).toISOString();
+    const link = await getDatabase().createShareLink(property_id, token, inspection_id, user.id, expiresAt);
+    await appendEvent({
+      property_id,
+      type: "share",
+      resource_id: link.id ?? token.slice(0, 12),
+      actor_id: user.id,
+      actor_name: user.name,
+      actor_role: user.role,
+      payload: { token_hint: token.slice(0, 6), recipient: recipient ?? null, expires_at: expiresAt, pixelate: true },
     });
+    const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "";
+    return NextResponse.json({ token, expires_at: expiresAt, recipient: recipient ?? null, share_url: `${origin}/r/${token}` }, { status: 201 });
   } catch (err: any) {
     if (err?.statusCode === 401) return unauthorizedResponse();
-    return NextResponse.json(
-      { error: "Failed to generate share link", message: err?.message || String(err) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate share link", message: err?.message || String(err) }, { status: 500 });
   }
 }

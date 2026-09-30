@@ -13,7 +13,7 @@ import { createServerClient } from "@supabase/ssr";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-/** Routes that require authentication */
+/** App routes that require authentication. Public: /welcome, /login, /signup, /verify, /r/:token, /h/:token. */
 const PROTECTED_ROUTES = [
   "/capture",
   "/review",
@@ -23,6 +23,11 @@ const PROTECTED_ROUTES = [
   "/search",
   "/report",
   "/properties",
+  "/map",
+  "/memory",
+  "/relet",
+  "/lab",
+  "/repairs",
 ];
 
 /** Routes that should redirect authenticated users to the dashboard */
@@ -52,10 +57,19 @@ export async function middleware(req: NextRequest) {
     },
   });
 
-  // IMPORTANT: Always call getUser() (not getSession()) to validate the JWT
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Detect session via getUser() or getClaims()
+  let user: any = null;
+  const { data: userData } = await supabase.auth.getUser();
+  if (userData?.user) {
+    user = userData.user;
+  } else {
+    try {
+      const { data } = await supabase.auth.getClaims();
+      if (data?.claims?.sub) {
+        user = data.claims;
+      }
+    } catch {}
+  }
 
   const { pathname } = req.nextUrl;
 
@@ -64,8 +78,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
+  // Signed-out visitors to the app root see the landing page instead of a login wall.
+  if (!user && pathname === "/") {
+    return NextResponse.redirect(new URL("/welcome", req.url));
+  }
+
   // Redirect unauthenticated users away from protected pages
-  if (!user && PROTECTED_ROUTES.some((r) => pathname.startsWith(r))) {
+  if (!user && PROTECTED_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`))) {
     const redirectUrl = new URL("/login", req.url);
     redirectUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(redirectUrl);
@@ -84,6 +103,6 @@ export const config = {
      * - public assets
      * - api routes (handled per-route)
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

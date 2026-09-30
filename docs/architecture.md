@@ -10,7 +10,7 @@ graph TD
     Client["Next.js Web Client<br/>(Tenant / Property Manager)"]
     API["Next.js App Router API Routes<br/>(Backend)"]
     Cloudinary["Cloudinary Platform<br/>(Signed Uploads, Structured Metadata, Transformations, Search API)"]
-    VLM["Vision Provider<br/>(Gemini / Anthropic / Deterministic Mock)"]
+    VLM["Vision Provider<br/>(Groq Qwen vision; Deterministic Mock only when VISION_PROVIDER=mock)"]
     DB["Supabase Postgres / Resilient Data Store<br/>(Assets, Inspections, Observations, Realtime)"]
 
     Client -->|1. Request signed upload params| API
@@ -54,4 +54,4 @@ graph TD
 - Observations are strictly assistive notes. They never conclude legal fault, deposit forfeiture, or repair liability.
 - All observation descriptions are filtered against `BLAME_WORDS` (`fault`, `negligent`, `deposit`, `damage penalty`, etc.) in `copy.ts`.
 - Low-confidence observations are explicitly flagged with `Review required`.
-- Originals are strictly immutable, verified via cryptographic SHA-256 hashing.
+- Originals are never modified by the app; a SHA-256 fingerprint and the Cloudinary ETag are recorded so later changes to the file can be detected (not legal proof of authenticity).

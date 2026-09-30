@@ -31,13 +31,14 @@ export function buildCloudinarySearchExpression(
     clauses.push(`tags:${filter.issue_category}`);
   }
 
-  if (filter.date_from) {
-    clauses.push(`created_at>=${filter.date_from}`);
+  if (filter.review_status) {
+    // Tag values containing ":" must be quoted or Cloudinary rejects the query.
+    clauses.push(`tags:"review:${filter.review_status}"`);
   }
 
-  if (filter.date_to) {
-    clauses.push(`created_at<=${filter.date_to}`);
-  }
+  // Date filters are NOT part of the Cloudinary expression: Cloudinary's created_at is the
+  // upload time, not when the inspection photo was taken. They are applied to the stored
+  // capture date by filterByCaptureDate() after the search.
 
   if (filter.free_text) {
     const sanitizedText = filter.free_text.replace(/[^a-zA-Z0-9_-]/g, "").trim();
@@ -50,4 +51,25 @@ export function buildCloudinarySearchExpression(
     expression: clauses.join(" AND "),
     validatedFilter: filter,
   };
+}
+
+/**
+ * Keeps only resources whose stored capture date falls in [date_from, date_to] (inclusive,
+ * whole days). Resources with no known capture date are excluded when a date filter is set,
+ * because their date cannot be established.
+ */
+export function filterByCaptureDate<T extends { public_id: string }>(
+  resources: T[],
+  capturedAtByPublicId: Map<string, string>,
+  filter: Pick<SearchFilter, "date_from" | "date_to">
+): T[] {
+  if (!filter.date_from && !filter.date_to) return resources;
+  const from = filter.date_from ? Date.parse(`${filter.date_from}T00:00:00.000Z`) : -Infinity;
+  const to = filter.date_to ? Date.parse(`${filter.date_to}T23:59:59.999Z`) : Infinity;
+  return resources.filter((r) => {
+    const captured = capturedAtByPublicId.get(r.public_id);
+    if (!captured) return false;
+    const t = Date.parse(captured);
+    return Number.isFinite(t) && t >= from && t <= to;
+  });
 }

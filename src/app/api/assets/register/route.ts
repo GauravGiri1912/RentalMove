@@ -45,3 +45,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+/** Vision calls can take several seconds; allow the host to keep the function alive. */
+export const maxDuration = 60;

@@ -8,6 +8,7 @@
  */
 
 import crypto from "crypto";
+import { sha256HexAny } from "./sha256";
 
 /** Cloudinary domains that are safe to fetch from server-side */
 const ALLOWED_FETCH_DOMAINS = ["res.cloudinary.com", "res-1.cloudinary.com", "res-2.cloudinary.com"];
@@ -23,10 +24,7 @@ export function computeSha256(data: Buffer | string): string {
  * Computes SHA-256 hash from a File or Blob in the browser
  */
 export async function computeBrowserFileSha256(file: Blob): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return sha256HexAny(await file.arrayBuffer());
 }
 
 /**

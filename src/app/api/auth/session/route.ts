@@ -9,10 +9,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { createServerClient } from "@supabase/ssr";
-import { authRateLimit } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
-  const rl = authRateLimit(req);
+  // Reading the session happens on every page load; it gets a generous limit of its own.
+  // Credential endpoints (sign-in / sign-up) keep the strict auth limit.
+  const rl = rateLimit(req, { limit: 120, windowMs: 60_000, prefix: "session" });
   if (!rl.success) return rl.response;
 
   try {

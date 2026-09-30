@@ -1,0 +1,210 @@
+{
+  "generated_at": "2026-09-30T06:58:44.980Z",
+  "summary": {
+    "as captured": {
+      "recall": 0.889,
+      "meanIou": 0.492,
+      "falseRegions": 0,
+      "falseRegionsOnNoChangePair": 0,
+      "meanMs": 1183
+    },
+    "handheld re-shot": {
+      "recall": 0.667,
+      "meanIou": 0.341,
+      "falseRegions": 0,
+      "falseRegionsOnNoChangePair": 0,
+      "meanMs": 1011
+    },
+    "vlm": {
+      "meanModelBoxIou": 0.004,
+      "meanGroundedIou": 0.337
+    }
+  },
+  "rows": [
+    {
+      "pair": "kitchen 2025",
+      "condition": "as captured",
+      "changes": 0,
+      "detected": 0,
+      "meanIou": 1,
+      "falseRegions": 0,
+      "ms": 1767,
+      "alignScore": 0.6334543151687515
+    },
+    {
+      "pair": "kitchen 2025",
+      "condition": "handheld re-shot",
+      "changes": 0,
+      "detected": 0,
+      "meanIou": 1,
+      "falseRegions": 0,
+      "ms": 1733,
+      "alignScore": 0.5140829258475882
+    },
+    {
+      "pair": "kitchen 2026",
+      "condition": "as captured",
+      "changes": 2,
+      "detected": 2,
+      "meanIou": 0.2790781176192934,
+      "falseRegions": 0,
+      "ms": 1262,
+      "alignScore": 0.4989574845134582
+    },
+    {
+      "pair": "kitchen 2026",
+      "condition": "handheld re-shot",
+      "changes": 2,
+      "detected": 1,
+      "meanIou": 0.023961576844925277,
+      "falseRegions": 0,
+      "ms": 879,
+      "alignScore": 0.46292004711339885
+    },
+    {
+      "pair": "bathroom 2025",
+      "condition": "as captured",
+      "changes": 1,
+      "detected": 1,
+      "meanIou": 0.17921084847087165,
+      "falseRegions": 0,
+      "ms": 987,
+      "alignScore": 0.506514017233763
+    },
+    {
+      "pair": "bathroom 2025",
+      "condition": "handheld re-shot",
+      "changes": 1,
+      "detected": 1,
+      "meanIou": 0.17804588632553697,
+      "falseRegions": 0,
+      "ms": 891,
+      "alignScore": 0.5525567191307063
+    },
+    {
+      "pair": "bathroom 2026",
+      "condition": "as captured",
+      "changes": 2,
+      "detected": 2,
+      "meanIou": 0.8816190887729178,
+      "falseRegions": 0,
+      "ms": 1195,
+      "alignScore": 0.4907889539546303
+    },
+    {
+      "pair": "bathroom 2026",
+      "condition": "handheld re-shot",
+      "changes": 2,
+      "detected": 1,
+      "meanIou": 0.4417389807919572,
+      "falseRegions": 0,
+      "ms": 828,
+      "alignScore": 0.3935229033863207
+    },
+    {
+      "pair": "bedroom 2026",
+      "condition": "as captured",
+      "changes": 2,
+      "detected": 2,
+      "meanIou": 0.6332906911673978,
+      "falseRegions": 0,
+      "ms": 902,
+      "alignScore": 0.4583743332778598
+    },
+    {
+      "pair": "bedroom 2026",
+      "condition": "handheld re-shot",
+      "changes": 2,
+      "detected": 2,
+      "meanIou": 0.6364693022610806,
+      "falseRegions": 0,
+      "ms": 975,
+      "alignScore": 0.42856301203301816
+    },
+    {
+      "pair": "living_room 2026",
+      "condition": "as captured",
+      "changes": 2,
+      "detected": 1,
+      "meanIou": 0.3305545430156616,
+      "falseRegions": 0,
+      "ms": 986,
+      "alignScore": 0.6635847726260152
+    },
+    {
+      "pair": "living_room 2026",
+      "condition": "handheld re-shot",
+      "changes": 2,
+      "detected": 1,
+      "meanIou": 0.344008830596046,
+      "falseRegions": 0,
+      "ms": 761,
+      "alignScore": 0.4666480198291666
+    }
+  ],
+  "vlm": [
+    {
+      "pair": "kitchen 2026",
+      "change": "cluster of fine scratches",
+      "modelBoxIou": 0.033,
+      "groundedIou": 0.048,
+      "modelFindings": 2
+    },
+    {
+      "pair": "kitchen 2026",
+      "change": "small chip",
+      "modelBoxIou": 0,
+      "groundedIou": 0,
+      "modelFindings": 2
+    },
+    {
+      "pair": "bathroom 2025",
+      "change": "early grout discolouration",
+      "modelBoxIou": 0,
+      "groundedIou": 0.179,
+      "modelFindings": 2
+    },
+    {
+      "pair": "bathroom 2026",
+      "change": "grout discolouration spread",
+      "modelBoxIou": 0,
+      "groundedIou": 0.877,
+      "modelFindings": 3
+    },
+    {
+      "pair": "bathroom 2026",
+      "change": "hairline floor-tile crack",
+      "modelBoxIou": 0,
+      "groundedIou": 0,
+      "modelFindings": 3
+    },
+    {
+      "pair": "bedroom 2026",
+      "change": "small wall dent",
+      "modelBoxIou": 0,
+      "groundedIou": 0.654,
+      "modelFindings": 3
+    },
+    {
+      "pair": "bedroom 2026",
+      "change": "scuff marks on lower wall",
+      "modelBoxIou": 0,
+      "groundedIou": 0.613,
+      "modelFindings": 3
+    },
+    {
+      "pair": "living_room 2026",
+      "change": "floor scratches",
+      "modelBoxIou": 0,
+      "groundedIou": 0,
+      "modelFindings": 2
+    },
+    {
+      "pair": "living_room 2026",
+      "change": "wall mark",
+      "modelBoxIou": 0,
+      "groundedIou": 0.661,
+      "modelFindings": 2
+    }
+  ]
+}

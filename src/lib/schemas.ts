@@ -52,6 +52,8 @@ export const ObservationItemSchema = z.object({
   description: z.string().min(1),
   confidence: z.number().min(0).max(1),
   bbox: BoundingBoxSchema,
+  /** The model's own "I am not sure about this one" (lib/certainty.ts). */
+  unsure: z.boolean().optional(),
 });
 export type ObservationItem = z.infer<typeof ObservationItemSchema>;
 
@@ -59,12 +61,25 @@ export const ImageAnalysisSchema = z.object({
   room_guess: RoomCategoryEnum,
   image_quality: ImageQualityEnum,
   observations: z.array(ObservationItemSchema).default([]),
+  /** Room areas visible in the photo (lib/coverage.ts vocabulary). */
+  visible_areas: z.array(z.string()).optional(),
+  /** False when the model cannot judge the photo (glare, too far, view blocked…). */
+  can_assess: z.boolean().optional(),
+  assess_note: z.string().max(200).optional(),
 });
 export type ImageAnalysis = z.infer<typeof ImageAnalysisSchema>;
 
 export const ComparisonChangeSchema = z.object({
   description: z.string(),
   confidence: z.number().min(0).max(1),
+  /** Which part of the matched frame the change was seen in, e.g. "top-left". */
+  region: z.string().optional(),
+  /** new = not visible before; worsened = visible before, more now; pixel = pixel change the model did not describe. */
+  kind: z.enum(["new", "worsened", "pixel"]).optional(),
+  /** Location in the current photo, normalised [x1,y1,x2,y2]. */
+  bbox: BoundingBoxSchema.optional(),
+  /** True when the box was snapped onto a region whose pixels actually changed. */
+  grounded: z.boolean().optional(),
 });
 
 export const ComparisonResultSchema = z.object({
@@ -243,6 +258,15 @@ export const AssetRegisterRequestSchema = z.object({
   captured_at: z.string().optional(),
 });
 export type AssetRegisterRequest = z.infer<typeof AssetRegisterRequestSchema>;
+
+export const ShareCreateSchema = z.object({
+  property_id: z.string().min(1),
+  inspection_id: z.string().optional(),
+  expires_in_days: z.number().int().min(1).max(90).default(14),
+  /** Printed into every shared image (per-recipient watermark) so a leak can be traced. */
+  recipient: z.string().trim().min(1).max(40).optional(),
+});
+export type ShareCreate = z.infer<typeof ShareCreateSchema>;
 
 export const ObservationUpdateSchema = z.object({
   review_status: ReviewStatusEnum,

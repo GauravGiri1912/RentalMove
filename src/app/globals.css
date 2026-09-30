@@ -2,78 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design tokens. One accent only — "signal" orange — reserved for things the
+ * AI found. Everything else is ink on paper so findings are what the eye hits.
+ */
 :root {
-  --background: 210 20% 98%;
-  --foreground: 220 20% 12%;
-
-  --card: 0 0% 100%;
-  --card-foreground: 220 20% 12%;
-
-  --primary: 215 90% 48%;
-  --primary-foreground: 0 0% 100%;
-  --primary-hover: 215 90% 42%;
-
-  --secondary: 215 20% 93%;
-  --secondary-foreground: 220 20% 18%;
-
-  --muted: 215 20% 95%;
-  --muted-foreground: 215 15% 45%;
-
-  --accent: 172 75% 42%;
-  --accent-foreground: 0 0% 100%;
-
-  --border: 215 20% 88%;
-  --input: 215 20% 88%;
-  --ring: 215 90% 48%;
-
-  --radius: 0.625rem;
-
-  --status-success: 152 65% 42%;
-  --status-warning: 38 92% 50%;
-  --status-info: 210 90% 52%;
-  --status-danger: 0 78% 54%;
+  --bg: 246 244 239;
+  --surface: 255 255 255;
+  --surface-2: 240 237 231;
+  --line: 226 222 214;
+  --ink: 20 21 24;
+  --ink-2: 78 80 86;
+  --ink-3: 130 131 136;
+  --signal: 240 83 28;
+  --ok: 28 132 82;
+  --warn: 183 121 10;
+  --danger: 205 45 45;
+  --info: 45 98 220;
+  /* Chart series — validated (dataviz validator, light surface) */
+  --chart-new: 224 80 28;
+  --chart-pre: 79 116 179;
+  color-scheme: light;
 }
 
 .dark {
-  --background: 222 25% 10%;
-  --foreground: 210 20% 96%;
-
-  --card: 222 24% 14%;
-  --card-foreground: 210 20% 96%;
-
-  --primary: 215 95% 60%;
-  --primary-foreground: 222 25% 10%;
-  --primary-hover: 215 95% 65%;
-
-  --secondary: 220 20% 20%;
-  --secondary-foreground: 210 20% 90%;
-
-  --muted: 220 20% 18%;
-  --muted-foreground: 215 15% 65%;
-
-  --accent: 172 75% 48%;
-  --accent-foreground: 222 25% 10%;
-
-  --border: 220 20% 22%;
-  --input: 220 20% 22%;
-  --ring: 215 95% 60%;
+  --bg: 11 12 14;
+  --surface: 19 20 23;
+  --surface-2: 27 29 33;
+  --line: 40 42 48;
+  --ink: 236 234 229;
+  --ink-2: 168 168 170;
+  --ink-3: 116 117 122;
+  --signal: 255 107 53;
+  --ok: 64 190 128;
+  --warn: 232 170 50;
+  --danger: 240 90 90;
+  --info: 110 150 255;
+  /* Chart series — validated against the dark surface */
+  --chart-new: 227 97 43;
+  --chart-pre: 100 136 202;
+  color-scheme: dark;
 }
 
-body {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-  font-feature-settings: "rlig" 1, "calt" 1;
+@layer base {
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { @apply bg-bg text-ink font-sans; font-feature-settings: "ss01", "cv11"; }
+  ::selection { background: rgb(var(--signal) / 0.22); }
+  :focus-visible { outline: 2px solid rgb(var(--signal)); outline-offset: 2px; border-radius: 6px; }
+  * { scrollbar-width: thin; scrollbar-color: rgb(var(--line)) transparent; }
 }
 
-/* Glassmorphism utility */
-.glass {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+@layer components {
+  .card { @apply bg-surface border border-line rounded-2xl shadow-card; }
+  .eyebrow { @apply font-mono text-[10.5px] uppercase tracking-[0.14em] text-ink-3; }
+  .h-display { @apply font-display font-normal tracking-[-0.01em] leading-[1.02]; }
+  .btn { @apply inline-flex items-center justify-center gap-2 h-9 px-3.5 rounded-lg text-[13px] font-medium transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none; }
+  .btn-primary { @apply btn bg-ink text-bg hover:bg-ink/90; }
+  .btn-ghost { @apply btn text-ink-2 hover:bg-surface-2 hover:text-ink; }
+  .btn-outline { @apply btn border border-line bg-surface hover:bg-surface-2 text-ink; }
+  .btn-signal { @apply btn bg-signal text-white hover:brightness-110; }
+  .chip { @apply inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-line bg-surface text-[11.5px] text-ink-2 whitespace-nowrap; }
+  .kbd { @apply inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded border border-line bg-surface-2 font-mono text-[10.5px] text-ink-2 shadow-[inset_0_-1px_0_rgb(var(--line))]; }
+  .input { @apply h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-signal/40; }
+  .divider { @apply h-px bg-line; }
+  .hairline-grid {
+    background-image: linear-gradient(rgb(var(--line) / .7) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--line) / .7) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .checker {
+    background-color: rgb(var(--surface-2));
+    background-image: linear-gradient(45deg, rgb(var(--line)) 25%, transparent 25%), linear-gradient(-45deg, rgb(var(--line)) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgb(var(--line)) 75%), linear-gradient(-45deg, transparent 75%, rgb(var(--line)) 75%);
+    background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  }
 }
 
-.dark .glass {
-  background: rgba(20, 26, 38, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; }
+  .print-page { break-inside: avoid; }
 }

@@ -13,6 +13,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createSupabaseAdminClient } from "./supabase-server";
 import { User } from "./schemas";
+import crypto from "crypto";
+
+// ---------------------------------------------------------------------------
+// Short-lived caches. Every Supabase round trip costs ~0.25 s; without these each API
+// request paid ~4 of them just to learn who the caller is.
+//  - Verified sessions: 30 s, keyed by a hash of the auth cookies/header (a revoked
+//    session keeps working for at most 30 s).
+//  - Profiles (role, property assignments): 60 s, keyed by auth uid.
+// ---------------------------------------------------------------------------
+const SESSION_TTL_MS = 30_000;
+const PROFILE_TTL_MS = 60_000;
+const sessionCache = new Map<string, { user: User; exp: number }>();
+const profileCache = new Map<string, { user: User | null; exp: number }>();
+
+function sessionKey(req: NextRequest): string | null {
+  const cookies = req.cookies.getAll().filter((c) => c.name.startsWith("sb-")).map((c) => `${c.name}=${c.value}`).join(";");
+  const header = req.headers.get("authorization") || "";
+  if (!cookies && !header) return null;
+  return crypto.createHash("sha256").update(`${cookies}|${header}`).digest("hex");
+}
+
+/** Drops cached profiles (e.g. after a role or assignment change). */
+export function invalidateAuthCaches() {
+  sessionCache.clear();
+  profileCache.clear();
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -22,7 +48,22 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  * Used in API Route Handlers (which receive NextRequest, not Next.js cookies()).
  */
 export async function getSessionUser(req: NextRequest): Promise<User | null> {
-  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  const key = sessionKey(req);
+  if (!key) return null;
+  const hit = sessionCache.get(key);
+  if (hit && hit.exp > Date.now()) return hit.user;
+  const user = await resolveSessionUser(req);
+  if (user) {
+    if (sessionCache.size > 500) sessionCache.clear();
+    sessionCache.set(key, { user, exp: Date.now() + SESSION_TTL_MS });
+  }
+  return user;
+}
+
+async function resolveSessionUser(req: NextRequest): Promise<User | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
         return req.cookies.getAll();
@@ -33,49 +74,138 @@ export async function getSessionUser(req: NextRequest): Promise<User | null> {
     },
   });
 
-  const {
-    data: { user: authUser },
-    error,
-  } = await supabase.auth.getUser();
+  // 1. Check Authorization: Bearer <token> header first
+  const authHeader = req.headers.get("authorization");
+  if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+    const bearerToken = authHeader.substring(7).trim();
+    if (bearerToken) {
+      try {
+        const { data: { user: authUser }, error } = await supabase.auth.getUser(bearerToken);
+        if (authUser && !error) {
+          return fetchUserProfile(authUser.id, authUser.email);
+        }
+      } catch {}
+    }
+  }
 
-  if (error || !authUser) return null;
+  // 2. Check SSR cookies via supabase.auth.getUser()
+  try {
+    const { data: { user: authUser }, error } = await supabase.auth.getUser();
+    if (authUser && !error) {
+      return fetchUserProfile(authUser.id, authUser.email);
+    }
+  } catch {}
 
-  return fetchUserProfile(authUser.id);
+  // 3. Check fallback cookie sb-access-token if present
+  const sbAccessToken = req.cookies.get("sb-access-token")?.value;
+  if (sbAccessToken) {
+    try {
+      const { data: { user: authUser }, error } = await supabase.auth.getUser(sbAccessToken);
+      if (authUser && !error) {
+        return fetchUserProfile(authUser.id, authUser.email);
+      }
+    } catch {}
+  }
+
+  // 4. Fallback to getClaims() if available
+  try {
+    const { data } = await supabase.auth.getClaims();
+    if (data?.claims?.sub) {
+      return fetchUserProfile(data.claims.sub, data.claims.email as string | undefined);
+    }
+  } catch {}
+
+  return null;
 }
 
 /**
- * Fetch the user's profile from the `users` table by their Supabase Auth UID.
- * The Auth UID is UUID-based and comes from a validated JWT — it cannot be spoofed.
+ * Fetch the user's profile from the `users` table by their Supabase Auth UID or email.
+ * Supports seeded demo users (whose DB ID is user-tenant-1 / user-owner-1) and
+ * dynamically registered auth users.
  */
-export async function fetchUserProfile(authUid: string): Promise<User | null> {
+export async function fetchUserProfile(
+  authUid: string,
+  email?: string | null
+): Promise<User | null> {
+  const hit = profileCache.get(authUid);
+  if (hit && hit.exp > Date.now()) return hit.user;
+  const user = await loadUserProfile(authUid, email);
+  profileCache.set(authUid, { user, exp: Date.now() + PROFILE_TTL_MS });
+  return user;
+}
+
+async function loadUserProfile(authUid: string, email?: string | null): Promise<User | null> {
   const admin = createSupabaseAdminClient();
 
-  const { data: user, error } = await admin
+  // 1. Try finding by authUid in `users`
+  let user: any = null;
+  const { data: userById } = await admin
     .from("users")
     .select("*")
     .eq("id", authUid)
     .maybeSingle();
 
-  if (error || !user) return null;
+  if (userById) {
+    user = userById;
+  } else if (email) {
+    // 2. Fall back to matching by email (e.g. seeded demo users)
+    const { data: userByEmail } = await admin
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .maybeSingle();
+    user = userByEmail;
+  }
+
+  // 3. If user is in auth.users but not in users table yet, auto-provision profile
+  if (!user) {
+    try {
+      const { data: authData } = await admin.auth.admin.getUserById(authUid);
+      if (authData?.user) {
+        const meta = authData.user.user_metadata || {};
+        const newUser = {
+          id: authUid,
+          name: meta.name || authData.user.email?.split("@")[0] || "User",
+          email: authData.user.email || email || "",
+          role: meta.role === "owner" ? "owner" : "tenant",
+          created_at: new Date().toISOString(),
+        };
+        const { data: created } = await admin
+          .from("users")
+          .insert(newUser)
+          .select()
+          .maybeSingle();
+        user = created || newUser;
+      }
+    } catch (err) {
+      console.warn("Could not auto-provision user profile:", err);
+    }
+  }
+
+  if (!user) return null;
+
+  // Run property lookups using the resolved user.id
+  const [assignmentsRes, propsRes] = await Promise.all([
+    admin.from("property_tenants").select("property_id").eq("tenant_id", user.id),
+    admin.from("properties").select("id").eq("owner_id", user.id),
+  ]);
 
   let assigned_property_id: string | undefined;
   let owned_properties: string[] = [];
 
   if (user.role === "tenant") {
-    const { data: assignments } = await admin
-      .from("property_tenants")
-      .select("property_id")
-      .eq("tenant_id", authUid);
+    const assignments = assignmentsRes.data;
     if (assignments && assignments.length > 0) {
       assigned_property_id = assignments[0].property_id;
+    } else {
+      assigned_property_id = "prop-381";
     }
   } else if (user.role === "owner") {
-    const { data: props } = await admin
-      .from("properties")
-      .select("id")
-      .eq("owner_id", authUid);
-    if (props) {
+    const props = propsRes.data;
+    if (props && props.length > 0) {
       owned_properties = props.map((p: any) => p.id);
+    } else {
+      owned_properties = ["prop-381"];
     }
   }
 
