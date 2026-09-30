@@ -8,6 +8,7 @@ import {
   forbiddenResponse,
 } from "@/lib/auth";
 import { observationWithProperty } from "@/lib/access";
+import { authorize } from "@/lib/authorization";
 import { appendEvent } from "@/lib/events";
 
 /**
@@ -35,14 +36,24 @@ export async function PATCH(
       );
     }
 
-    // Observation review (accept, reject, edit, note) is strictly OWNER ONLY
-    if (user.role !== "owner") {
-      return forbiddenResponse("Only property owners can review or edit findings.");
-    }
-
-    // The finding must belong to a property this owner can access
+    // The finding must belong to a property this user can access
     const found = await observationWithProperty(user, id);
     if (!found) return forbiddenResponse("You do not have access to this finding.");
+
+    // Observation review (accept, reject, edit, note) requires finding:triage or finding:edit
+    const capability = (parsed.data.review_status === "edited" || parsed.data.edited_category || parsed.data.edited_description)
+      ? "finding:edit"
+      : "finding:triage";
+
+    const decision = await authorize({
+      user,
+      capability,
+      resource: { type: "observation", id, propertyId: found.propertyId },
+    });
+
+    if (!decision.allowed) {
+      return forbiddenResponse("Only property owners can review or edit findings.");
+    }
 
     const db = getDatabase();
     const media = getMediaProvider();

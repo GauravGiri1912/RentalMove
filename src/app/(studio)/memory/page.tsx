@@ -54,7 +54,7 @@ export default function MemoryPage() {
               </div>
               {inspections.map((insp, i) => {
                 const a = assetFor(room.id, insp.id);
-                if (!a)
+                if (!a) {
                   return (
                     <div key={insp.id} className="grid aspect-[4/3] place-items-center rounded-xl border border-dashed border-line text-center">
                       <div className="text-[12px] text-ink-3">
@@ -63,17 +63,18 @@ export default function MemoryPage() {
                       </div>
                     </div>
                   );
+                }
                 const obs = observations.filter((o) => o.asset_id === a.id);
                 const fresh = obs.filter((o) => !o.pre_existing && o.review_status !== "rejected");
                 return (
-                  <button key={insp.id} onClick={() => setOpen({ r, i })} className="group relative overflow-hidden rounded-xl text-left focus-visible:ring-2">
+                  <div key={insp.id} role="button" tabIndex={0} onClick={() => setOpen({ r, i })} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen({ r, i }); } }} className="group relative cursor-pointer overflow-hidden rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal">
                     <Photo src={a.thumb} alt={`${room.name}, ${INSPECTION_LABEL[insp.type]}`} observations={showBoxes ? obs : []} showLabels={false} scanning={a.analysis_status === "running"} className="aspect-[4/3]" imgClassName="transition duration-700 group-hover:scale-[1.04]" />
                     <div className="pointer-events-none absolute inset-x-2 bottom-2 flex items-center gap-1.5">
                       {fresh.length > 0 && <span className="rounded-md bg-signal px-1.5 py-0.5 font-mono text-[10.5px] text-white">{fresh.length} finding{fresh.length > 1 ? "s" : ""}</span>}
                       {a.analysis_status === "running" && <span className="rounded-md bg-black/60 px-1.5 py-0.5 font-mono text-[10.5px] text-white">analysing…</span>}
                       {a.staged && <span className="ml-auto rounded-md bg-black/45 px-1.5 py-0.5 font-mono text-[10px] text-white/80">staged</span>}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </Row>

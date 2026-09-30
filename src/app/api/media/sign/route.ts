@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUserOrThrow, forbiddenResponse, unauthorizedResponse } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { assetWithProperty } from "@/lib/access";
 import { rateLimit } from "@/lib/rate-limit";
 import { signedDeliveryUrl } from "@/lib/media";
@@ -18,12 +19,13 @@ export async function POST(req: NextRequest) {
   if (!rl.success) return rl.response;
   try {
     const user = await getAuthenticatedUserOrThrow(req);
+    if (!can(user, "media:transform")) return forbiddenResponse("Media transformations are not permitted for this account.");
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: "Invalid recipe", details: parsed.error.format() }, { status: 400 });
     const urls: string[] = [];
     const publicIds = new Map<string, string>();
     for (const { asset_id, recipe } of parsed.data.items) {
-      if (isGenerative(recipe) && user.role !== "owner") return forbiddenResponse("Generative listing edits are available to owners.");
+      if (isGenerative(recipe) && !can(user, "media:generative")) return forbiddenResponse("Generative listing edits are available to owners.");
       let pid = publicIds.get(asset_id);
       if (!pid) {
         const found = await assetWithProperty(user, asset_id);

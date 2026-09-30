@@ -7,6 +7,7 @@ import {
   forbiddenResponse,
   unauthorizedResponse,
 } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 
 /**
  * GET /api/properties
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUserOrThrow(req);
 
-    if (user.role !== "owner") {
+    if (!can(user, "property:create")) {
       return forbiddenResponse("Only property owners can create properties.");
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { getAuthenticatedUserOrThrow, canUserAccessProperty, forbiddenResponse, unauthorizedResponse } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { buildSharedReport } from "@/lib/shared-report";
 
 /**
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   }
 }
 
-/** DELETE /api/share/:token — revoke. Only the creator or the property's owner (was unauthenticated). */
+/** DELETE /api/share/:token — revoke. Only the creator or the property's owner. */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params;
@@ -34,8 +35,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ t
       return NextResponse.json({ error: "Share token not found or already revoked" }, { status: 404 });
     }
     const isCreator = link.created_by === user.id;
-    const isOwner = user.role === "owner" && (await canUserAccessProperty(user, link.property_id));
-    if (!isCreator && !isOwner) return forbiddenResponse("Only the link's creator or the property owner can revoke it.");
+    const canRevokeOwn = isCreator && can(user, "report:revoke-own") && (await canUserAccessProperty(user, link.property_id));
+    const canRevokeAny = can(user, "report:revoke-any") && (await canUserAccessProperty(user, link.property_id));
+    if (!canRevokeOwn && !canRevokeAny) return forbiddenResponse("Only the link's creator or the property owner can revoke it.");
     await db.revokeShareLink(token);
     return NextResponse.json({ success: true, message: "Share link successfully revoked" });
   } catch (err: any) {
