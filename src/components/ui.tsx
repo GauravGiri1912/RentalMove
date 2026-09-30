@@ -141,6 +141,8 @@ export function Photo({
   className,
   imgClassName,
   rounded = true,
+  priority = false,
+  loading,
 }: {
   src: string;
   alt: string;
@@ -153,6 +155,8 @@ export function Photo({
   className?: string;
   imgClassName?: string;
   rounded?: boolean;
+  priority?: boolean;
+  loading?: "lazy" | "eager";
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -182,7 +186,16 @@ export function Photo({
     <div ref={frame} className={cn("relative overflow-hidden bg-surface-2", rounded && "rounded-xl", className)}>
       {!loaded && <div className="absolute inset-0 overflow-hidden"><div className="h-full w-full -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-surface/60 to-transparent" /></div>}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img ref={imgRef} src={src} alt={alt} onLoad={onReady} className={cn("block h-full w-full object-cover transition-opacity duration-500", loaded ? "opacity-100" : "opacity-0", imgClassName)} draggable={false} />
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        onLoad={onReady}
+        loading={priority ? "eager" : loading ?? "lazy"}
+        fetchPriority={priority ? "high" : "auto"}
+        className={cn("block h-full w-full object-cover transition-opacity duration-500", loaded ? "opacity-100" : "opacity-0", imgClassName)}
+        draggable={false}
+      />
       <div className="pointer-events-none absolute" style={rect}>
       {items.map((b) => {
         const [x1, y1, x2, y2] = b.bbox;

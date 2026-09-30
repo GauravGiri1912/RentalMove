@@ -60,6 +60,42 @@ export async function getSessionUser(req: NextRequest): Promise<User | null> {
   return user;
 }
 
+/**
+ * Resolve Supabase Auth user in Next.js Server Components / layouts using cookies().
+ */
+export async function getServerSessionUser(): Promise<User | null> {
+  try {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return null;
+
+    const supabase = createServerClient(url, key, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {},
+      },
+    });
+
+    const { data: { user: authUser }, error } = await supabase.auth.getUser();
+    if (authUser && !error) {
+      return fetchUserProfile(authUser.id, authUser.email);
+    }
+
+    const sbAccessToken = cookieStore.get("sb-access-token")?.value;
+    if (sbAccessToken) {
+      const { data: { user: fallbackUser }, error: fallbackErr } = await supabase.auth.getUser(sbAccessToken);
+      if (fallbackUser && !fallbackErr) {
+        return fetchUserProfile(fallbackUser.id, fallbackUser.email);
+      }
+    }
+  } catch {}
+  return null;
+}
+
 async function resolveSessionUser(req: NextRequest): Promise<User | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;

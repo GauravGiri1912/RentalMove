@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Sparkles, ArrowRight, ArrowUpRight, Building2, Camera, CheckCircle2, Circle, CircleDashed, FileText, Fingerprint,
   GitCompareArrows, Loader2, ScanSearch, Upload, Cpu, PenLine, Link2, Copy, AlertTriangle,
@@ -40,11 +40,31 @@ export default function Overview() {
   }, [rooms, inspections, observations, assets]); // eslint-disable-line react-hooks/exhaustive-deps
   const heroFrames = heroRoom ? inspections.filter((i) => assetFor(heroRoom.id, i.id)) : [];
   const [hero, setHero] = useState(Math.max(0, heroFrames.length - 1));
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [heroVisible, setHeroVisible] = useState(true);
+
+  // Pause rotation when hero card is scrolled off-screen
   useEffect(() => {
-    if (heroFrames.length < 2) return;
-    const t = setInterval(() => setHero((h) => (h + 1) % heroFrames.length), 3800);
+    if (!heroRef.current || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setHeroVisible(entry.isIntersecting);
+    }, { threshold: 0.1 });
+    observer.observe(heroRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Frame rotation timer, responsive to visibility, tab focus, and reduced motion
+  useEffect(() => {
+    if (heroFrames.length < 2 || !heroVisible) return;
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+    const t = setInterval(() => {
+      if (document.hidden) return;
+      setHero((h) => (h + 1) % heroFrames.length);
+    }, 3800);
     return () => clearInterval(t);
-  }, [heroFrames.length]);
+  }, [heroFrames.length, heroVisible]);
 
   const now = new Date();
   const hour = now.getHours();
@@ -85,13 +105,22 @@ export default function Overview() {
         </div>
 
         {heroRoom && heroFrames.length > 0 && (
-          <div className="card overflow-hidden p-2">
+          <div ref={heroRef} className="card overflow-hidden p-2">
             <div className="relative aspect-[4/3] overflow-hidden rounded-xl">
               {heroFrames.map((insp, i) => {
                 const a = assetFor(heroRoom.id, insp.id)!;
                 return (
                   <div key={insp.id} className={cn("absolute inset-0 transition-opacity duration-1000", i === hero ? "opacity-100" : "opacity-0")}>
-                    <Photo src={a.src} alt={`${heroRoom.name} at ${INSPECTION_LABEL[insp.type]}`} observations={observations.filter((o) => o.asset_id === a.id && !o.pre_existing && o.review_status !== "rejected")} showLabels={false} rounded={false} className="h-full" />
+                    <Photo
+                      src={a.src}
+                      alt={`${heroRoom.name} at ${INSPECTION_LABEL[insp.type]}`}
+                      observations={observations.filter((o) => o.asset_id === a.id && !o.pre_existing && o.review_status !== "rejected")}
+                      showLabels={false}
+                      rounded={false}
+                      priority={i === hero}
+                      loading={i === hero ? "eager" : "lazy"}
+                      className="h-full"
+                    />
                   </div>
                 );
               })}

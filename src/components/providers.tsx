@@ -85,13 +85,43 @@ function writeLS(key: string, v: unknown) {
   try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
 }
 
-export function StudioProvider({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<Studio["status"]>("loading");
+export interface InitialStudioData {
+  sessionUser?: User | null;
+  properties?: any[];
+  propertyId?: string | null;
+  snapshot?: any | null;
+}
+
+export function StudioProvider({
+  children,
+  initialData,
+}: {
+  children: React.ReactNode;
+  initialData?: InitialStudioData;
+}) {
+  const [status, setStatus] = useState<Studio["status"]>(() => {
+    if (initialData?.snapshot && initialData?.sessionUser && initialData?.propertyId) return "ready";
+    return "loading";
+  });
   const [error, setError] = useState<string | null>(null);
-  const [sessionUser, setSessionUser] = useState<User | null>(null);
-  const [view, setViewState] = useState<View | null>(null);
+  const [sessionUser, setSessionUser] = useState<User | null>(() => {
+    if (!initialData?.sessionUser) return null;
+    const u = initialData.sessionUser;
+    return {
+      ...u,
+      initials: u.name.split(/\s+/).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(),
+    };
+  });
+  const [view, setViewState] = useState<View | null>(() => {
+    if (initialData?.snapshot && initialData?.sessionUser && initialData?.propertyId) {
+      const v = toView(initialData.snapshot, initialData.sessionUser, initialData.properties ?? []);
+      setView(v);
+      return v;
+    }
+    return null;
+  });
   const [version, setVersion] = useState(0);
-  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [propertyId, setPropertyId] = useState<string | null>(initialData?.propertyId ?? null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -99,8 +129,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [askOpen, setAskOpen] = useState(false);
   const [tour, setTourState] = useState({ active: false, step: 0, playing: true });
   const [live, setLive] = useState(false);
-  const propsRef = useRef<any[]>([]);
-  const userRef = useRef<any>(null);
+  const propsRef = useRef<any[]>(initialData?.properties ?? []);
+  const userRef = useRef<any>(initialData?.sessionUser ?? null);
 
   const toast = useCallback((t: Omit<Toast, "id">) => {
     const id = Date.now() + Math.random();
@@ -123,6 +153,12 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // Session + properties on mount.
   useEffect(() => {
     setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+
+    // If pre-hydrated from Server Component, avoid duplicate client waterfall
+    if (initialData?.snapshot && initialData?.sessionUser && initialData?.propertyId) {
+      return;
+    }
+
     (async () => {
       try {
         const s = await api<{ authenticated: boolean; user: any }>("/api/auth/session");
@@ -142,7 +178,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         else { setStatus("error"); setError(e?.message || String(e)); }
       }
     })();
-  }, [loadSnapshot]);
+  }, [loadSnapshot, initialData]);
 
   const refresh = useCallback(async () => {
     if (!propertyId) return;
