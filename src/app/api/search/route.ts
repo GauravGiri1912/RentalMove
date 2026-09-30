@@ -82,9 +82,9 @@ export async function GET(req: NextRequest) {
     if (validatedFilter.date_from || validatedFilter.date_to) {
       const db = getDatabase();
       const inspections = await db.getInspections(propertyId);
-      const assetLists = await Promise.all(inspections.map((i) => db.getAssets(i.id)));
+      const assets = await db.getAssetsForInspections(inspections.map((i) => i.id));
       const captured = new Map<string, string>();
-      for (const a of assetLists.flat()) {
+      for (const a of assets) {
         if (a.cloudinary_public_id) captured.set(a.cloudinary_public_id, a.captured_at);
       }
       resources = filterByCaptureDate(resources, captured, validatedFilter);

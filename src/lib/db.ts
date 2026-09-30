@@ -32,16 +32,19 @@ export interface DatabaseService {
 
   // Rooms
   getRooms(propertyId: string): Promise<Room[]>;
+  getRoomById(id: string): Promise<Room | null>;
   createRoom(data: Omit<Room, "id">): Promise<Room>;
 
   // Inspections
   getInspections(propertyId: string): Promise<Inspection[]>;
+  getInspectionById(id: string): Promise<Inspection | null>;
   createInspection(data: Omit<Inspection, "id" | "created_at">): Promise<Inspection>;
 
   // Assets
   getAssets(inspectionId?: string, roomId?: string): Promise<Asset[]>;
   getAssetById(id: string): Promise<Asset | null>;
   getAssetByPublicId(publicId: string): Promise<Asset | null>;
+  getAssetBySha256(sha256: string): Promise<Asset | null>;
   upsertAsset(data: Omit<Asset, "id" | "created_at"> & { id?: string }): Promise<Asset>;
   updateAssetStatus(
     id: string,
@@ -567,6 +570,10 @@ export class PersistentDatabaseService implements DatabaseService {
     return this.memoryCache.rooms.filter((r) => r.property_id === propertyId);
   }
 
+  async getRoomById(id: string): Promise<Room | null> {
+    return this.memoryCache.rooms.find((r) => r.id === id) || null;
+  }
+
   async createRoom(data: Omit<Room, "id">): Promise<Room> {
     const newRoom: Room = {
       id: `room-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -582,6 +589,10 @@ export class PersistentDatabaseService implements DatabaseService {
     return this.memoryCache.inspections
       .filter((i) => i.property_id === propertyId)
       .sort((a, b) => new Date(b.captured_at).getTime() - new Date(a.captured_at).getTime());
+  }
+
+  async getInspectionById(id: string): Promise<Inspection | null> {
+    return this.memoryCache.inspections.find((i) => i.id === id) || null;
   }
 
   async createInspection(data: Omit<Inspection, "id" | "created_at">): Promise<Inspection> {
@@ -610,6 +621,11 @@ export class PersistentDatabaseService implements DatabaseService {
 
   async getAssetByPublicId(publicId: string): Promise<Asset | null> {
     return this.memoryCache.assets.find((a) => a.cloudinary_public_id === publicId) || null;
+  }
+
+  async getAssetBySha256(sha256: string): Promise<Asset | null> {
+    const target = sha256.toLowerCase().trim();
+    return this.memoryCache.assets.find((a) => (a.sha256 || "").toLowerCase() === target) || null;
   }
 
   async upsertAsset(data: Omit<Asset, "id" | "created_at"> & { id?: string }): Promise<Asset> {
