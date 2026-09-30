@@ -241,6 +241,8 @@ export const UploadSignRequestSchema = z.object({
   inspection_id: z.string(),
   room: RoomCategoryEnum,
   timestamp: z.number().optional(),
+  file_size: z.number().max(20971520, "File exceeds maximum size of 20MB").optional(),
+  format: z.enum(["jpg", "jpeg", "png", "webp"]).optional(),
 });
 export type UploadSignRequest = z.infer<typeof UploadSignRequestSchema>;
 

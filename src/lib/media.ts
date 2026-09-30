@@ -74,6 +74,9 @@ export interface UploadSignatureResult {
   cloudName: string;
   folder: string;
   tags: string;
+  allowedFormats: string;
+  resourceType: string;
+  maxFileSize: number;
   context?: string;
   notificationUrl?: string;
 }
@@ -173,6 +176,9 @@ export class MockMediaProvider extends RenditionMixin implements MediaProvider {
       cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "demo",
       folder,
       tags,
+      allowedFormats: "jpg,png,webp",
+      resourceType: "image",
+      maxFileSize: 20 * 1024 * 1024,
       notificationUrl: process.env.CLOUDINARY_NOTIFICATION_URL,
     };
   }
@@ -242,6 +248,9 @@ export class CloudinaryMediaProvider extends RenditionMixin implements MediaProv
       cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
       folder,
       tags,
+      allowedFormats: "jpg,png,webp",
+      resourceType: "image",
+      maxFileSize: 20 * 1024 * 1024,
       notificationUrl,
     };
   }

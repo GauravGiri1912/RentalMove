@@ -148,6 +148,14 @@ function Capture() {
     const fail = (k: StageKey, msg: string) => { stage(k, "fail", msg); set({ error: msg }); toast({ title: "Capture failed", detail: msg, tone: "danger" }); };
     set({});
 
+    // Pre-validate file format and size limits (UX level)
+    if (blob.size > 20 * 1024 * 1024) {
+      return fail("quality", "Image exceeds maximum allowed size of 20 MB.");
+    }
+    if (blob.type && !["image/jpeg", "image/png", "image/webp"].includes(blob.type)) {
+      return fail("quality", "Only JPG, PNG, and WebP images are supported.");
+    }
+
     // 1. Quality (device)
     stage("quality", "run");
     const bmp = await createImageBitmap(blob);
@@ -155,17 +163,50 @@ function Capture() {
     set({ quality: q });
     stage("quality", q.verdict === "ok" ? "done" : "warn", `brightness ${q.brightness.toFixed(0)} · sharpness ${q.sharpness.toFixed(0)} · ${bmp.width}×${bmp.height}`);
 
-    // 2. Seal (device)
+    // Pre-scale oversized images (width > 2400px) to optimize upload bandwidth while preserving evidence quality
+    let uploadBlob = blob;
+    const MAX_WIDTH = 2400;
+    if (bmp.width > MAX_WIDTH) {
+      const scale = MAX_WIDTH / bmp.width;
+      const targetW = MAX_WIDTH;
+      const targetH = Math.round(bmp.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(bmp, 0, 0, targetW, targetH);
+        const scaledBlob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, "image/jpeg", 0.92)
+        );
+        if (scaledBlob) {
+          uploadBlob = scaledBlob;
+        }
+      }
+    }
+
+    // 2. Seal (device) — Cryptographic fingerprint of the exact bytes being uploaded
     stage("seal", "run");
     const t0 = performance.now();
-    const sha256 = await sha256Hex(await blob.arrayBuffer());
+    const sha256 = await sha256Hex(await uploadBlob.arrayBuffer());
     stage("seal", "done", `${shortHash(sha256, 16)} · ${(performance.now() - t0).toFixed(1)} ms`);
 
     // 3. Sign (server)
     stage("sign", "run");
     let sig: any;
     try {
-      sig = await api("/api/uploads/sign", { method: "POST", json: { property_id: prop.id, inspection_id: insp.id, room: room.category } });
+      const mimeFmt = uploadBlob.type.replace("image/", "");
+      const fmt = mimeFmt === "jpeg" ? "jpg" : mimeFmt;
+      sig = await api("/api/uploads/sign", {
+        method: "POST",
+        json: {
+          property_id: prop.id,
+          inspection_id: insp.id,
+          room: room.category,
+          file_size: uploadBlob.size,
+          format: ["jpg", "jpeg", "png", "webp"].includes(fmt) ? fmt : undefined,
+        },
+      });
     } catch (e: any) { return fail("sign", e.message); }
     stage("sign", "done", `folder=${sig.folder} · tags=${sig.tags}`);
 
@@ -173,7 +214,7 @@ function Capture() {
     stage("upload", "run");
     let up: any;
     try {
-      up = await uploadToCloudinary(blob, sig, (p) => set({ progress: p }));
+      up = await uploadToCloudinary(uploadBlob, sig, (p) => set({ progress: p }));
     } catch (e: any) { return fail("upload", e.message); }
     stage("upload", "done", `${up.public_id} · ${fmtBytes(up.bytes)} · v${up.version}`);
 
