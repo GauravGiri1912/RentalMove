@@ -198,14 +198,14 @@ async function loadUserProfile(authUid: string, email?: string | null): Promise<
     if (assignments && assignments.length > 0) {
       assigned_property_id = assignments[0].property_id;
     } else {
-      assigned_property_id = "prop-381";
+      assigned_property_id = undefined;
     }
   } else if (user.role === "owner") {
     const props = propsRes.data;
     if (props && props.length > 0) {
       owned_properties = props.map((p: any) => p.id);
     } else {
-      owned_properties = ["prop-381"];
+      owned_properties = [];
     }
   }
 

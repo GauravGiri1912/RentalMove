@@ -1,7 +1,43 @@
-# RentalMove — Implementation Status
+# RentalMove — Implementation & Remediation Status
 
-This file states what has actually been checked, how, and what has not. "Verified" means it was
-executed against the real service or database, not merely type-checked.
+## Forensic Audit Remediation Status
+
+| Phase | Description | Status | Verification & Evidence |
+|---|---|---|---|
+| **Phase 0** | Baseline & Safety Verification | **COMPLETED** | TypeScript: 0 errors; Unit/Integration: 84/84 tests passed; Next.js 15 build: 36 routes generated. |
+| **Phase 1** | Critical Authorization & IDOR Protection | **COMPLETED** | `src/app/api/observations/[id]/route.ts` strictly enforces `user.role === 'owner'`. `prop-381` fallbacks removed from `auth.ts`, `signup/route.ts`, and `db.ts`. New suite `tests/idor-auth.test.ts` (5 tests) passed. Full suite: 89/89 tests passed. |
+| **Phase 2** | Database / Scoped RLS Architecture | **PENDING** | Next phase. |
+| **Phase 3** | Auth / Session / Cloudinary Config | **PENDING** | |
+| **Phase 4** | Upload Security + Media Pipeline | **PENDING** | |
+| **Phase 5** | Present Mode Performance Rewrite | **PENDING** | |
+| **Phase 6** | Theme / Accessibility Contrast | **PENDING** | |
+| **Phase 7** | Startup Performance Optimization | **PENDING** | |
+| **Phase 8** | Database / API Query Optimization | **PENDING** | |
+| **Phase 9** | State Management / Realtime Cleanup | **PENDING** | |
+| **Phase 10** | Reliability / Rate Limiting / AI Handling | **PENDING** | |
+| **Phase 11** | Maintainability & Dead Code Cleanup | **PENDING** | |
+| **Phase 12** | Product Capability Corrections | **PENDING** | |
+| **Phase 13** | Observability & Safe Logging | **PENDING** | |
+| **Phase 14** | Full Final Validation | **PENDING** | |
+
+### Phase 1 Remediation Details
+- **Completed:**
+  - Finding triage mutations (`PATCH /api/observations/[id]`) explicitly require authenticated user AND `user.role === 'owner'` AND owner access to the observation's property. Tenants attempting mutations receive HTTP 403 Forbidden.
+  - Eliminated `"prop-381"` fallback assignment in `src/lib/auth.ts`: unassigned tenants receive `assigned_property_id = undefined` and owners without properties receive `owned_properties = []`.
+  - Removed auto-assignment of new tenants to `"prop-381"` in `src/app/api/auth/signup/route.ts`.
+  - Scoped `listProperties` in `src/lib/db.ts` to strictly filter by owner or assigned tenant, returning `[]` for unassigned users without fallback leakage.
+  - Configured `@` alias in `vitest.config.ts`.
+  - Added test suite `tests/idor-auth.test.ts` covering IDOR boundaries, tenant mutation rejection (403), unauthorized owner rejection (403), and authorized owner success (200).
+- **Files Changed:**
+  - `src/app/api/observations/[id]/route.ts`
+  - `src/lib/auth.ts`
+  - `src/app/api/auth/signup/route.ts`
+  - `src/lib/db.ts`
+  - `vitest.config.ts`
+  - `tests/idor-auth.test.ts`
+- **Tests Passed:** 89 of 89 passed (13 test files). TypeScript 0 errors.
+- **Next Phase:** Phase 2 (Database / Scoped RLS Architecture).
+
 
 ## How things were checked
 

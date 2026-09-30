@@ -499,7 +499,7 @@ export class PersistentDatabaseService implements DatabaseService {
     if (userId) {
       if (role === "owner") {
         return this.memoryCache.properties.filter(
-          (p) => !p.owner_id || p.owner_id === userId
+          (p) => p.owner_id === userId
         );
       } else if (role === "tenant") {
         const user = this.memoryCache.users.find((u) => u.id === userId);
@@ -508,10 +508,15 @@ export class PersistentDatabaseService implements DatabaseService {
             (p) => p.id === user.assigned_property_id
           );
         }
+        return [];
       }
-      return this.memoryCache.properties.filter(
-        (p) => !p.owner_id || p.owner_id === userId
-      );
+      const user = this.memoryCache.users.find((u) => u.id === userId);
+      if (user?.role === "owner") {
+        return this.memoryCache.properties.filter((p) => p.owner_id === userId);
+      } else if (user?.role === "tenant" && user.assigned_property_id) {
+        return this.memoryCache.properties.filter((p) => p.id === user.assigned_property_id);
+      }
+      return [];
     }
     return [...this.memoryCache.properties];
   }

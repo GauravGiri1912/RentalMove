@@ -35,7 +35,12 @@ export async function PATCH(
       );
     }
 
-    // The finding must belong to a property this user can access (was not checked).
+    // Observation review (accept, reject, edit, note) is strictly OWNER ONLY
+    if (user.role !== "owner") {
+      return forbiddenResponse("Only property owners can review or edit findings.");
+    }
+
+    // The finding must belong to a property this owner can access
     const found = await observationWithProperty(user, id);
     if (!found) return forbiddenResponse("You do not have access to this finding.");
 
