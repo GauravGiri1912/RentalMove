@@ -108,5 +108,14 @@ Live tests fail (not skip) when credentials are missing.
   - Formalized `AssistantProvider` architecture (`RuleBasedAssistantProvider` with deterministic grounded answers, `buildPropertyContext`, and explicit engine provenance `rule-based` / `grounded_snapshot`).
   - Added `tests/reliability-rate-limit.test.ts` (9 tests passing).
   - Total passing tests: 22 test files, 125 tests passing, 0 TypeScript errors.
-- **Next Phase:** Phase 11 — Maintainability / Dead Code / Architecture Cleanup.
+- **Phase 11: Maintainability / Dead Code / Architecture Cleanup** —
+  - Consolidated duplicate route `/api/report/[token]` into canonical `/api/share/[token]` with HTTP 307 redirect and `Deprecation: true` / canonical Link headers.
+  - Audited and eliminated stale closures in React hooks:
+    - Fixed stale closure on `preview` URL cleanup in `voice-note.tsx` using `useRef` to prevent memory leaks.
+    - Fixed stale closure on `onDiff` callback in `compare-viewer.tsx` using `useRef` to ensure parent callbacks stay reactive without restarting GPU canvas computation.
+    - Fixed `useMemo` in `review/page.tsx` by scoping `currentIds` properly inside memoization and including reactive fields on `sel`.
+  - Added `tests/maintainability-routes.test.ts` (3 tests passing).
+  - Total passing tests: 23 test files, 128 tests passing, 0 TypeScript errors.
+- **Next Phase:** Phase 12 — Product Capability Corrections.
+
 

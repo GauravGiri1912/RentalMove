@@ -28,8 +28,10 @@ function Review() {
   const params = useSearchParams();
   const [filter, setFilter] = useState<Filter>("all");
   const { baseline: baseInsp, current: curInsp } = reportPair();
-  const currentIds = new Set(getAssets().filter((a) => a.inspection_id === curInsp?.id).map((a) => a.id));
-  const all = useMemo(() => observations.filter((o) => currentIds.has(o.asset_id)), [observations, curInsp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const all = useMemo(() => {
+    const currentIds = new Set(getAssets().filter((a) => a.inspection_id === curInsp?.id).map((a) => a.id));
+    return observations.filter((o) => currentIds.has(o.asset_id));
+  }, [observations, curInsp?.id]);
   const queue = useMemo(
     () =>
       all
@@ -49,7 +51,7 @@ function Review() {
   useEffect(() => {
     if (sel) setDraft({ category: sel.category, description: sel.description, note: sel.reviewer_note ?? "" });
     setEditing(false);
-  }, [sel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sel?.id, sel?.category, sel?.description, sel?.reviewer_note]);
 
   const nextPending = useCallback(
     (after: string) => {

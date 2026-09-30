@@ -36,8 +36,14 @@ export function VoiceRecorder({ obsId }: { obsId: string }) {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const started = useRef(0);
 
+  const previewRef = useRef<string | null>(null);
+  previewRef.current = preview;
+
   useEffect(() => { setCanTranscribe(!!speechCtor()); }, []);
-  useEffect(() => () => { stopAll(); if (preview) URL.revokeObjectURL(preview); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => {
+    stopAll();
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+  }, []);
 
   function stopAll() {
     if (timer.current) clearInterval(timer.current);
