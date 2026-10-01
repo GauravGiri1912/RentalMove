@@ -7,7 +7,8 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
 } from "@/lib/auth";
-import { canDecide, observationWithProperty } from "@/lib/access";
+import { observationWithProperty } from "@/lib/access";
+import { authorize } from "@/lib/authorization";
 import { appendEvent } from "@/lib/events";
 
 /**
@@ -35,19 +36,27 @@ export async function PATCH(
       );
     }
 
-    // The finding must belong to a property this user can access (was not checked).
+    // The finding must belong to a property this user can access
     const found = await observationWithProperty(user, id);
     if (!found) return forbiddenResponse("You do not have access to this finding.");
 
+    // Observation review (accept, reject, edit, note) requires finding:triage or finding:edit
+    const capability = (parsed.data.review_status === "edited" || parsed.data.edited_category || parsed.data.edited_description)
+      ? "finding:edit"
+      : "finding:triage";
+
+    const decision = await authorize({
+      user,
+      capability,
+      resource: { type: "observation", id, propertyId: found.propertyId },
+    });
+
+    if (!decision.allowed) {
+      return forbiddenResponse("Only property owners can review or edit findings.");
+    }
+
     const db = getDatabase();
     const media = getMediaProvider();
-
-    // Only the person who ran the inspection decides; the other party agrees or disputes.
-    const inspection = (await db.getInspections(found.propertyId)).find((i) => i.id === found.asset.inspection_id);
-    const property = await db.getProperty(found.propertyId);
-    if (!canDecide(user.id, inspection?.created_by, property?.owner_id)) {
-      return forbiddenResponse("Only the person who ran this inspection can accept, reject or edit its findings. You can agree or dispute instead.");
-    }
 
     const updated = await db.updateObservation(id, {
       review_status: parsed.data.review_status,

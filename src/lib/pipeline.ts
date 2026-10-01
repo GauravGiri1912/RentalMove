@@ -1,8 +1,8 @@
 import { getDatabase } from "./db";
 import { getMediaProvider } from "./media";
-import { getVisionProvider } from "./vision";
+import { getVisionProvider, VisionQuotaError, VisionRetryableError } from "./vision";
 import { computeRemoteImageSha256 } from "./hash";
-import { Asset, AssetRegisterRequest } from "./schemas";
+import { Asset, AssetRegisterRequest, AnalysisStatus } from "./schemas";
 import { after } from "next/server";
 import { computeManagedTags } from "./tags";
 import { appendEvent } from "./events";
@@ -290,9 +290,31 @@ export async function runAnalysisForAsset(assetId: string): Promise<void> {
     const duration = Date.now() - startTime;
     console.error(`[Pipeline] Analysis error after ${duration}ms:`, err);
 
-    // Graceful failure: mark asset failed but asset remains viewable and manually reviewable
-    await db.updateAssetStatus(asset.id, "failed", err?.message || "Analysis failed");
-    await logStep(propertyId, asset.id, "analyze", "Analysis failed", String(err?.message || err).slice(0, 160));
+    let status: AnalysisStatus = "failed";
+    let stepSummary = "Analysis failed";
+    const errMsg = String(err?.message || err);
+
+    const isQuota =
+      err instanceof VisionQuotaError ||
+      err?.isQuotaLimited === true ||
+      /quota|tpd|daily token limit|rate limit.*exceeded/i.test(errMsg);
+
+    const isRetryable =
+      err instanceof VisionRetryableError ||
+      err?.isRetryable === true ||
+      /network|econnrefused|econnreset|etimedout|5\d\d/i.test(errMsg);
+
+    if (isQuota) {
+      status = "quota_limited";
+      stepSummary = "AI quota limited";
+    } else if (isRetryable) {
+      status = "retryable";
+      stepSummary = "Analysis retryable";
+    }
+
+    // Graceful failure: mark asset with clear state so UI and retry logic know what happened
+    await db.updateAssetStatus(asset.id, status, errMsg);
+    await logStep(propertyId, asset.id, "analyze", stepSummary, errMsg.slice(0, 160));
   } finally {
     inFlight.delete(asset.id);
   }

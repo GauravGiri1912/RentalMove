@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUserOrThrow, forbiddenResponse, unauthorizedResponse } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { assetWithProperty } from "@/lib/access";
 import { rateLimit } from "@/lib/rate-limit";
 import { signedDeliveryUrl } from "@/lib/media";
@@ -16,10 +17,11 @@ const Body = z.object({ items: z.array(z.object({ asset_id: z.string().min(1), r
  * transformation URLs itself, and generative edits are owner-only.
  */
 export async function POST(req: NextRequest) {
-  const rl = rateLimit(req, { limit: 120, windowMs: 60_000, prefix: "media-sign" });
+  const rl = await rateLimit(req, { limit: 120, windowMs: 60_000, prefix: "media-sign" });
   if (!rl.success) return rl.response;
   try {
     const user = await getAuthenticatedUserOrThrow(req);
+    if (!can(user, "media:transform")) return forbiddenResponse("Media transformations are not permitted for this account.");
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: "Invalid recipe", details: parsed.error.format() }, { status: 400 });
     const urls: string[] = [];
@@ -27,7 +29,7 @@ export async function POST(req: NextRequest) {
     const hides = new Map<string, string[]>();
     const privacyByProperty = new Map<string, ReturnType<typeof derivePrivacy>>();
     for (const { asset_id, recipe } of parsed.data.items) {
-      if (isGenerative(recipe) && user.role !== "owner") return forbiddenResponse("Generative listing edits are available to owners.");
+      if (isGenerative(recipe) && !can(user, "media:generative")) return forbiddenResponse("Generative listing edits are available to owners.");
       let pid = publicIds.get(asset_id);
       if (!pid) {
         const found = await assetWithProperty(user, asset_id);

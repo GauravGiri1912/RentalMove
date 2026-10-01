@@ -23,7 +23,7 @@ const Body = z.discriminatedUnion("action", [
  * Either party may hide or un-hide; every change is an event, so the history shows who did it.
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const rl = rateLimit(req, { limit: 20, windowMs: 60_000, prefix: "privacy" });
+  const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: "privacy" });
   if (!rl.success) return rl.response;
   try {
     const { id } = await params;

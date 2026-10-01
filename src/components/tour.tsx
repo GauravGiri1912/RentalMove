@@ -122,9 +122,12 @@ export function TourOverlay() {
   const router = useRouter();
   const [elapsed, setElapsed] = useState(0);
   const [ready, setReady] = useState(false);
-  const [rect, setRect] = useState<DOMRect | null>(null);
+  const [hasTarget, setHasTarget] = useState(false);
   const [speed, setSpeed] = useState<number>(1);
   const targetEl = useRef<Element | null>(null);
+  const maskCutoutRef = useRef<SVGRectElement>(null);
+  const spotlightRingRef = useRef<HTMLDivElement>(null);
+
   const beat = FLAT[Math.min(tour.step, FLAT.length - 1)];
   const chapter = CHAPTERS[beat.ci];
   const showsCard = beat.bi === 0;
@@ -134,10 +137,46 @@ export function TourOverlay() {
     if (new URLSearchParams(window.location.search).get("present")) setTour({ active: true, step: 0, playing: true });
     try { const s = Number(localStorage.getItem("rm:tour-speed")); if (SPEEDS.includes(s as any)) setSpeed(s); } catch {}
   }, [setTour]);
+
   const changeSpeed = () => {
     const next = SPEEDS[(SPEEDS.indexOf(speed as any) + 1) % SPEEDS.length];
     setSpeed(next);
     try { localStorage.setItem("rm:tour-speed", String(next)); } catch {}
+  };
+
+  // Direct geometry update directly to DOM without causing React component re-renders
+  const updateGeometry = () => {
+    const el = targetEl.current;
+    if (!el || !el.isConnected) {
+      if (maskCutoutRef.current) {
+        maskCutoutRef.current.setAttribute("width", "0");
+        maskCutoutRef.current.setAttribute("height", "0");
+      }
+      if (spotlightRingRef.current) {
+        spotlightRingRef.current.style.display = "none";
+      }
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    const pad = 10;
+    const x = Math.max(0, r.left - pad);
+    const y = Math.max(0, r.top - pad);
+    const w = r.width + pad * 2;
+    const h = r.height + pad * 2;
+
+    if (maskCutoutRef.current) {
+      maskCutoutRef.current.setAttribute("x", String(x));
+      maskCutoutRef.current.setAttribute("y", String(y));
+      maskCutoutRef.current.setAttribute("width", String(w));
+      maskCutoutRef.current.setAttribute("height", String(h));
+    }
+    if (spotlightRingRef.current) {
+      spotlightRingRef.current.style.display = "block";
+      spotlightRingRef.current.style.left = `${x}px`;
+      spotlightRingRef.current.style.top = `${y}px`;
+      spotlightRingRef.current.style.width = `${w}px`;
+      spotlightRingRef.current.style.height = `${h}px`;
+    }
   };
 
   // Navigate when entering a chapter.
@@ -147,18 +186,18 @@ export function TourOverlay() {
     if (window.location.pathname + window.location.search !== href) router.push(href);
   }, [tour.active, beat.ci]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Set up the beat: wait for its target, scroll to it, run its action. The clock starts
-  // only once the page is ready, so slow loads never cut a caption short.
+  // Set up the beat: wait for its target, scroll to it, run its action.
   useEffect(() => {
     if (!tour.active) return;
     setElapsed(0);
     setReady(false);
-    setRect(null);
+    setHasTarget(false);
     targetEl.current = null;
     let cancelled = false;
     let clicked = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
     const t0 = performance.now();
+
     const find = () => {
       if (cancelled) return;
       if (beat.click) {
@@ -166,33 +205,50 @@ export function TourOverlay() {
         if (c && !clicked) { clicked = true; c.click(); }
       }
       const el = beat.target ? document.querySelector(beat.target) : null;
-      const loading = document.body.innerText.includes("Loading your property memory");
+      const loading = document.querySelector("[data-tour-loading='true'], [data-loading='true']") !== null;
       if ((beat.target && !el) || loading) {
-        if (performance.now() - t0 < 8000) { timers.push(setTimeout(find, 200)); return; }
+        if (performance.now() - t0 < 8000) { timers.push(setTimeout(find, 150)); return; }
       }
       targetEl.current = el;
+      setHasTarget(Boolean(el));
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       if (beat.event) timers.push(setTimeout(() => window.dispatchEvent(new CustomEvent("rm:tour", { detail: beat.event })), 900));
       setReady(true);
     };
+
     timers.push(setTimeout(find, showsCard ? 600 : 150));
     return () => { cancelled = true; timers.forEach(clearTimeout); };
   }, [tour.active, tour.step]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep the spotlight on the target while the page scrolls or animates.
+  // Coalesced, event-driven geometry updates without per-frame React state dispatching
   useEffect(() => {
     if (!tour.active || !ready) return;
+    updateGeometry();
+
     let raf = 0;
-    const loop = () => {
-      const el = targetEl.current;
-      setRect(el && el.isConnected ? el.getBoundingClientRect() : null);
-      raf = requestAnimationFrame(loop);
+    const onScrollOrResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateGeometry);
     };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize);
+
+    let ro: ResizeObserver | null = null;
+    if (targetEl.current && typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(onScrollOrResize);
+      ro.observe(targetEl.current);
+    }
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+      ro?.disconnect();
+    };
   }, [tour.active, ready, tour.step]);
 
-  // Clock.
+  // Clock with coalesced 200ms tick interval (reduces renders by 75%)
   useEffect(() => {
     if (!tour.active || !tour.playing || !ready) return;
     const base = elapsed;
@@ -205,10 +261,23 @@ export function TourOverlay() {
         if (tour.step < FLAT.length - 1) setTour({ step: tour.step + 1 });
         else setTour({ playing: false });
       }
-    }, 50);
+    }, 200);
     return () => clearInterval(id);
   }, [tour.active, tour.playing, tour.step, ready, speed]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Pause playback when tab is hidden
+  useEffect(() => {
+    if (!tour.active) return;
+    const onVisibility = () => {
+      if (document.hidden && tour.playing) {
+        setTour({ playing: false });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [tour.active, tour.playing, setTour]);
+
+  // Keyboard controls
   useEffect(() => {
     if (!tour.active) return;
     const onKey = (e: KeyboardEvent) => {
@@ -223,55 +292,137 @@ export function TourOverlay() {
 
   if (!tour.active) return null;
   const inCard = showsCard && elapsed < CARD_MS && ready;
-  const pad = 10;
   const chapterBeats = chapter.beats.length;
   const chapterDone = (ci: number) => (ci < beat.ci ? 1 : ci > beat.ci ? 0 : (beat.bi + Math.min(1, elapsed / total)) / chapterBeats);
 
   return (
     <div className="no-print">
-      {/* Spotlight: a rounded hole in a dim layer, following the target. */}
-      {!inCard && rect && rect.width > 0 && (
-        <div
-          aria-hidden
-          className="pointer-events-none fixed z-[65] rounded-2xl ring-2 ring-signal/80 transition-all duration-500 ease-out"
-          style={{ left: rect.left - pad, top: rect.top - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, boxShadow: "0 0 0 9999px rgba(10,10,12,.55)" }}
-        />
+      {/* Hardware-accelerated SVG spotlight mask & boundary ring (eliminates giant box shadow) */}
+      {!inCard && hasTarget && (
+        <>
+          <svg
+            aria-hidden
+            className="pointer-events-none fixed inset-0 z-[64] h-full w-full"
+          >
+            <defs>
+              <mask id="rm-spotlight-mask">
+                <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                <rect
+                  ref={maskCutoutRef}
+                  x="0"
+                  y="0"
+                  width="0"
+                  height="0"
+                  rx="16"
+                  fill="black"
+                  className="transition-all duration-300 ease-out motion-reduce:transition-none"
+                />
+              </mask>
+            </defs>
+            <rect
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              fill="rgb(var(--presentation-overlay))"
+              fillOpacity="0.55"
+              className="dark:fill-opacity-70 transition-opacity duration-300"
+              mask="url(#rm-spotlight-mask)"
+            />
+          </svg>
+
+          <div
+            ref={spotlightRingRef}
+            aria-hidden
+            className="pointer-events-none fixed z-[65] rounded-2xl ring-2 ring-signal shadow-[0_0_20px_rgb(var(--signal)/0.3)] transition-all duration-300 ease-out motion-reduce:transition-none"
+            style={{ display: "none" }}
+          />
+        </>
       )}
 
       {/* Chapter title card. */}
       {inCard && (
-        <div className="pointer-events-none fixed inset-0 z-[66] grid place-items-center bg-[#0b0c0e]/80 backdrop-blur-sm" data-testid="tour-card">
-          <div className="px-6 text-center text-white animate-fade-up" key={beat.ci}>
-            <div className="font-mono text-[12px] uppercase tracking-[0.3em] text-white/50">Chapter {beat.ci + 1} of {CHAPTERS.length}</div>
+        <div className="pointer-events-none fixed inset-0 z-[66] grid place-items-center bg-bg/85 dark:bg-[#0b0c0e]/85 backdrop-blur-md transition-colors duration-200" data-testid="tour-card">
+          <div className="px-6 text-center text-ink dark:text-white animate-fade-up" key={beat.ci}>
+            <div className="font-mono text-[12px] uppercase tracking-[0.3em] text-ink-3 dark:text-white/60">Chapter {beat.ci + 1} of {CHAPTERS.length}</div>
             <div className="mt-3 font-display text-[56px] leading-none md:text-[80px]">{chapter.name}</div>
-            <p className="mx-auto mt-4 max-w-xl text-[18px] text-white/75">{chapter.purpose}</p>
+            <p className="mx-auto mt-4 max-w-xl text-[18px] text-ink-2 dark:text-white/80">{chapter.purpose}</p>
           </div>
         </div>
       )}
 
       {/* Caption bar. */}
       <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[70] flex justify-center px-4">
-        <div className="pointer-events-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-[#111214]/92 text-white shadow-2xl backdrop-blur-xl" data-testid="tour-bar">
+        <div
+          className="pointer-events-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-presentation-border bg-presentation-surface/95 text-presentation-text shadow-2xl backdrop-blur-xl transition-colors duration-200"
+          data-testid="tour-bar"
+        >
           <div className="flex gap-1 px-4 pt-3">
             {CHAPTERS.map((c, ci) => (
-              <button key={c.name} onClick={() => setTour({ step: FLAT.findIndex((b) => b.ci === ci) })} className="h-1 flex-1 overflow-hidden rounded-full bg-white/15" aria-label={`Chapter ${ci + 1}: ${c.name}`} title={c.name}>
-                <span className="block h-full bg-white transition-[width] duration-100" style={{ width: `${chapterDone(ci) * 100}%` }} />
+              <button
+                key={c.name}
+                onClick={() => setTour({ step: FLAT.findIndex((b) => b.ci === ci) })}
+                className="h-1 flex-1 overflow-hidden rounded-full bg-presentation-border hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-signal"
+                aria-label={`Chapter ${ci + 1}: ${c.name}`}
+                title={c.name}
+              >
+                <span
+                  className="block h-full bg-presentation-text transition-[width] duration-100"
+                  style={{ width: `${chapterDone(ci) * 100}%` }}
+                />
               </button>
             ))}
           </div>
           <div className="flex items-center gap-4 px-5 py-4">
             <div className="min-w-0 flex-1" key={tour.step}>
-              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/45">
+              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-presentation-muted">
                 {String(beat.ci + 1).padStart(2, "0")} · {chapter.name}{chapterBeats > 1 ? ` · ${beat.bi + 1}/${chapterBeats}` : ""}
               </div>
-              <p className={cn("mt-1 text-[15px] leading-relaxed text-white/90 transition-opacity duration-500", ready ? "opacity-100" : "opacity-40")} data-testid="tour-text">{beat.text}</p>
+              <p
+                className={cn("mt-1 text-[15px] leading-relaxed text-presentation-text transition-opacity duration-300 font-medium", ready ? "opacity-100" : "opacity-40")}
+                data-testid="tour-text"
+              >
+                {beat.text}
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <button onClick={changeSpeed} className="h-8 rounded-full px-2.5 font-mono text-[11px] text-white/70 hover:bg-white/10 hover:text-white" aria-label="Playback speed" title="Playback speed" data-testid="tour-speed">{speed}×</button>
-              <button onClick={() => setTour({ step: Math.max(0, tour.step - 1) })} className="grid size-9 place-items-center rounded-full hover:bg-white/10" aria-label="Previous"><ChevronLeft className="size-4" /></button>
-              <button onClick={() => setTour({ playing: !tour.playing })} className="grid size-10 place-items-center rounded-full bg-white text-black" aria-label={tour.playing ? "Pause" : "Play"}>{tour.playing ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4" />}</button>
-              <button onClick={() => setTour({ step: Math.min(FLAT.length - 1, tour.step + 1) })} className="grid size-9 place-items-center rounded-full hover:bg-white/10" aria-label="Next"><ChevronRight className="size-4" /></button>
-              <button onClick={() => setTour({ active: false })} className="ml-1 grid size-9 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white" aria-label="Exit tour"><X className="size-4" /></button>
+              <button
+                onClick={changeSpeed}
+                className="h-8 rounded-full px-2.5 font-mono text-[11px] font-medium text-presentation-muted hover:bg-presentation-control hover:text-presentation-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label="Playback speed"
+                title="Playback speed"
+                data-testid="tour-speed"
+              >
+                {speed}×
+              </button>
+              <button
+                onClick={() => setTour({ step: Math.max(0, tour.step - 1) })}
+                className="grid size-9 place-items-center rounded-full text-presentation-muted hover:bg-presentation-control hover:text-presentation-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label="Previous step"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                onClick={() => setTour({ playing: !tour.playing })}
+                className="grid size-10 place-items-center rounded-full bg-ink text-bg hover:bg-ink/90 dark:bg-white dark:text-black dark:hover:bg-white/90 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label={tour.playing ? "Pause walkthrough" : "Play walkthrough"}
+              >
+                {tour.playing ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4" />}
+              </button>
+              <button
+                onClick={() => setTour({ step: Math.min(FLAT.length - 1, tour.step + 1) })}
+                className="grid size-9 place-items-center rounded-full text-presentation-muted hover:bg-presentation-control hover:text-presentation-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label="Next step"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+              <button
+                onClick={() => setTour({ active: false })}
+                className="ml-1 grid size-9 place-items-center rounded-full text-presentation-muted hover:bg-presentation-control hover:text-presentation-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal transition-colors"
+                aria-label="Exit walkthrough"
+              >
+                <X className="size-4" />
+              </button>
             </div>
           </div>
         </div>

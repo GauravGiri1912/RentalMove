@@ -14,7 +14,7 @@ const Body = z.object({ action: z.enum(["check", "confirm"]) });
  *   confirm  a person confirms the photo shows the room it was filed under
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const rl = rateLimit(req, { limit: 30, windowMs: 60_000, prefix: "room-match" });
+  const rl = await rateLimit(req, { limit: 30, windowMs: 60_000, prefix: "room-match" });
   if (!rl.success) return rl.response;
   try {
     const { id } = await params;

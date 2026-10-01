@@ -204,6 +204,10 @@ function loadImage(src: string) {
 
 function PixelDiff({ prior, current, threshold, normalize, focus, onDiff }: { prior: string; current: string; threshold: number; normalize: boolean; focus: BBox | null; onDiff?: (s: DiffStats) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const onDiffRef = useRef(onDiff);
+  useEffect(() => {
+    onDiffRef.current = onDiff;
+  });
   const [data, setData] = useState<{ a: Gray; b: Gray; t: ReturnType<typeof align>; w: number; h: number } | null>(null);
   const [regions, setRegions] = useState<BBox[]>([]);
   const [failed, setFailed] = useState(false);
@@ -255,9 +259,7 @@ function PixelDiff({ prior, current, threshold, normalize, focus, onDiff }: { pr
     }
     ctx.putImageData(out, 0, 0);
     setRegions(d.regions);
-    onDiff?.({ changedPct: d.changedPct, regions: d.regions, ms: performance.now() - t0, threshold: d.threshold, alignment: { dx: t.dx / w, dy: t.dy / h, scale: t.scale } });
-    // onDiff intentionally excluded: parents pass inline callbacks.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    onDiffRef.current?.({ changedPct: d.changedPct, regions: d.regions, ms: performance.now() - t0, threshold: d.threshold, alignment: { dx: t.dx / w, dy: t.dy / h, scale: t.scale } });
   }, [data, threshold, normalize]);
 
   return (

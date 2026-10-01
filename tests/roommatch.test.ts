@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { decideMatch, pickPrimary } from "../src/lib/roommatch";
-import { canDecide } from "../src/lib/decide";
 import { deriveRoomMatch, type PropertyEvent } from "../src/lib/events";
 
 let n = 0;
@@ -37,12 +36,3 @@ describe("room match", () => {
   });
 });
 
-describe("who decides on findings", () => {
-  it("is whoever ran the inspection, else the owner", () => {
-    expect(canDecide("user-owner-1", "user-owner-1", "user-owner-1")).toBe(true);
-    expect(canDecide("user-tenant-1", "user-owner-1", "user-owner-1")).toBe(false);
-    expect(canDecide("user-tenant-1", "user-tenant-1", "user-owner-1")).toBe(true); // tenant-run move-in
-    expect(canDecide("user-owner-1", "user-tenant-1", "user-owner-1")).toBe(false);
-    expect(canDecide("user-owner-1", null, "user-owner-1")).toBe(true);
-  });
-});

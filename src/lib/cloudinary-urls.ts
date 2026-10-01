@@ -11,11 +11,22 @@ export const PIXEL_PUBLIC_ID = "rentalmove_ui/px";
 const PIXEL_LAYER = PIXEL_PUBLIC_ID.replace(/\//g, ":");
 
 export function getCloudName(): string {
-  return (
+  const name =
     process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
-    process.env.CLOUDINARY_CLOUD_NAME ||
-    "demo"
-  );
+    process.env.CLOUDINARY_CLOUD_NAME;
+
+  if (!name) {
+    if (process.env.NODE_ENV === "test" || process.env.DEVELOPMENT_MOCK_MODE === "true") {
+      return "demo";
+    }
+    console.error(
+      "[Cloudinary] Configuration Error: NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is not configured."
+    );
+    throw new Error(
+      "Cloudinary configuration missing: NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME must be set in environment variables."
+    );
+  }
+  return name;
 }
 
 /** Extracts the Cloudinary public_id from a delivery URL (or returns the input if it already is one). */

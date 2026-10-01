@@ -17,7 +17,7 @@ const SignupSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const rl = authRateLimit(req);
+  const rl = await authRateLimit(req);
   if (!rl.success) return rl.response;
 
   try {
@@ -78,16 +78,8 @@ export async function POST(req: NextRequest) {
       console.warn("Could not insert user profile row:", profileError);
     }
 
-    // 4. Default property assignment:
-    // If tenant, assign to default demo property 'prop-381'
-    if (role === "tenant") {
-      await admin.from("property_tenants").insert({
-        id: `assign-${authUserId.slice(0, 8)}`,
-        property_id: "prop-381",
-        tenant_id: authUserId,
-        created_at: new Date().toISOString(),
-      });
-    }
+    // Newly registered users are not automatically assigned to any property
+    // (no IDOR / data leakage). Properties are linked via invitation or explicit assignment.
 
     return NextResponse.json({
       success: true,

@@ -31,7 +31,15 @@ export type InspectionType = z.infer<typeof InspectionTypeEnum>;
 export const ReviewStatusEnum = z.enum(["pending", "accepted", "rejected", "edited"]);
 export type ReviewStatus = z.infer<typeof ReviewStatusEnum>;
 
-export const AnalysisStatusEnum = z.enum(["queued", "running", "done", "failed"]);
+export const AnalysisStatusEnum = z.enum([
+  "queued",
+  "running",
+  "done",
+  "completed",
+  "failed",
+  "quota_limited",
+  "retryable",
+]);
 export type AnalysisStatus = z.infer<typeof AnalysisStatusEnum>;
 
 export const ObservationSourceEnum = z.enum(["ai", "human"]);
@@ -245,6 +253,8 @@ export const UploadSignRequestSchema = z.object({
   inspection_id: z.string(),
   room: RoomCategoryEnum,
   timestamp: z.number().optional(),
+  file_size: z.number().max(20971520, "File exceeds maximum size of 20MB").optional(),
+  format: z.enum(["jpg", "jpeg", "png", "webp"]).optional(),
 });
 export type UploadSignRequest = z.infer<typeof UploadSignRequestSchema>;
 

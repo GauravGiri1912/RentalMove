@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, FileText, Pencil, X, ZoomIn, ZoomOut, PartyPopper, History, HelpCircle, ScanLine, CameraOff } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { certaintyFor, photoAbstain } from "@/lib/insights";
 import { useStudio } from "@/components/providers";
 import { Parties } from "@/components/parties";
@@ -11,8 +12,7 @@ import { FindingFacts, PhotoTimeChip, RepairPanel } from "@/components/insights"
 import { PrivacyPanel } from "@/components/privacy-panel";
 import { RoomMatchBadge } from "@/components/visit";
 import { CATEGORY_META, CategoryBadge, Confidence, Crop, Kbd, Photo, Segmented, StatusBadge } from "@/components/ui";
-import { assetFor, getAsset, getAssets, getInspection, getProperty, getRoom, isUsablePhoto, reportPair } from "@/lib/view";
-import { canDecide } from "@/lib/decide";
+import { assetFor, getAsset, getAssets, getRoom, isUsablePhoto, reportPair } from "@/lib/view";
 import { cn, fmtDate, INSPECTION_LABEL } from "@/lib/utils";
 import type { IssueCategory, Observation } from "@/lib/view-types";
 
@@ -27,13 +27,18 @@ export default function ReviewPage() {
 }
 
 function Review() {
-  const { observations, review, toast, user } = useStudio();
+  const { observations, review, toast } = useStudio();
+  const { can } = usePermissions();
+  const canTriage = can("finding:triage");
+  const canEdit = can("finding:edit");
   const params = useSearchParams();
   const [filter, setFilter] = useState<Filter>("all");
   const { baseline: baseInsp, current: curInsp } = reportPair();
-  // Photos that don't match their room stay out of review until someone confirms them.
-  const currentIds = new Set(getAssets().filter((a) => a.inspection_id === curInsp?.id && isUsablePhoto(a.id)).map((a) => a.id));
-  const all = useMemo(() => observations.filter((o) => currentIds.has(o.asset_id)), [observations, curInsp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const all = useMemo(() => {
+    // Photos that don't match their room stay out of review until someone confirms them.
+    const currentIds = new Set(getAssets().filter((a) => a.inspection_id === curInsp?.id && isUsablePhoto(a.id)).map((a) => a.id));
+    return observations.filter((o) => currentIds.has(o.asset_id));
+  }, [observations, curInsp?.id]);
   const queue = useMemo(
     () =>
       all
@@ -53,7 +58,7 @@ function Review() {
   useEffect(() => {
     if (sel) setDraft({ category: sel.category, description: sel.description, note: sel.reviewer_note ?? "" });
     setEditing(false);
-  }, [sel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sel?.id, sel?.category, sel?.description, sel?.reviewer_note]);
 
   const nextPending = useCallback(
     (after: string) => {
@@ -64,14 +69,11 @@ function Review() {
     [queue]
   );
 
-  // Only the person who ran the inspection decides; the other party agrees or disputes.
-  const selInsp = sel ? getInspection(getAsset(sel.asset_id).inspection_id) : undefined;
-  const mayDecide = !!selInsp && canDecide(user.id, selInsp.created_by, getProperty().owner_id);
-  const decider = selInsp?.captured_by || "the person who ran this inspection";
-
   const decide = useCallback(
     (status: "accepted" | "rejected" | "edited") => {
-      if (!sel || !mayDecide) return;
+      if (!sel) return;
+      if (status === "edited" && !canEdit) return;
+      if ((status === "accepted" || status === "rejected") && !canTriage) return;
       const prev: Observation = { ...sel };
       const patch = status === "edited" ? { category: draft.category, description: draft.description, reviewer_note: draft.note || undefined } : { reviewer_note: draft.note || undefined };
       review(sel.id, status, patch);
@@ -85,7 +87,7 @@ function Review() {
       const n = nextPending(sel.id);
       if (n) setSelId(n);
     },
-    [sel, draft, review, toast, nextPending, mayDecide]
+    [sel, draft, review, toast, nextPending, canTriage, canEdit]
   );
 
   useEffect(() => {
@@ -93,22 +95,34 @@ function Review() {
       const t = e.target as HTMLElement;
       if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT") {
         if (e.key === "Escape") setEditing(false);
-        if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && editing) decide("edited");
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && editing && canEdit) decide("edited");
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const idx = queue.findIndex((o) => o.id === sel?.id);
       const k = e.key.toLowerCase();
-      if (k === "a") decide("accepted");
-      else if (k === "r") decide("rejected");
-      else if (k === "e" && mayDecide) { e.preventDefault(); setEditing(true); }
-      else if (k === "z") setZoom((z) => !z);
-      else if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); setSelId(queue[Math.min(idx + 1, queue.length - 1)].id); }
-      else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); setSelId(queue[Math.max(idx - 1, 0)].id); }
+      if (k === "a") {
+        if (canTriage) decide("accepted");
+      } else if (k === "r") {
+        if (canTriage) decide("rejected");
+      } else if (k === "e") {
+        if (canEdit) {
+          e.preventDefault();
+          setEditing(true);
+        }
+      } else if (k === "z") {
+        setZoom((z) => !z);
+      } else if (k === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelId(queue[Math.min(idx + 1, queue.length - 1)].id);
+      } else if (k === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelId(queue[Math.max(idx - 1, 0)].id);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [queue, sel, decide, editing, mayDecide]);
+  }, [queue, sel, decide, editing, canTriage, canEdit]);
 
   if (!sel) return null;
   const asset = getAsset(sel.asset_id);
@@ -121,11 +135,11 @@ function Review() {
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4 animate-fade-up">
         <div>
-          <div className="eyebrow mb-2">{curInsp ? `${INSPECTION_LABEL[curInsp.type]} · ${fmtDate(curInsp.captured_at)}` : "Review"}</div>
-          <h1 className="h-display text-[44px]">Review</h1>
+          <div className="eyebrow mb-2">{curInsp ? `${INSPECTION_LABEL[curInsp.type]} · ${fmtDate(curInsp.captured_at)}` : canTriage ? "Review" : "Findings"}</div>
+          <h1 className="h-display text-[44px]">{canTriage ? "Review" : "Findings"}</h1>
         </div>
         <div className="w-full max-w-sm">
-          <div className="mb-1.5 flex justify-between text-[12px]"><span className="text-ink-3">Decided</span><span className="font-mono">{decided} / {all.length}</span></div>
+          <div className="mb-1.5 flex justify-between text-[12px]"><span className="text-ink-3">{canTriage ? "Decided" : "Owner reviewed"}</span><span className="font-mono">{decided} / {all.length}</span></div>
           <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full">
             {all.map((o) => (
               <span key={o.id} className={cn("flex-1 transition-colors duration-500", o.review_status === "accepted" ? "bg-ok" : o.review_status === "rejected" ? "bg-ink-3" : o.review_status === "edited" ? "bg-info" : "bg-line")} />
@@ -138,10 +152,10 @@ function Review() {
         <div className="card mb-5 flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center animate-fade-up">
           <span className="grid size-10 place-items-center rounded-xl bg-ok/10 text-ok"><PartyPopper className="size-5" /></span>
           <div className="flex-1">
-            <div className="text-[15px] font-semibold">Every finding has a human decision.</div>
-            <div className="text-[13px] text-ink-3">Only accepted and edited findings go into the evidence report.</div>
+            <div className="text-[15px] font-semibold">{canTriage ? "Every finding has a human decision." : "All findings have an owner decision."}</div>
+            <div className="text-[13px] text-ink-3">{canTriage ? "Only accepted and edited findings go into the evidence report." : "Review the final evidence report and positions."}</div>
           </div>
-          <Link href="/report" className="btn-primary"><FileText className="size-4" /> Build the report</Link>
+          <Link href="/report" className="btn-primary"><FileText className="size-4" /> {canTriage ? "Build the report" : "View evidence report"}</Link>
         </div>
       )}
 
@@ -175,7 +189,9 @@ function Review() {
             })}
             {queue.length === 0 && <p className="p-4 text-center text-[12px] text-ink-3">Nothing in this filter.</p>}
           </div>
-          <div className="flex items-center justify-center gap-1.5 border-t border-line p-2 text-[11px] text-ink-3"><Kbd>J</Kbd><Kbd>K</Kbd> move</div>
+          <div className="flex items-center justify-center gap-1.5 border-t border-line p-2 text-[11px] text-ink-3">
+            <Kbd>J</Kbd><Kbd>K</Kbd> move{canTriage && <> · <Kbd>A</Kbd><Kbd>R</Kbd> decide</>}
+          </div>
         </aside>
 
         {/* Viewer */}
@@ -276,30 +292,54 @@ function Review() {
             );
           })()}
 
-          <label className="mt-4 block">
-            <span className="eyebrow">Reviewer note</span>
-            <input className="input mt-1" placeholder="Optional — visible in the report" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
-          </label>
+          {canTriage ? (
+            <>
+              <label className="mt-4 block">
+                <span className="eyebrow">Reviewer note</span>
+                <input className="input mt-1" placeholder="Optional — visible in the report" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
+              </label>
 
-          {!mayDecide && (
-            <p className="mt-4 rounded-lg bg-info/[.07] p-2.5 text-[12px] leading-relaxed text-ink-2" data-testid="decider-note">
-              <span className="font-semibold">{decider}</span> ran this inspection and decides on its findings. You can agree or dispute each one below, and that is recorded in the report.
-            </p>
+              <div className="mt-4 grid grid-cols-3 gap-2" data-tour="rv-decide">
+                {editing ? (
+                  <>
+                    <button className="btn-outline col-span-1" onClick={() => setEditing(false)}>Cancel</button>
+                    <button className="btn-primary col-span-2" onClick={() => decide("edited")}><Check className="size-4" /> Save edit <span className="font-mono text-[10.5px] opacity-60">⌘↵</span></button>
+                  </>
+                ) : (
+                  <>
+                    <button className="btn h-11 flex-col gap-0 border border-ok/30 bg-ok/[.08] text-ok hover:bg-ok/15" onClick={() => decide("accepted")}><Check className="size-4" /><span className="text-[11px]">Accept <span className="font-mono opacity-60">A</span></span></button>
+                    <button className="btn h-11 flex-col gap-0 border border-line bg-surface text-ink-2 hover:bg-surface-2" onClick={() => decide("rejected")}><X className="size-4" /><span className="text-[11px]">Reject <span className="font-mono opacity-60">R</span></span></button>
+                    <button className="btn h-11 flex-col gap-0 border border-info/30 bg-info/[.08] text-info hover:bg-info/15" onClick={() => setEditing(true)}><Pencil className="size-4" /><span className="text-[11px]">Edit <span className="font-mono opacity-60">E</span></span></button>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 space-y-3" data-testid="decider-note">
+              <p className="rounded-lg bg-info/[.07] p-2.5 text-[12px] leading-relaxed text-ink-2">The owner decides whether each finding goes into the report. You can agree or dispute it below — your position is recorded in the report.</p>
+              <div className="rounded-xl border border-line bg-surface-2/40 p-3">
+                <span className="eyebrow block mb-1">Owner decision</span>
+                <div className="flex items-center gap-2">
+                  <StatusBadge s={sel.review_status} />
+                  <span className="text-[12px] text-ink-2 font-medium">
+                    {sel.review_status === "pending"
+                      ? "Awaiting owner review"
+                      : sel.review_status === "accepted"
+                      ? "Accepted for evidence report"
+                      : sel.review_status === "edited"
+                      ? "Edited & accepted for report"
+                      : "Excluded from evidence report"}
+                  </span>
+                </div>
+              </div>
+              {sel.reviewer_note && (
+                <div className="rounded-xl border border-line bg-surface-2/25 p-3 text-[12px]">
+                  <span className="eyebrow block mb-1">Owner reviewer note</span>
+                  <p className="text-ink-2 leading-relaxed">{sel.reviewer_note}</p>
+                </div>
+              )}
+            </div>
           )}
-          <div className={cn("mt-4 grid grid-cols-3 gap-2", !mayDecide && "pointer-events-none opacity-40")} data-tour="rv-decide" aria-disabled={!mayDecide}>
-            {editing ? (
-              <>
-                <button className="btn-outline col-span-1" onClick={() => setEditing(false)}>Cancel</button>
-                <button className="btn-primary col-span-2" onClick={() => decide("edited")}><Check className="size-4" /> Save edit <span className="font-mono text-[10.5px] opacity-60">⌘↵</span></button>
-              </>
-            ) : (
-              <>
-                <button className="btn h-11 flex-col gap-0 border border-ok/30 bg-ok/[.08] text-ok hover:bg-ok/15" onClick={() => decide("accepted")}><Check className="size-4" /><span className="text-[11px]">Accept <span className="font-mono opacity-60">A</span></span></button>
-                <button className="btn h-11 flex-col gap-0 border border-line bg-surface text-ink-2 hover:bg-surface-2" onClick={() => decide("rejected")}><X className="size-4" /><span className="text-[11px]">Reject <span className="font-mono opacity-60">R</span></span></button>
-                <button className="btn h-11 flex-col gap-0 border border-info/30 bg-info/[.08] text-info hover:bg-info/15" onClick={() => setEditing(true)}><Pencil className="size-4" /><span className="text-[11px]">Edit <span className="font-mono opacity-60">E</span></span></button>
-              </>
-            )}
-          </div>
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-3">The system describes what it sees. It never decides who is responsible — that is always a person&apos;s call.</p>
           <FindingFacts obs={sel} />
           {sel.review_status !== "rejected" && <RepairPanel obs={sel} />}

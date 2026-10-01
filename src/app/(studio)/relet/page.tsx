@@ -9,6 +9,7 @@ import { getAssets, getProperty, getRoom, getRooms } from "@/lib/view";
 import { cn } from "@/lib/utils";
 import { useSignedUrls } from "@/lib/use-signed";
 import { useStudio } from "@/components/providers";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Empty } from "@/components/ui";
 import type { Recipe } from "@/lib/recipes";
 
@@ -18,8 +19,8 @@ import type { Recipe } from "@/lib/recipes";
 type Ratio = "3:2" | "1:1" | "4:5";
 
 export default function ReletPage() {
-  const { user } = useStudio();
-  if (user.role !== "owner") {
+  const { can } = usePermissions();
+  if (!can("relet:access")) {
     return <Empty icon={<Wand2 className="size-5" />} title="Re-let studio is an owner tool" body="It turns inspection photos into listing photos with Cloudinary generative AI (which spends credits). Evidence photos are never altered." />;
   }
   return <Relet />;

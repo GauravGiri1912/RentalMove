@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDatabase } from "@/lib/db";
-import { buildSharedReport } from "@/lib/shared-report";
 
-/** GET /api/report/:token — same sanitised, pixelated view as /api/share/:token. */
+/**
+ * GET /api/report/:token
+ * @deprecated Legacy duplicate route. Canonical route is /api/share/:token.
+ * Returns HTTP 307 redirect to /api/share/:token with Deprecation header.
+ */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
-  try {
-    const { token } = await params;
-    const link = await getDatabase().getShareLink(token);
-    if (!link) return NextResponse.json({ error: "Invalid or expired report link" }, { status: 404 });
-    const report = await buildSharedReport(link);
-    if (!report) return NextResponse.json({ error: "Report not found" }, { status: 404 });
-    return NextResponse.json({ ...report, expires_at: link.expires_at }, { headers: { "Cache-Control": "no-store" } });
-  } catch (err: any) {
-    return NextResponse.json({ error: "Failed to load report", message: err?.message || String(err) }, { status: 500 });
-  }
+  const { token } = await params;
+  const canonicalUrl = new URL(`/api/share/${token}`, req.url);
+  const response = NextResponse.redirect(canonicalUrl, 307);
+  response.headers.set("Deprecation", "true");
+  response.headers.set("Link", `<${canonicalUrl.pathname}>; rel="canonical"`);
+  return response;
 }

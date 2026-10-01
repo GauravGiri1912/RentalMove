@@ -8,24 +8,38 @@ import {
   ScanSearch, Search, Sun, Hammer, Undo2, X, Grid3x3, Cpu, Sparkles, Map as MapIcon, Wand2, Play, LogOut, Loader2, AlertTriangle, Radio, ShieldCheck,
 } from "lucide-react";
 import { useStudio } from "./providers";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { Capability } from "@/lib/permissions";
 import { Kbd } from "./ui";
 import { cn } from "@/lib/utils";
 import { getMeta, getProperties, getProperty, getWorkOrders, isUsablePhoto } from "@/lib/view";
 import { HoodDrawer } from "./hood";
 
-const NAV = [
-  { href: "/", label: "Overview", icon: LayoutGrid, key: "G O" },
-  { href: "/map", label: "Home map", icon: MapIcon, key: "G H" },
-  { href: "/memory", label: "Property memory", icon: Grid3x3, key: "G M" },
-  { href: "/capture", label: "Capture", icon: Camera, key: "G C" },
-  { href: "/review", label: "Review", icon: ScanSearch, key: "G R", badge: true },
-  { href: "/compare", label: "Compare", icon: GitCompareArrows, key: "G D" },
-  { href: "/repairs", label: "Repairs", icon: Hammer, key: "G W", repairs: true },
-  { href: "/timeline", label: "Timeline", icon: History, key: "G T" },
-  { href: "/search", label: "Search", icon: Search, key: "/" },
-  { href: "/report", label: "Evidence report", icon: FileText, key: "G E" },
-  { href: "/relet", label: "Re-let studio", icon: Wand2, key: "G S" },
-  { href: "/lab", label: "Media lab", icon: FlaskConical, key: "G L" },
+interface NavItem {
+  href: string;
+  label: string;
+  ownerLabel?: string;
+  tenantLabel?: string;
+  icon: any;
+  key: string;
+  badge?: boolean;
+  repairs?: boolean;
+  capability: Capability;
+}
+
+const NAV: NavItem[] = [
+  { href: "/", label: "Overview", icon: LayoutGrid, key: "G O", capability: "property:view" },
+  { href: "/map", label: "Home map", icon: MapIcon, key: "G H", capability: "room:view" },
+  { href: "/memory", label: "Property memory", icon: Grid3x3, key: "G M", capability: "room:view" },
+  { href: "/capture", label: "Capture", icon: Camera, key: "G C", capability: "capture:use" },
+  { href: "/review", label: "Review", ownerLabel: "Review", tenantLabel: "Findings", icon: ScanSearch, key: "G R", badge: true, capability: "finding:view" },
+  { href: "/compare", label: "Compare", icon: GitCompareArrows, key: "G D", capability: "finding:view" },
+  { href: "/repairs", label: "Repairs", icon: Hammer, key: "G W", repairs: true, capability: "repair:view" },
+  { href: "/timeline", label: "Timeline", icon: History, key: "G T", capability: "property:view" },
+  { href: "/search", label: "Search", icon: Search, key: "/", capability: "property:view" },
+  { href: "/report", label: "Evidence report", icon: FileText, key: "G E", capability: "report:view" },
+  { href: "/relet", label: "Re-let studio", icon: Wand2, key: "G S", capability: "relet:access" },
+  { href: "/lab", label: "Media lab", icon: FlaskConical, key: "G L", capability: "media:transform" },
 ];
 
 function Logo() {
@@ -48,6 +62,9 @@ function Logo() {
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
   const { observations, user, selectProperty, live } = useStudio();
+  const { can } = usePermissions();
+  const visibleNav = useMemo(() => NAV.filter((n) => can(n.capability)), [can]);
+  // Photos that don't match their room are not waiting for review until someone confirms them.
   const pending = observations.filter((o) => o.review_status === "pending" && isUsablePhoto(o.asset_id)).length;
   const openRepairs = getWorkOrders().filter((w) => w.status !== "done").length;
   const prop = getProperty();
@@ -73,8 +90,9 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </div>
       <nav className="flex-1 space-y-0.5 px-2">
-        {NAV.map((n) => {
+        {visibleNav.map((n) => {
           const active = n.href === "/" ? path === "/" : path.startsWith(n.href);
+          const label = (user.role === "tenant" && n.tenantLabel) || (user.role === "owner" && n.ownerLabel) || n.label;
           return (
             <Link
               key={n.href}
@@ -86,11 +104,11 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <n.icon className={cn("size-[16px]", active ? "text-ink" : "text-ink-3 group-hover:text-ink-2")} strokeWidth={1.8} />
-              <span className="flex-1">{n.label}</span>
+              <span className="flex-1">{label}</span>
               {"repairs" in n && openRepairs > 0 && (
                 <span className="rounded-full bg-surface-2 px-1.5 font-mono text-[10.5px] font-medium leading-[18px] text-ink-2">{openRepairs}</span>
               )}
-              {"badge" in n && n.badge && pending > 0 && (
+              {"badge" in n && n.badge && pending > 0 && can("finding:triage") && (
                 <span className="rounded-full bg-signal px-1.5 font-mono text-[10.5px] font-medium leading-[18px] text-white">{pending}</span>
               )}
             </Link>
@@ -163,7 +181,8 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
 }
 
 function Palette() {
-  const { paletteOpen, setPaletteOpen, setHoodOpen, toggleTheme, observations, setAskOpen, setTour, signOut } = useStudio();
+  const { paletteOpen, setPaletteOpen, setHoodOpen, toggleTheme, observations, setAskOpen, setTour, signOut, user } = useStudio();
+  const { can } = usePermissions();
   const router = useRouter();
   const [q, setQ] = useState("");
   const [i, setI] = useState(0);
@@ -171,8 +190,12 @@ function Palette() {
 
   const items = useMemo(() => {
     const go = (href: string) => () => router.push(href);
+    const visibleNav = NAV.filter((n) => can(n.capability));
     const base = [
-      ...NAV.map((n) => ({ group: "Go to", label: n.label, icon: n.icon, run: go(n.href), hint: n.key })),
+      ...visibleNav.map((n) => {
+        const label = (user.role === "tenant" && n.tenantLabel) || (user.role === "owner" && n.ownerLabel) || n.label;
+        return { group: "Go to", label, icon: n.icon, run: go(n.href), hint: n.key };
+      }),
       { group: "Actions", label: "Ask RentalMove", icon: Sparkles, run: () => setAskOpen(true), hint: "⌘J" },
       { group: "Actions", label: "Present — guided tour", icon: Play, run: () => setTour({ active: true, step: 0, playing: true }), hint: "" },
       { group: "Actions", label: "Start move-out capture", icon: Camera, run: go("/capture"), hint: "" },
@@ -181,7 +204,9 @@ function Palette() {
       { group: "Actions", label: "Toggle dark mode", icon: Moon, run: toggleTheme, hint: "" },
       { group: "Actions", label: "Verify a photo", icon: ShieldCheck, run: go("/verify"), hint: "" },
       { group: "Actions", label: "Sign out", icon: LogOut, run: () => { void signOut(); }, hint: "" },
-      ...observations.filter((o) => o.review_status === "pending").map((o) => ({ group: "Pending observations", label: o.description, icon: ScanSearch, run: go(`/review?o=${o.id}`), hint: "" })),
+      ...(can("finding:triage")
+        ? observations.filter((o) => o.review_status === "pending").map((o) => ({ group: "Pending observations", label: o.description, icon: ScanSearch, run: go(`/review?o=${o.id}`), hint: "" }))
+        : []),
     ];
     const t = q.trim().toLowerCase();
     const filtered = t ? base.filter((b) => b.label.toLowerCase().includes(t)) : base;
@@ -190,7 +215,7 @@ function Palette() {
       filtered.push({ group: "Search", label: `Search media for “${q.trim()}”`, icon: Search, run: go(`/search?q=${encodeURIComponent(q.trim())}`), hint: "" });
     }
     return filtered;
-  }, [q, router, setHoodOpen, toggleTheme, observations, setAskOpen, setTour, signOut]);
+  }, [q, router, setHoodOpen, toggleTheme, observations, setAskOpen, setTour, signOut, can, user.role]);
 
   useEffect(() => { setI(0); }, [q]);
   useEffect(() => { if (paletteOpen) { setQ(""); setTimeout(() => inputRef.current?.focus(), 10); } }, [paletteOpen]);
@@ -273,12 +298,27 @@ function Toasts() {
   );
 }
 
-const SHORTCUTS: [string, string][] = [
-  ["⌘ K", "Command palette"], ["/", "Search"], ["U", "Under the hood"], ["G then O / H / M / C / R / D / T / E / S / L", "Jump to a page"], ["⌘ J", "Ask RentalMove"],
-  ["A / R / E", "Review: accept, reject, edit"], ["J / K", "Review: next / previous"], ["1–4", "Compare: switch mode"], ["?", "This sheet"],
-];
-
 function ShortcutSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { can } = usePermissions();
+  const shortcuts: [string, string][] = useMemo(() => {
+    const list: [string, string][] = [
+      ["⌘ K", "Command palette"],
+      ["/", "Search"],
+      ["U", "Under the hood"],
+      [can("relet:access") ? "G then O / H / M / C / R / D / T / E / S / L" : "G then O / H / M / C / R / D / T / E / L", "Jump to a page"],
+      ["⌘ J", "Ask RentalMove"],
+    ];
+    if (can("finding:triage")) {
+      list.push(["A / R / E", "Review: accept, reject, edit"]);
+      list.push(["J / K", "Review: next / previous"]);
+    } else {
+      list.push(["J / K", "Findings: next / previous"]);
+    }
+    list.push(["1–4", "Compare: switch mode"]);
+    list.push(["?", "This sheet"]);
+    return list;
+  }, [can]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4 backdrop-blur-[2px]" onMouseDown={onClose}>
@@ -288,7 +328,7 @@ function ShortcutSheet({ open, onClose }: { open: boolean; onClose: () => void }
           <button onClick={onClose} className="btn-ghost px-2" aria-label="Close"><X className="size-4" /></button>
         </div>
         <div className="divide-y divide-line">
-          {SHORTCUTS.map(([k, v]) => (
+          {shortcuts.map(([k, v]) => (
             <div key={k} className="flex items-center justify-between py-2.5 text-[13px]">
               <span className="text-ink-2">{v}</span>
               <span className="flex gap-1">{k.split(" ").map((p, i) => (p === "then" || p === "/" && k.length > 2 ? <span key={i} className="px-1 text-ink-3">{p}</span> : <Kbd key={i}>{p}</Kbd>))}</span>
@@ -332,6 +372,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 function ShellInner({ children }: { children: React.ReactNode }) {
   const { setPaletteOpen, paletteOpen, setHoodOpen } = useStudio();
+  const { can } = usePermissions();
   const [drawer, setDrawer] = useState(false);
   const [sheet, setSheet] = useState(false);
   const router = useRouter();
@@ -348,13 +389,22 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       if (e.key === "?") { setSheet((s) => !s); return; }
       if (e.key === "/") { e.preventDefault(); router.push("/search"); return; }
       if (e.key.toLowerCase() === "u") { setHoodOpen(true); return; }
-      if (g && jump[e.key.toLowerCase()]) { router.push(jump[e.key.toLowerCase()]); g = false; return; }
+      if (g && jump[e.key.toLowerCase()]) {
+        const dest = jump[e.key.toLowerCase()];
+        if (dest === "/relet" && !can("relet:access")) {
+          g = false;
+          return;
+        }
+        router.push(dest);
+        g = false;
+        return;
+      }
       if (e.key.toLowerCase() === "g") { g = true; clearTimeout(gTimer); gTimer = setTimeout(() => (g = false), 900); }
       if (e.key === "Escape") { setSheet(false); setHoodOpen(false); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [paletteOpen, setPaletteOpen, setHoodOpen, router]);
+  }, [paletteOpen, setPaletteOpen, setHoodOpen, router, can]);
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[248px_1fr]">

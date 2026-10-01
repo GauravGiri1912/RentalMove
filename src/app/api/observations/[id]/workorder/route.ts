@@ -3,6 +3,8 @@ import { z } from "zod";
 import { v2 as cloudinary } from "cloudinary";
 import { getAuthenticatedUserOrThrow, forbiddenResponse, unauthorizedResponse } from "@/lib/auth";
 import { observationWithProperty } from "@/lib/access";
+import { authorize } from "@/lib/authorization";
+import type { Capability } from "@/lib/permissions";
 import { appendEvent, deriveWorkOrders, listEvents } from "@/lib/events";
 import { isCloudinaryConfigured } from "@/lib/media";
 import { computeRemoteImageSha256 } from "@/lib/hash";
@@ -17,8 +19,6 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("sign") }),
   z.object({ action: z.literal("photo"), public_id: z.string().min(1).max(300) }),
 ]);
-
-const OWNER_ONLY = new Set(["create", "status", "cancel"]);
 
 /**
  * POST /api/observations/:id/workorder — the repair loop for one finding.
@@ -37,7 +37,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const found = await observationWithProperty(user, id);
     if (!found) return forbiddenResponse("You do not have access to this finding.");
     const d = parsed.data;
-    if (OWNER_ONLY.has(d.action) && user.role !== "owner") return forbiddenResponse("Only the owner can manage work orders.");
+
+    const capability: Capability = d.action === "create"
+      ? "repair:create"
+      : d.action === "status" || d.action === "cancel"
+      ? "repair:status"
+      : "repair:proof";
+
+    const decision = await authorize({
+      user,
+      capability,
+      resource: { type: "workorder", id, propertyId: found.propertyId },
+    });
+    if (!decision.allowed) return forbiddenResponse("Only the owner can manage work orders.");
 
     const current = deriveWorkOrders(await listEvents(found.propertyId, ["workorder"]))[id];
     if (d.action === "create" && current) return NextResponse.json({ error: "A work order already exists for this finding." }, { status: 409 });

@@ -38,7 +38,9 @@ export interface View {
 
 let current: View | null = null;
 export const setView = (v: View | null) => { current = v; };
+export const clearView = () => { current = null; };
 export const hasView = () => current !== null;
+export const getView = () => current;
 function V(): View {
   if (!current) throw new Error("View not loaded yet");
   return current;

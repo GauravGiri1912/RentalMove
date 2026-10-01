@@ -388,6 +388,36 @@ export class SupabaseDatabaseService implements DatabaseService {
     }
   }
 
+  async getRoomById(id: string): Promise<Room | null> {
+    try {
+      const { data, error } = await this.client
+        .from("rooms")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) {
+        if (this.isSchemaMissingError(error)) {
+          this.logSchemaWarning("rooms");
+          return this.fallback ? this.fallback.getRoomById(id) : null;
+        }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
+        return null;
+      }
+      if (!data) return this.fallback ? this.fallback.getRoomById(id) : null;
+      return {
+        id: data.id,
+        property_id: data.property_id,
+        name: data.name,
+        category: data.category,
+        created_at: data.created_at,
+      };
+    } catch (err) {
+      if (!this.fallback) throw err;
+      return this.fallback ? this.fallback.getRoomById(id) : null;
+    }
+  }
+
   async createRoom(data: Omit<Room, "id">): Promise<Room> {
     const newRoom: Room = {
       id: `room-${Date.now()}`,
@@ -455,6 +485,38 @@ export class SupabaseDatabaseService implements DatabaseService {
     } catch (err) {
       if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getInspections(propertyId) : [];
+    }
+  }
+
+  async getInspectionById(id: string): Promise<Inspection | null> {
+    try {
+      const { data, error } = await this.client
+        .from("inspections")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) {
+        if (this.isSchemaMissingError(error)) {
+          this.logSchemaWarning("inspections");
+          return this.fallback ? this.fallback.getInspectionById(id) : null;
+        }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
+        return null;
+      }
+      if (!data) return this.fallback ? this.fallback.getInspectionById(id) : null;
+      return {
+        id: data.id,
+        property_id: data.property_id,
+        type: data.type,
+        captured_at: data.captured_at,
+        status: data.status,
+        created_by: data.created_by,
+        created_at: data.created_at,
+      };
+    } catch (err) {
+      if (!this.fallback) throw err;
+      return this.fallback ? this.fallback.getInspectionById(id) : null;
     }
   }
 
@@ -632,6 +694,32 @@ export class SupabaseDatabaseService implements DatabaseService {
     } catch (err) {
       if (!this.fallback) throw err;
       return this.fallback ? this.fallback.getAssetByPublicId(publicId) : null;
+    }
+  }
+
+  async getAssetBySha256(sha256: string): Promise<Asset | null> {
+    const target = sha256.toLowerCase().trim();
+    try {
+      const { data, error } = await this.client
+        .from("assets")
+        .select("*")
+        .eq("sha256", target)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        if (this.isSchemaMissingError(error)) {
+          this.logSchemaWarning("assets");
+          return this.fallback ? this.fallback.getAssetBySha256(target) : null;
+        }
+        if (!this.fallback) throw new Error(`Supabase query failed: ${error.message}`);
+        return null;
+      }
+      if (!data) return this.fallback ? this.fallback.getAssetBySha256(target) : null;
+      return mapAssetRow(data);
+    } catch (err) {
+      if (!this.fallback) throw err;
+      return this.fallback ? this.fallback.getAssetBySha256(target) : null;
     }
   }
 

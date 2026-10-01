@@ -17,9 +17,28 @@ import { AREAS, cleanAreas } from "./coverage";
  * (mark the asset failed / return a 5xx) — never substitute a made-up finding.
  */
 export class VisionError extends Error {
-  constructor(message: string) {
+  readonly isQuotaLimited?: boolean;
+  readonly isRetryable?: boolean;
+
+  constructor(message: string, options?: { isQuotaLimited?: boolean; isRetryable?: boolean }) {
     super(message);
     this.name = "VisionError";
+    this.isQuotaLimited = options?.isQuotaLimited;
+    this.isRetryable = options?.isRetryable;
+  }
+}
+
+export class VisionQuotaError extends VisionError {
+  constructor(message: string) {
+    super(message, { isQuotaLimited: true, isRetryable: false });
+    this.name = "VisionQuotaError";
+  }
+}
+
+export class VisionRetryableError extends VisionError {
+  constructor(message: string) {
+    super(message, { isQuotaLimited: false, isRetryable: true });
+    this.name = "VisionRetryableError";
   }
 }
 
@@ -235,8 +254,8 @@ export class GroqVisionProvider implements VisionProvider {
 
         if (response.status === 429) {
           const errText = await response.text().catch(() => "");
-          if (errText.includes("tokens per day") || errText.includes("TPD")) {
-            throw new Error(`Groq daily token limit (TPD) reached: ${errText}`);
+          if (errText.includes("tokens per day") || errText.includes("TPD") || /quota|daily limit/i.test(errText)) {
+            throw new VisionQuotaError(`Groq daily token limit (TPD) reached: ${errText}`);
           }
           let waitMs = 5000 * Math.pow(1.5, attempt);
           const match = errText.match(/try again in ([0-9.]+)s/i);
@@ -244,21 +263,27 @@ export class GroqVisionProvider implements VisionProvider {
             waitMs = Math.ceil(parseFloat(match[1]) * 1000) + 1000;
           }
           console.warn(`[GroqVision] Rate limit 429 (attempt ${attempt + 1}/${maxRetries + 1}). Waiting ${waitMs}ms...`);
-          if (attempt === maxRetries) throw new Error(`Groq rate limit exceeded after ${maxRetries} retries: ${errText}`);
+          if (attempt === maxRetries) {
+            throw new VisionQuotaError(`Groq rate limit quota exceeded after ${maxRetries} retries: ${errText}`);
+          }
           await new Promise((r) => setTimeout(r, waitMs));
           continue;
         }
 
-        if (response.status >= 500 && attempt < maxRetries) {
-          const waitMs = 2000 * (attempt + 1);
-          console.warn(`[GroqVision] Server error ${response.status}. Retrying in ${waitMs}ms...`);
-          await new Promise((r) => setTimeout(r, waitMs));
-          continue;
+        if (response.status >= 500) {
+          if (attempt < maxRetries) {
+            const waitMs = 2000 * (attempt + 1);
+            console.warn(`[GroqVision] Server error ${response.status}. Retrying in ${waitMs}ms...`);
+            await new Promise((r) => setTimeout(r, waitMs));
+            continue;
+          } else {
+            throw new VisionRetryableError(`Groq server error ${response.status} after ${maxRetries} retries`);
+          }
         }
 
         if (!response.ok) {
           const errText = await response.text().catch(() => "");
-          throw new Error(`Groq API error ${response.status}: ${errText}`);
+          throw new VisionError(`Groq API error ${response.status}: ${errText}`);
         }
 
         const data = await response.json();
@@ -267,12 +292,14 @@ export class GroqVisionProvider implements VisionProvider {
         return JSON.parse(cleanJson);
       } catch (err: any) {
         lastError = err;
+        if (err instanceof VisionQuotaError) throw err;
         // A daily quota will not recover within a retry window; fail fast with the real reason.
-        if (attempt === maxRetries || /daily token limit/i.test(String(err?.message))) break;
+        if (attempt === maxRetries || /daily token limit|quota/i.test(String(err?.message))) break;
       }
     }
 
-    throw new VisionError(lastError?.message || "Failed to communicate with Groq Vision API");
+    if (lastError instanceof VisionError) throw lastError;
+    throw new VisionRetryableError(lastError?.message || "Failed to communicate with Groq Vision API");
   }
 
   async analyzeImage(input: { imageUrl: string; roomHint?: string; size?: { width: number; height: number } }): Promise<ImageAnalysis> {

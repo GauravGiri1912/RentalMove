@@ -20,6 +20,12 @@ export default {
         warn: token("warn"),
         danger: token("danger"),
         info: token("info"),
+        "presentation-overlay": token("presentation-overlay"),
+        "presentation-surface": token("presentation-surface"),
+        "presentation-border": token("presentation-border"),
+        "presentation-text": token("presentation-text"),
+        "presentation-muted": token("presentation-muted"),
+        "presentation-control": token("presentation-control"),
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],

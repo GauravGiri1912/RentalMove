@@ -12,7 +12,17 @@ export async function loadGray(src: string | Buffer, width = ANALYSIS_WIDTH, hei
   let input: Buffer;
   if (Buffer.isBuffer(src)) input = src;
   else {
-    const res = await fetch(src);
+    let fetchUrl = src;
+    // When fetching from Cloudinary, request an appropriately pre-scaled rendition (up to 1600px)
+    // to avoid downloading oversized raw originals (e.g. 10MB+) before Sharp processing
+    if (typeof src === "string" && src.includes("/image/upload/") && !src.includes("w_") && !src.includes("c_")) {
+      fetchUrl = src.replace("/image/upload/", `/image/upload/c_limit,w_${width * 2},q_auto,f_jpg/`);
+    }
+    let res = await fetch(fetchUrl);
+    if (!res.ok && fetchUrl !== src) {
+      // Fall back to original URL if the rendition transformation cannot be served
+      res = await fetch(src);
+    }
     if (!res.ok) throw new Error(`Image fetch failed ${res.status} for ${src}`);
     input = Buffer.from(await res.arrayBuffer());
   }

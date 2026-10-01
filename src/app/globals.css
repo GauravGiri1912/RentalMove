@@ -21,7 +21,13 @@
   --info: 45 98 220;
   /* Chart series — validated (dataviz validator, light surface) */
   --chart-new: 224 80 28;
-  --chart-pre: 79 116 179;
+  /* Presentation / Tour tokens — light mode */
+  --presentation-overlay: 15 16 18;
+  --presentation-surface: 255 255 255;
+  --presentation-border: 226 222 214;
+  --presentation-text: 20 21 24;
+  --presentation-muted: 78 80 86;
+  --presentation-control: 240 237 231;
   color-scheme: light;
 }
 
@@ -41,6 +47,13 @@
   /* Chart series — validated against the dark surface */
   --chart-new: 227 97 43;
   --chart-pre: 100 136 202;
+  /* Presentation / Tour tokens — dark mode */
+  --presentation-overlay: 0 0 0;
+  --presentation-surface: 17 18 20;
+  --presentation-border: 40 42 48;
+  --presentation-text: 255 255 255;
+  --presentation-muted: 168 168 170;
+  --presentation-control: 27 29 33;
   color-scheme: dark;
 }
 

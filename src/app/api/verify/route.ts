@@ -11,26 +11,27 @@ const Body = z.object({ sha256: z.string().regex(/^[a-f0-9]{64}$/i) });
  * device). A match reveals only room, inspection type and capture time — never the address.
  */
 export async function POST(req: NextRequest) {
-  const rl = authRateLimit(req);
+  const rl = await authRateLimit(req);
   if (!rl.success) return rl.response;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Send { sha256: <64 hex chars> }" }, { status: 400 });
   const sha = parsed.data.sha256.toLowerCase();
   const db = getDatabase();
-  for (const p of await db.listProperties()) {
-    const [rooms, inspections] = await Promise.all([db.getRooms(p.id), db.getInspections(p.id)]);
-    for (const insp of inspections) {
-      const hit = (await db.getAssets(insp.id)).find((a) => (a.sha256 || "").toLowerCase() === sha);
-      if (hit) {
-        return NextResponse.json({
-          match: true,
-          room: rooms.find((r) => r.id === hit.room_id)?.name ?? "Unknown room",
-          inspection_type: insp.type,
-          captured_at: hit.captured_at,
-          registered_at: hit.created_at,
-        });
-      }
-    }
+  const hit = await db.getAssetBySha256(sha);
+  if (!hit) {
+    return NextResponse.json({ match: false });
   }
-  return NextResponse.json({ match: false });
+
+  const [insp, room] = await Promise.all([
+    hit.inspection_id ? db.getInspectionById(hit.inspection_id) : Promise.resolve(null),
+    hit.room_id ? db.getRoomById(hit.room_id) : Promise.resolve(null),
+  ]);
+
+  return NextResponse.json({
+    match: true,
+    room: room?.name ?? "Unknown room",
+    inspection_type: insp?.type ?? "inspection",
+    captured_at: hit.captured_at,
+    registered_at: hit.created_at,
+  });
 }

@@ -85,13 +85,43 @@ function writeLS(key: string, v: unknown) {
   try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
 }
 
-export function StudioProvider({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<Studio["status"]>("loading");
+export interface InitialStudioData {
+  sessionUser?: User | null;
+  properties?: any[];
+  propertyId?: string | null;
+  snapshot?: any | null;
+}
+
+export function StudioProvider({
+  children,
+  initialData,
+}: {
+  children: React.ReactNode;
+  initialData?: InitialStudioData;
+}) {
+  const [status, setStatus] = useState<Studio["status"]>(() => {
+    if (initialData?.snapshot && initialData?.sessionUser && initialData?.propertyId) return "ready";
+    return "loading";
+  });
   const [error, setError] = useState<string | null>(null);
-  const [sessionUser, setSessionUser] = useState<User | null>(null);
-  const [view, setViewState] = useState<View | null>(null);
+  const [sessionUser, setSessionUser] = useState<User | null>(() => {
+    if (!initialData?.sessionUser) return null;
+    const u = initialData.sessionUser;
+    return {
+      ...u,
+      initials: u.name.split(/\s+/).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(),
+    };
+  });
+  const [view, setViewState] = useState<View | null>(() => {
+    if (initialData?.snapshot && initialData?.sessionUser && initialData?.propertyId) {
+      const v = toView(initialData.snapshot, initialData.sessionUser, initialData.properties ?? []);
+      setView(v);
+      return v;
+    }
+    return null;
+  });
   const [version, setVersion] = useState(0);
-  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [propertyId, setPropertyId] = useState<string | null>(initialData?.propertyId ?? null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -99,8 +129,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [askOpen, setAskOpen] = useState(false);
   const [tour, setTourState] = useState({ active: false, step: 0, playing: true });
   const [live, setLive] = useState(false);
-  const propsRef = useRef<any[]>([]);
-  const userRef = useRef<any>(null);
+  const propsRef = useRef<any[]>(initialData?.properties ?? []);
+  const userRef = useRef<any>(initialData?.sessionUser ?? null);
 
   const toast = useCallback((t: Omit<Toast, "id">) => {
     const id = Date.now() + Math.random();
@@ -123,6 +153,12 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // Session + properties on mount.
   useEffect(() => {
     setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+
+    // If pre-hydrated from Server Component, avoid duplicate client waterfall
+    if (initialData?.snapshot && initialData?.sessionUser && initialData?.propertyId) {
+      return;
+    }
+
     (async () => {
       try {
         const s = await api<{ authenticated: boolean; user: any }>("/api/auth/session");
@@ -142,45 +178,80 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         else { setStatus("error"); setError(e?.message || String(e)); }
       }
     })();
-  }, [loadSnapshot]);
+  }, [loadSnapshot, initialData]);
 
   const refresh = useCallback(async () => {
     if (!propertyId) return;
     try { await loadSnapshot(propertyId); } catch (e: any) { toast({ title: "Could not refresh", detail: e?.message, tone: "danger" }); }
   }, [propertyId, loadSnapshot, toast]);
 
-  // Live updates, two transports feeding one debounced refresh:
-  //  - Supabase Realtime broadcast (works across server instances and devices; production)
-  //  - Server-sent events from this server's in-process bus (local development)
+  // Live updates with Supabase Realtime as primary transport,
+  // falling back to SSE only if Supabase Realtime is unavailable or not configured.
   useEffect(() => {
-    if (status !== "ready" || !propertyId) return;
+    const pid = propertyId;
+    if (status !== "ready" || !pid) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const bump = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => { void loadSnapshot(propertyId).catch(() => {}); }, 400);
-    };
-    let sseOpen = false, rtOpen = false;
-    const update = () => setLive(sseOpen || rtOpen);
-
-    const es = new EventSource(`/api/properties/${encodeURIComponent(propertyId)}/stream`);
-    es.onopen = () => { sseOpen = true; update(); };
-    es.onerror = () => { sseOpen = false; update(); };
-    es.onmessage = (m) => {
-      try { if (JSON.parse(m.data).type !== "hello") bump(); } catch {}
+      timer = setTimeout(() => { void loadSnapshot(pid).catch(() => {}); }, 400);
     };
 
     let channel: any = null;
+    let es: EventSource | null = null;
     let cancelled = false;
-    import("@/lib/supabase-client").then(({ getSupabaseBrowserClient }) => {
-      if (cancelled) return;
-      const sb = getSupabaseBrowserClient();
-      channel = sb.channel(`rm-${propertyId}`).on("broadcast", { event: "change" }, bump).subscribe((st: string) => { rtOpen = st === "SUBSCRIBED"; update(); });
-    }).catch(() => {});
+
+    const hasSupabase = Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+
+    function initSSE() {
+      if (es || cancelled || !pid) return;
+      try {
+        es = new EventSource(`/api/properties/${encodeURIComponent(pid)}/stream`);
+        es.onopen = () => { setLive(true); };
+        es.onerror = () => { setLive(false); };
+        es.onmessage = (m) => {
+          try { if (JSON.parse(m.data).type !== "hello") bump(); } catch {}
+        };
+      } catch {}
+    }
+
+    if (hasSupabase) {
+      import("@/lib/supabase-client").then(({ getSupabaseBrowserClient }) => {
+        if (cancelled) return;
+        try {
+          const sb = getSupabaseBrowserClient();
+          channel = sb.channel(`rm-${pid}`)
+            .on("broadcast", { event: "change" }, bump)
+            .subscribe((st: string) => {
+              if (cancelled) return;
+              if (st === "SUBSCRIBED") {
+                setLive(true);
+                // Primary Supabase Realtime connected: close redundant SSE fallback if open
+                if (es) {
+                  es.close();
+                  es = null;
+                }
+              } else if (st === "CHANNEL_ERROR" || st === "TIMED_OUT") {
+                // Realtime failed: fallback to SSE
+                if (!es && !cancelled) initSSE();
+              }
+            });
+        } catch {
+          if (!cancelled) initSSE();
+        }
+      }).catch(() => {
+        if (!cancelled) initSSE();
+      });
+    } else {
+      initSSE();
+    }
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
-      es.close();
+      if (es) es.close();
       if (channel) void channel.unsubscribe();
       setLive(false);
     };
@@ -198,6 +269,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       await getSupabaseBrowserClient().auth.signOut();
     } catch {}
     await api("/api/auth/session", { method: "DELETE" }).catch(() => {});
+    setView(null);
+    setViewState(null);
     window.location.href = "/welcome";
   }, []);
 
@@ -210,24 +283,24 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  /** Optimistically patch the in-memory view, run the request, roll back on failure. */
-  const optimistic = useCallback(async (mutate: (v: View) => View, request: () => Promise<unknown>, failTitle: string) => {
+  /** Optimistically patch the in-memory view, run the request, roll back on failure. Avoids downloading full snapshot on every mutation. */
+  const optimistic = useCallback(async <T,>(mutate: (v: View) => View, request: () => Promise<T>, failTitle: string): Promise<T> => {
     const before = hasView() ? view : null;
     if (before) applyView(mutate(before));
     try {
-      await request();
-      if (propertyId) await loadSnapshot(propertyId);
+      const res = await request();
+      return res;
     } catch (e: any) {
       if (before) applyView(before);
       toast({ title: failTitle, detail: e?.message, tone: "danger" });
       throw e;
     }
-  }, [view, applyView, propertyId, loadSnapshot, toast]);
+  }, [view, applyView, toast]);
 
   const review = useCallback(async (id: string, status: ReviewStatus, patch: Partial<Observation> = {}) => {
-    await optimistic(
+    const updated = await optimistic(
       (v) => ({ ...v, observations: v.observations.map((o) => (o.id === id ? { ...o, ...patch, review_status: status } : o)) }),
-      () => api(`/api/observations/${encodeURIComponent(id)}`, {
+      () => api<Observation>(`/api/observations/${encodeURIComponent(id)}`, {
         method: "PATCH",
         json: {
           review_status: status,
@@ -238,7 +311,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       }),
       "Review not saved"
     );
-  }, [optimistic]);
+    // Reconcile server truth into in-memory view without refetching snapshot
+    if (updated && hasView() && view) {
+      applyView({
+        ...view,
+        observations: view.observations.map((o) => (o.id === id ? { ...o, ...updated } : o)),
+      });
+    }
+  }, [optimistic, view, applyView]);
 
   const setStance = useCallback(async (obsId: string, s: Stance | null) => {
     const role = sessionUser?.role ?? "tenant";

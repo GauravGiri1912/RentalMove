@@ -14,7 +14,7 @@ import { rateLimit } from "@/lib/rate-limit";
 export async function GET(req: NextRequest) {
   // Reading the session happens on every page load; it gets a generous limit of its own.
   // Credential endpoints (sign-in / sign-up) keep the strict auth limit.
-  const rl = rateLimit(req, { limit: 120, windowMs: 60_000, prefix: "session" });
+  const rl = await rateLimit(req, { limit: 120, windowMs: 60_000, prefix: "session" });
   if (!rl.success) return rl.response;
 
   try {
@@ -35,28 +35,37 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    // Sign out via Supabase to invalidate the JWT
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return req.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            // Will be handled via response cookie clearing below
-          },
-        },
-      }
-    );
-
-    await supabase.auth.signOut();
-
     const res = NextResponse.json({ success: true, message: "Signed out" });
-    // Clear auth cookies
-    res.cookies.delete("sb-access-token");
-    res.cookies.delete("sb-refresh-token");
+
+    // Sign out via Supabase SSR client wired to write cookie changes directly to response
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        {
+          cookies: {
+            getAll() {
+              return req.cookies.getAll();
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                res.cookies.set(name, value, options);
+              });
+            },
+          },
+        }
+      );
+
+      await supabase.auth.signOut();
+    }
+
+    // Explicitly clear all Supabase auth cookies present on request, including chunked tokens
+    for (const cookie of req.cookies.getAll()) {
+      if (cookie.name.startsWith("sb-") || cookie.name.includes("auth-token")) {
+        res.cookies.delete(cookie.name);
+      }
+    }
+
     return res;
   } catch (err: any) {
     return NextResponse.json(

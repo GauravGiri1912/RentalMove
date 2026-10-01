@@ -7,6 +7,7 @@ import {
   forbiddenResponse,
   unauthorizedResponse,
 } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { z } from "zod";
 
 const CreateRoomSchema = z.object({
@@ -21,6 +22,10 @@ export async function GET(
   try {
     const { id } = await params;
     const user = await getAuthenticatedUserOrThrow(req);
+
+    if (!can(user, "room:view")) {
+      return forbiddenResponse("You do not have authorization to view rooms for this property.");
+    }
 
     const authorized = await canUserAccessProperty(user, id);
     if (!authorized) {
@@ -47,7 +52,7 @@ export async function POST(
     const { id } = await params;
     const user = await getAuthenticatedUserOrThrow(req);
 
-    if (user.role !== "owner") {
+    if (!can(user, "room:create")) {
       return forbiddenResponse("Only property owners are authorized to create rooms.");
     }
 

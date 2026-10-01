@@ -6,7 +6,7 @@ import { uploadRateLimit } from "@/lib/rate-limit";
 
 /** POST /api/handoff/:token/sign — upload signature for exactly the token's room. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
-  const rl = uploadRateLimit(req);
+  const rl = await uploadRateLimit(req);
   if (!rl.success) return rl.response;
   const { token } = await params;
   const c = verifyHandoff(token);

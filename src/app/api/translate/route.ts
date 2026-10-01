@@ -15,7 +15,7 @@ const Body = z.object({
  * Cached per property + language (translation events); only uncached strings reach the model.
  */
 export async function POST(req: NextRequest) {
-  const rl = rateLimit(req, { limit: 12, windowMs: 60_000, prefix: "translate" });
+  const rl = await rateLimit(req, { limit: 12, windowMs: 60_000, prefix: "translate" });
   if (!rl.success) return rl.response;
   try {
     const user = await getAuthenticatedUserOrThrow(req);

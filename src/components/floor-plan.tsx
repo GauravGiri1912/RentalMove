@@ -2,7 +2,7 @@
 
 import { useStudio } from "./providers";
 import { arc, cone, DOORS, PINS, PLAN, PLAN_ROOMS, WINDOWS } from "@/lib/floorplan";
-import { assetFor, getRooms } from "@/lib/view";
+import { assetFor, getRooms, getProperty } from "@/lib/view";
 
 /** Plan areas and pins with the property's real room ids (matched by category). */
 export function resolvedPlan() {
@@ -58,8 +58,10 @@ export function FloorPlan({
     return "rgb(var(--surface))";
   };
 
+  const unitLabel = getProperty()?.unit_label || "Floor Plan";
+
   return (
-    <svg viewBox={`0 0 ${PLAN.w} ${PLAN.h}`} className={cn("h-auto w-full select-none", className)} role="img" aria-label="Floor plan of Unit 4B">
+    <svg viewBox={`0 0 ${PLAN.w} ${PLAN.h}`} className={cn("h-auto w-full select-none", className)} role="img" aria-label={`Floor plan of ${unitLabel}`}>
       <defs>
         <pattern id="fp-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <line x1="0" y1="0" x2="0" y2="8" stroke="rgb(var(--line))" strokeWidth="2" />

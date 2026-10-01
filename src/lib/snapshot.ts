@@ -16,6 +16,7 @@ import {
 } from "./events";
 import { iou } from "./pixel";
 import { ocrBudget } from "./privacy-node";
+import { isSameSpot } from "./matching-config";
 import type { Asset, Comparison, Inspection, Observation, Property, Room, ShareLink, User } from "./schemas";
 
 export interface SnapshotAsset extends Asset {
@@ -68,13 +69,6 @@ export interface Snapshot {
   ocr: { used: number; cap: number; available: boolean; reason: string | null };
 }
 
-const SAME_SPOT_IOU = 0.2;
-const SAME_SPOT_DIST = 0.08;
-
-function centreDist(a: Observation["bbox"], b: Observation["bbox"]) {
-  return Math.hypot((a[0] + a[2]) / 2 - (b[0] + b[2]) / 2, (a[1] + a[3]) / 2 - (b[1] + b[3]) / 2);
-}
-
 /** Marks findings that match a non-rejected finding at the same spot in an earlier photo of the room. */
 export function markPreExisting(inspections: Inspection[], assets: Asset[], observations: Observation[]): SnapshotObservation[] {
   const when = new Map(inspections.map((i) => [i.id, new Date(i.captured_at).getTime()]));
@@ -87,7 +81,7 @@ export function markPreExisting(inspections: Inspection[], assets: Asset[], obse
       if (p.id === o.id || p.review_status === "rejected") return false;
       const pa = assetById.get(p.asset_id);
       if (!pa || pa.room_id !== a.room_id || (when.get(pa.inspection_id) ?? 0) >= t) return false;
-      return p.category === o.category && (iou(p.bbox, o.bbox) >= SAME_SPOT_IOU || centreDist(p.bbox, o.bbox) <= SAME_SPOT_DIST);
+      return p.category === o.category && isSameSpot(p.bbox, o.bbox);
     });
     return { ...o, pre_existing: !!earlier, matches: earlier?.id ?? null };
   });
