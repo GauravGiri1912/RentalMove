@@ -1,23 +1,88 @@
 {
-  "generated_at": "2026-09-30T06:58:44.980Z",
+  "generated_at": "2026-10-01T04:30:21.621Z",
   "summary": {
     "as captured": {
       "recall": 0.889,
       "meanIou": 0.492,
       "falseRegions": 0,
       "falseRegionsOnNoChangePair": 0,
-      "meanMs": 1183
+      "meanMs": 914
     },
     "handheld re-shot": {
       "recall": 0.667,
       "meanIou": 0.341,
       "falseRegions": 0,
       "falseRegionsOnNoChangePair": 0,
-      "meanMs": 1011
+      "meanMs": 813
     },
     "vlm": {
-      "meanModelBoxIou": 0.004,
-      "meanGroundedIou": 0.337
+      "runs": 5,
+      "changes": 9,
+      "found_iou": 0.1,
+      "meanIou": {
+        "raw": {
+          "mean": 0.011,
+          "min": 0.005,
+          "max": 0.018
+        },
+        "corrected": {
+          "mean": 0.134,
+          "min": 0.115,
+          "max": 0.147
+        },
+        "grounded": {
+          "mean": 0.284,
+          "min": 0.249,
+          "max": 0.317
+        },
+        "groundedCorrected": {
+          "mean": 0.344,
+          "min": 0.269,
+          "max": 0.394
+        }
+      },
+      "changesFound": {
+        "raw": {
+          "mean": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        "corrected": {
+          "mean": 2,
+          "min": 2,
+          "max": 2
+        },
+        "grounded": {
+          "mean": 3.8,
+          "min": 3,
+          "max": 4
+        },
+        "groundedCorrected": {
+          "mean": 5.2,
+          "min": 4,
+          "max": 6
+        }
+      },
+      "modelFindingsPerRun": {
+        "mean": 10,
+        "min": 10,
+        "max": 10
+      },
+      "afterCorrection": {
+        "modelBoxes": {
+          "improved": 17,
+          "equal": 26,
+          "worse": 2,
+          "of": 45
+        },
+        "afterGrounding": {
+          "improved": 9,
+          "equal": 34,
+          "worse": 2,
+          "of": 45
+        }
+      },
+      "identicalRuns": false
     }
   },
   "rows": [
@@ -28,7 +93,7 @@
       "detected": 0,
       "meanIou": 1,
       "falseRegions": 0,
-      "ms": 1767,
+      "ms": 941,
       "alignScore": 0.6334543151687515
     },
     {
@@ -38,7 +103,7 @@
       "detected": 0,
       "meanIou": 1,
       "falseRegions": 0,
-      "ms": 1733,
+      "ms": 713,
       "alignScore": 0.5140829258475882
     },
     {
@@ -48,7 +113,7 @@
       "detected": 2,
       "meanIou": 0.2790781176192934,
       "falseRegions": 0,
-      "ms": 1262,
+      "ms": 910,
       "alignScore": 0.4989574845134582
     },
     {
@@ -58,7 +123,7 @@
       "detected": 1,
       "meanIou": 0.023961576844925277,
       "falseRegions": 0,
-      "ms": 879,
+      "ms": 744,
       "alignScore": 0.46292004711339885
     },
     {
@@ -68,7 +133,7 @@
       "detected": 1,
       "meanIou": 0.17921084847087165,
       "falseRegions": 0,
-      "ms": 987,
+      "ms": 820,
       "alignScore": 0.506514017233763
     },
     {
@@ -78,7 +143,7 @@
       "detected": 1,
       "meanIou": 0.17804588632553697,
       "falseRegions": 0,
-      "ms": 891,
+      "ms": 825,
       "alignScore": 0.5525567191307063
     },
     {
@@ -88,7 +153,7 @@
       "detected": 2,
       "meanIou": 0.8816190887729178,
       "falseRegions": 0,
-      "ms": 1195,
+      "ms": 911,
       "alignScore": 0.4907889539546303
     },
     {
@@ -98,7 +163,7 @@
       "detected": 1,
       "meanIou": 0.4417389807919572,
       "falseRegions": 0,
-      "ms": 828,
+      "ms": 836,
       "alignScore": 0.3935229033863207
     },
     {
@@ -108,7 +173,7 @@
       "detected": 2,
       "meanIou": 0.6332906911673978,
       "falseRegions": 0,
-      "ms": 902,
+      "ms": 922,
       "alignScore": 0.4583743332778598
     },
     {
@@ -118,7 +183,7 @@
       "detected": 2,
       "meanIou": 0.6364693022610806,
       "falseRegions": 0,
-      "ms": 975,
+      "ms": 995,
       "alignScore": 0.42856301203301816
     },
     {
@@ -128,7 +193,7 @@
       "detected": 1,
       "meanIou": 0.3305545430156616,
       "falseRegions": 0,
-      "ms": 986,
+      "ms": 980,
       "alignScore": 0.6635847726260152
     },
     {
@@ -138,73 +203,460 @@
       "detected": 1,
       "meanIou": 0.344008830596046,
       "falseRegions": 0,
-      "ms": 761,
+      "ms": 767,
       "alignScore": 0.4666480198291666
     }
   ],
   "vlm": [
     {
+      "run": 1,
       "pair": "kitchen 2026",
       "change": "cluster of fine scratches",
-      "modelBoxIou": 0.033,
-      "groundedIou": 0.048,
-      "modelFindings": 2
+      "modelFindings": 2,
+      "raw": 0.015,
+      "fixed": 0.074,
+      "grounded": 0.048,
+      "groundedFixed": 0.048
     },
     {
+      "run": 1,
       "pair": "kitchen 2026",
       "change": "small chip",
-      "modelBoxIou": 0,
-      "groundedIou": 0,
-      "modelFindings": 2
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0.51
     },
     {
+      "run": 2,
+      "pair": "kitchen 2026",
+      "change": "cluster of fine scratches",
+      "modelFindings": 2,
+      "raw": 0.015,
+      "fixed": 0.074,
+      "grounded": 0.048,
+      "groundedFixed": 0.048
+    },
+    {
+      "run": 2,
+      "pair": "kitchen 2026",
+      "change": "small chip",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0.51
+    },
+    {
+      "run": 3,
+      "pair": "kitchen 2026",
+      "change": "cluster of fine scratches",
+      "modelFindings": 2,
+      "raw": 0.015,
+      "fixed": 0.074,
+      "grounded": 0.048,
+      "groundedFixed": 0.048
+    },
+    {
+      "run": 3,
+      "pair": "kitchen 2026",
+      "change": "small chip",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0.51
+    },
+    {
+      "run": 4,
+      "pair": "kitchen 2026",
+      "change": "cluster of fine scratches",
+      "modelFindings": 2,
+      "raw": 0.015,
+      "fixed": 0.074,
+      "grounded": 0.048,
+      "groundedFixed": 0.048
+    },
+    {
+      "run": 4,
+      "pair": "kitchen 2026",
+      "change": "small chip",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 5,
+      "pair": "kitchen 2026",
+      "change": "cluster of fine scratches",
+      "modelFindings": 2,
+      "raw": 0.015,
+      "fixed": 0.074,
+      "grounded": 0.048,
+      "groundedFixed": 0.048
+    },
+    {
+      "run": 5,
+      "pair": "kitchen 2026",
+      "change": "small chip",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 1,
       "pair": "bathroom 2025",
       "change": "early grout discolouration",
-      "modelBoxIou": 0,
-      "groundedIou": 0.179,
-      "modelFindings": 2
+      "modelFindings": 2,
+      "raw": 0.023,
+      "fixed": 0.511,
+      "grounded": 0.179,
+      "groundedFixed": 0.179
     },
     {
+      "run": 2,
+      "pair": "bathroom 2025",
+      "change": "early grout discolouration",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0.62,
+      "grounded": 0.004,
+      "groundedFixed": 0.179
+    },
+    {
+      "run": 3,
+      "pair": "bathroom 2025",
+      "change": "early grout discolouration",
+      "modelFindings": 2,
+      "raw": 0.023,
+      "fixed": 0.511,
+      "grounded": 0.179,
+      "groundedFixed": 0.179
+    },
+    {
+      "run": 4,
+      "pair": "bathroom 2025",
+      "change": "early grout discolouration",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0.62,
+      "grounded": 0.004,
+      "groundedFixed": 0.179
+    },
+    {
+      "run": 5,
+      "pair": "bathroom 2025",
+      "change": "early grout discolouration",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0.62,
+      "grounded": 0.004,
+      "groundedFixed": 0.179
+    },
+    {
+      "run": 1,
       "pair": "bathroom 2026",
       "change": "grout discolouration spread",
-      "modelBoxIou": 0,
-      "groundedIou": 0.877,
-      "modelFindings": 3
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0.587,
+      "grounded": 0.877,
+      "groundedFixed": 0.877
     },
     {
+      "run": 1,
       "pair": "bathroom 2026",
       "change": "hairline floor-tile crack",
-      "modelBoxIou": 0,
-      "groundedIou": 0,
-      "modelFindings": 3
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
     },
     {
+      "run": 2,
+      "pair": "bathroom 2026",
+      "change": "grout discolouration spread",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0.587,
+      "grounded": 0.877,
+      "groundedFixed": 0.877
+    },
+    {
+      "run": 2,
+      "pair": "bathroom 2026",
+      "change": "hairline floor-tile crack",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 3,
+      "pair": "bathroom 2026",
+      "change": "grout discolouration spread",
+      "modelFindings": 2,
+      "raw": 0.015,
+      "fixed": 0.411,
+      "grounded": 0.877,
+      "groundedFixed": 0.877
+    },
+    {
+      "run": 3,
+      "pair": "bathroom 2026",
+      "change": "hairline floor-tile crack",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 4,
+      "pair": "bathroom 2026",
+      "change": "grout discolouration spread",
+      "modelFindings": 2,
+      "raw": 0.015,
+      "fixed": 0.411,
+      "grounded": 0.877,
+      "groundedFixed": 0.877
+    },
+    {
+      "run": 4,
+      "pair": "bathroom 2026",
+      "change": "hairline floor-tile crack",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 5,
+      "pair": "bathroom 2026",
+      "change": "grout discolouration spread",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0.587,
+      "grounded": 0.877,
+      "groundedFixed": 0.877
+    },
+    {
+      "run": 5,
+      "pair": "bathroom 2026",
+      "change": "hairline floor-tile crack",
+      "modelFindings": 2,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 1,
       "pair": "bedroom 2026",
       "change": "small wall dent",
-      "modelBoxIou": 0,
-      "groundedIou": 0.654,
-      "modelFindings": 3
+      "modelFindings": 3,
+      "raw": 0.032,
+      "fixed": 0.035,
+      "grounded": 0.654,
+      "groundedFixed": 0.654
     },
     {
+      "run": 1,
       "pair": "bedroom 2026",
       "change": "scuff marks on lower wall",
-      "modelBoxIou": 0,
-      "groundedIou": 0.613,
-      "modelFindings": 3
+      "modelFindings": 3,
+      "raw": 0,
+      "fixed": 0.004,
+      "grounded": 0,
+      "groundedFixed": 0.613
     },
     {
+      "run": 2,
+      "pair": "bedroom 2026",
+      "change": "small wall dent",
+      "modelFindings": 3,
+      "raw": 0,
+      "fixed": 0.031,
+      "grounded": 0.654,
+      "groundedFixed": 0.654
+    },
+    {
+      "run": 2,
+      "pair": "bedroom 2026",
+      "change": "scuff marks on lower wall",
+      "modelFindings": 3,
+      "raw": 0.131,
+      "fixed": 0,
+      "grounded": 0.613,
+      "groundedFixed": 0
+    },
+    {
+      "run": 3,
+      "pair": "bedroom 2026",
+      "change": "small wall dent",
+      "modelFindings": 3,
+      "raw": 0.032,
+      "fixed": 0.035,
+      "grounded": 0.654,
+      "groundedFixed": 0.654
+    },
+    {
+      "run": 3,
+      "pair": "bedroom 2026",
+      "change": "scuff marks on lower wall",
+      "modelFindings": 3,
+      "raw": 0,
+      "fixed": 0.004,
+      "grounded": 0,
+      "groundedFixed": 0.613
+    },
+    {
+      "run": 4,
+      "pair": "bedroom 2026",
+      "change": "small wall dent",
+      "modelFindings": 3,
+      "raw": 0,
+      "fixed": 0.031,
+      "grounded": 0.654,
+      "groundedFixed": 0.654
+    },
+    {
+      "run": 4,
+      "pair": "bedroom 2026",
+      "change": "scuff marks on lower wall",
+      "modelFindings": 3,
+      "raw": 0.131,
+      "fixed": 0,
+      "grounded": 0.613,
+      "groundedFixed": 0
+    },
+    {
+      "run": 5,
+      "pair": "bedroom 2026",
+      "change": "small wall dent",
+      "modelFindings": 3,
+      "raw": 0.032,
+      "fixed": 0.035,
+      "grounded": 0.654,
+      "groundedFixed": 0.654
+    },
+    {
+      "run": 5,
+      "pair": "bedroom 2026",
+      "change": "scuff marks on lower wall",
+      "modelFindings": 3,
+      "raw": 0,
+      "fixed": 0.004,
+      "grounded": 0,
+      "groundedFixed": 0.613
+    },
+    {
+      "run": 1,
       "pair": "living_room 2026",
       "change": "floor scratches",
-      "modelBoxIou": 0,
-      "groundedIou": 0,
-      "modelFindings": 2
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
     },
     {
+      "run": 1,
       "pair": "living_room 2026",
       "change": "wall mark",
-      "modelBoxIou": 0,
-      "groundedIou": 0.661,
-      "modelFindings": 2
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0.661,
+      "groundedFixed": 0.661
+    },
+    {
+      "run": 2,
+      "pair": "living_room 2026",
+      "change": "floor scratches",
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 2,
+      "pair": "living_room 2026",
+      "change": "wall mark",
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0.661,
+      "groundedFixed": 0.661
+    },
+    {
+      "run": 3,
+      "pair": "living_room 2026",
+      "change": "floor scratches",
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 3,
+      "pair": "living_room 2026",
+      "change": "wall mark",
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0.661,
+      "groundedFixed": 0.661
+    },
+    {
+      "run": 4,
+      "pair": "living_room 2026",
+      "change": "floor scratches",
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 4,
+      "pair": "living_room 2026",
+      "change": "wall mark",
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0.661,
+      "groundedFixed": 0.661
+    },
+    {
+      "run": 5,
+      "pair": "living_room 2026",
+      "change": "floor scratches",
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0,
+      "groundedFixed": 0
+    },
+    {
+      "run": 5,
+      "pair": "living_room 2026",
+      "change": "wall mark",
+      "modelFindings": 1,
+      "raw": 0,
+      "fixed": 0,
+      "grounded": 0.661,
+      "groundedFixed": 0.661
     }
   ]
 }

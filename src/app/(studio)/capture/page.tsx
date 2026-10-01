@@ -1,6 +1,7 @@
 "use client";
 
 import { CoverageList } from "@/components/insights";
+import { VisitCompleteness, VisitPhotos } from "@/components/visit";
 import { photoAbstain, roomCoverage } from "@/lib/insights";
 import { coverageFor } from "@/lib/coverage";
 import Link from "next/link";
@@ -362,6 +363,8 @@ function Capture() {
             </div>
           )}
 
+          {room && insp && <VisitPhotos roomId={room.id} inspectionId={insp.id} />}
+
           {finished && (
             <div className="flex flex-wrap gap-2 animate-fade-up">
               <button className="btn-outline" onClick={() => setRun(null)}><RotateCcw className="size-4" /> Capture again</button>
@@ -374,6 +377,7 @@ function Capture() {
         </div>
 
         <aside className="space-y-4">
+          {insp && <VisitCompleteness inspectionId={insp.id} />}
           {existing && photoAbstain(existing) && (
             <div className="card border-warn/40 p-4 text-[12.5px]" data-testid="capture-abstain">
               <div className="font-semibold text-warn">The AI could not judge this photo</div>

@@ -29,7 +29,9 @@ export type EventType =
   | "workorder" // resource = observation; payload: { action: create|status|photo, ... }
   | "coverage" // resource = asset; payload: { areas: string[] }
   | "translation" // payload: { lang, entries: { [sha1 of English text]: translated } }
-  | "assessment"; // resource = asset; payload: { can_assess, note, unsure: observation ids the model was unsure about }
+  | "assessment" // resource = asset; payload: { can_assess, note, unsure: observation ids the model was unsure about }
+  | "roommatch" // resource = asset; payload: { verdict, reason, ref, view, phash } or { action: "confirm" }
+  | "privacy"; // resource = asset; payload: { action: add|remove|scan, region?, id?, engine?, found? } — areas pixelated in shared copies
 
 export type ActorRole = "tenant" | "owner" | "system";
 
@@ -168,14 +170,44 @@ async function broadcastChange(e: PropertyEvent) {
 /** Realtime channel name for a property (shared with the browser). */
 export const liveTopic = (propertyId: string) => `rm-${propertyId}`;
 
+/** Supabase returns at most 1000 rows per request; read in pages so nothing is silently cut off. */
+const PAGE = 1000;
+
+/**
+ * All rows of an events query, in insertion order (created_at, then seq — two events can share
+ * a timestamp, and replay must follow the order they were written). `null` = table missing.
+ */
+async function readAllPages(build: () => any): Promise<PropertyEvent[] | null> {
+  const out: PropertyEvent[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build().order("created_at", { ascending: true }).order("seq", { ascending: true }).range(from, from + PAGE - 1);
+    if (error) {
+      if (isMissingTable(error)) { noteMissing(); return null; }
+      throw new Error(`Failed to list events: ${error.message}`);
+    }
+    const rows = (data as (PropertyEvent & { seq?: number })[]) ?? [];
+    out.push(...rows.map(({ seq: _seq, ...e }) => e as PropertyEvent));
+    if (rows.length < PAGE) return out;
+  }
+}
+
+/** Events of one type across ALL properties since a time (account-wide quotas, e.g. OCR scans). */
+export async function listEventsOfType(type: EventType, sinceIso: string): Promise<PropertyEvent[]> {
+  if (useSupabase()) {
+    const rows = await readAllPages(() => getSupabaseClient()!.from("rm_events").select("*").eq("type", type).gte("created_at", sinceIso));
+    if (rows) return rows;
+  }
+  return readLocal().filter((e) => e.type === type && e.created_at >= sinceIso);
+}
+
 export async function listEvents(propertyId: string, types?: EventType[]): Promise<PropertyEvent[]> {
   if (useSupabase()) {
-    let q = getSupabaseClient()!.from("rm_events").select("*").eq("property_id", propertyId).order("created_at", { ascending: true });
-    if (types?.length) q = q.in("type", types);
-    const { data, error } = await q;
-    if (!error) return (data as PropertyEvent[]) ?? [];
-    if (isMissingTable(error)) noteMissing();
-    else throw new Error(`Failed to list events: ${error.message}`);
+    const rows = await readAllPages(() => {
+      let q = getSupabaseClient()!.from("rm_events").select("*").eq("property_id", propertyId);
+      if (types?.length) q = q.in("type", types);
+      return q;
+    });
+    if (rows) return rows;
   }
   return readLocal()
     .filter((e) => e.property_id === propertyId && (!types || types.includes(e.type)))
@@ -352,6 +384,52 @@ export function deriveAssessments(events: PropertyEvent[]): Record<string, Asses
   for (const e of events) {
     if (e.type !== "assessment" || !e.resource_id) continue;
     out[e.resource_id] = { can_assess: e.payload.can_assess !== false, note: e.payload.note ?? null, unsure: Array.isArray(e.payload.unsure) ? e.payload.unsure.map(String) : [], at: e.created_at };
+  }
+  return out;
+}
+
+export type PrivacySource = "ocr" | "ai" | "manual";
+export interface PrivacyRegion { id: string; bbox: [number, number, number, number]; source: PrivacySource; label: string; by: string | null; at: string }
+
+/** Current areas to pixelate in shared copies, per asset (add/remove replay). */
+export function derivePrivacy(events: PropertyEvent[]): Record<string, PrivacyRegion[]> {
+  const out: Record<string, PrivacyRegion[]> = {};
+  for (const e of events) {
+    if (e.type !== "privacy" || !e.resource_id) continue;
+    const list = (out[e.resource_id] ??= []);
+    const p = e.payload;
+    if (p.action === "add" && p.region && Array.isArray(p.region.bbox)) {
+      list.push({ id: String(p.region.id ?? e.id), bbox: p.region.bbox.slice(0, 4).map(Number) as PrivacyRegion["bbox"], source: p.region.source ?? "manual", label: String(p.region.label ?? ""), by: e.actor_name, at: e.created_at });
+    } else if (p.action === "remove" && p.id) {
+      out[e.resource_id] = list.filter((r) => r.id !== p.id);
+    } else if (p.action === "clear_source" && p.source) {
+      out[e.resource_id] = list.filter((r) => r.source !== p.source);
+    }
+  }
+  return out;
+}
+
+/** Latest privacy scan per asset: which engine ran and how many areas it found. */
+export function derivePrivacyScans(events: PropertyEvent[]): Record<string, { engine: string; found: number; at: string }> {
+  const out: Record<string, { engine: string; found: number; at: string }> = {};
+  for (const e of events) if (e.type === "privacy" && e.resource_id && e.payload.action === "scan") out[e.resource_id] = { engine: String(e.payload.engine), found: Number(e.payload.found ?? 0), at: e.created_at };
+  return out;
+}
+
+export interface RoomMatch { verdict: "first" | "match" | "unclear" | "mismatch" | "confirmed"; reason: string | null; ref: string | null; view: number | null; phash: number | null; by: string | null; at: string }
+
+/** Latest room-match result per asset; a person's confirmation overrides the automatic one. */
+export function deriveRoomMatch(events: PropertyEvent[]): Record<string, RoomMatch> {
+  const out: Record<string, RoomMatch> = {};
+  for (const e of events) {
+    if (e.type !== "roommatch" || !e.resource_id) continue;
+    const p = e.payload;
+    if (p.action === "confirm") {
+      const prev = out[e.resource_id];
+      out[e.resource_id] = { verdict: "confirmed", reason: "Confirmed by a person", ref: prev?.ref ?? null, view: prev?.view ?? null, phash: prev?.phash ?? null, by: e.actor_name, at: e.created_at };
+    } else if (out[e.resource_id]?.verdict !== "confirmed") {
+      out[e.resource_id] = { verdict: p.verdict, reason: p.reason ?? null, ref: p.ref ?? null, view: p.view ?? null, phash: p.phash ?? null, by: e.actor_name, at: e.created_at };
+    }
   }
   return out;
 }

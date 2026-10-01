@@ -8,8 +8,11 @@ import { certaintyFor, photoAbstain } from "@/lib/insights";
 import { useStudio } from "@/components/providers";
 import { Parties } from "@/components/parties";
 import { FindingFacts, PhotoTimeChip, RepairPanel } from "@/components/insights";
+import { PrivacyPanel } from "@/components/privacy-panel";
+import { RoomMatchBadge } from "@/components/visit";
 import { CATEGORY_META, CategoryBadge, Confidence, Crop, Kbd, Photo, Segmented, StatusBadge } from "@/components/ui";
-import { assetFor, getAsset, getAssets, getRoom, reportPair } from "@/lib/view";
+import { assetFor, getAsset, getAssets, getInspection, getProperty, getRoom, isUsablePhoto, reportPair } from "@/lib/view";
+import { canDecide } from "@/lib/decide";
 import { cn, fmtDate, INSPECTION_LABEL } from "@/lib/utils";
 import type { IssueCategory, Observation } from "@/lib/view-types";
 
@@ -24,11 +27,12 @@ export default function ReviewPage() {
 }
 
 function Review() {
-  const { observations, review, toast } = useStudio();
+  const { observations, review, toast, user } = useStudio();
   const params = useSearchParams();
   const [filter, setFilter] = useState<Filter>("all");
   const { baseline: baseInsp, current: curInsp } = reportPair();
-  const currentIds = new Set(getAssets().filter((a) => a.inspection_id === curInsp?.id).map((a) => a.id));
+  // Photos that don't match their room stay out of review until someone confirms them.
+  const currentIds = new Set(getAssets().filter((a) => a.inspection_id === curInsp?.id && isUsablePhoto(a.id)).map((a) => a.id));
   const all = useMemo(() => observations.filter((o) => currentIds.has(o.asset_id)), [observations, curInsp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const queue = useMemo(
     () =>
@@ -60,9 +64,14 @@ function Review() {
     [queue]
   );
 
+  // Only the person who ran the inspection decides; the other party agrees or disputes.
+  const selInsp = sel ? getInspection(getAsset(sel.asset_id).inspection_id) : undefined;
+  const mayDecide = !!selInsp && canDecide(user.id, selInsp.created_by, getProperty().owner_id);
+  const decider = selInsp?.captured_by || "the person who ran this inspection";
+
   const decide = useCallback(
     (status: "accepted" | "rejected" | "edited") => {
-      if (!sel) return;
+      if (!sel || !mayDecide) return;
       const prev: Observation = { ...sel };
       const patch = status === "edited" ? { category: draft.category, description: draft.description, reviewer_note: draft.note || undefined } : { reviewer_note: draft.note || undefined };
       review(sel.id, status, patch);
@@ -76,7 +85,7 @@ function Review() {
       const n = nextPending(sel.id);
       if (n) setSelId(n);
     },
-    [sel, draft, review, toast, nextPending]
+    [sel, draft, review, toast, nextPending, mayDecide]
   );
 
   useEffect(() => {
@@ -92,14 +101,14 @@ function Review() {
       const k = e.key.toLowerCase();
       if (k === "a") decide("accepted");
       else if (k === "r") decide("rejected");
-      else if (k === "e") { e.preventDefault(); setEditing(true); }
+      else if (k === "e" && mayDecide) { e.preventDefault(); setEditing(true); }
       else if (k === "z") setZoom((z) => !z);
       else if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); setSelId(queue[Math.min(idx + 1, queue.length - 1)].id); }
       else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); setSelId(queue[Math.max(idx - 1, 0)].id); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [queue, sel, decide, editing]);
+  }, [queue, sel, decide, editing, mayDecide]);
 
   if (!sel) return null;
   const asset = getAsset(sel.asset_id);
@@ -182,6 +191,7 @@ function Review() {
               <div className="absolute left-3 top-3 flex gap-1.5">
                 <span className="rounded-md bg-black/60 px-2 py-1 font-mono text-[10.5px] uppercase tracking-[0.12em] text-white backdrop-blur">{room.name}</span>
                 <PhotoTimeChip asset={asset} onDark />
+                <RoomMatchBadge asset={asset} onDark withConfirm />
               </div>
               {photoAbstain(asset) && (
                 <div className="absolute inset-x-3 bottom-3 flex items-center gap-2 rounded-lg bg-black/70 px-3 py-2 text-[12px] text-white backdrop-blur" data-testid="photo-abstain">
@@ -214,6 +224,7 @@ function Review() {
               <p className="mt-2 text-[11px] text-ink-3">Same coordinates in both photos — framing can differ slightly between visits.</p>
             </div>
           )}
+          <PrivacyPanel asset={asset} />
         </section>
 
         {/* Decision */}
@@ -270,7 +281,12 @@ function Review() {
             <input className="input mt-1" placeholder="Optional — visible in the report" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
           </label>
 
-          <div className="mt-4 grid grid-cols-3 gap-2" data-tour="rv-decide">
+          {!mayDecide && (
+            <p className="mt-4 rounded-lg bg-info/[.07] p-2.5 text-[12px] leading-relaxed text-ink-2" data-testid="decider-note">
+              <span className="font-semibold">{decider}</span> ran this inspection and decides on its findings. You can agree or dispute each one below, and that is recorded in the report.
+            </p>
+          )}
+          <div className={cn("mt-4 grid grid-cols-3 gap-2", !mayDecide && "pointer-events-none opacity-40")} data-tour="rv-decide" aria-disabled={!mayDecide}>
             {editing ? (
               <>
                 <button className="btn-outline col-span-1" onClick={() => setEditing(false)}>Cancel</button>

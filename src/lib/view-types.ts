@@ -42,6 +42,8 @@ export interface Inspection {
   captured_at: string;
   status: "in_progress" | "completed";
   captured_by: string;
+  /** User id of whoever ran the inspection (decides on its findings). */
+  created_by: string | null;
 }
 
 export interface Asset {
@@ -143,6 +145,10 @@ export type Stance = "agree" | "dispute";
 export interface VoiceClip { url: string; duration: number; lang: string; transcribed: boolean }
 export interface ThreadComment { id: string; author: string; role: UserRole; text: string; at: string; voice?: VoiceClip }
 export interface SignatureRecord { at: string; hash: string; name: string }
+
+export interface RoomMatch { verdict: "first" | "match" | "unclear" | "mismatch" | "confirmed"; reason: string | null; ref: string | null; view: number | null; phash: number | null; by: string | null; at: string }
+export interface PrivacyRegion { id: string; bbox: BBox; source: "ocr" | "ai" | "manual"; label: string; by: string | null; at: string }
+export interface OcrBudget { used: number; cap: number; available: boolean; reason: string | null }
 
 export interface Calibration { line: BBox; cm: number; reference: string; by: string | null; at: string }
 export interface Measure { extent: number; long_side: number; bbox_area: number; extent_prior: number | null; prior_asset_id: string | null; at: string }

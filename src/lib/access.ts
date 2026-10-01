@@ -47,3 +47,6 @@ export async function observationWithProperty(
   }
   return null;
 }
+
+
+export { canDecide } from "./decide";

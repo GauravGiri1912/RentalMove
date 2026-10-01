@@ -37,7 +37,17 @@ export type Recipe = z.infer<typeof RecipeSchema>;
 /** Generative recipes spend extra credits; only owners may request them. */
 export const isGenerative = (r: Recipe) => r.kind === "listing" && (r.remove || r.enhance);
 
-export function transformationFor(r: Recipe): string {
+/**
+ * Transformation for a recipe. `hide` = Cloudinary steps that pixelate the photo's private
+ * areas (lib/privacy.ts pixelateSteps, in original pixels) — always first in the chain so
+ * every derived copy carries them.
+ */
+export function transformationFor(r: Recipe, hide: string[] = []): string {
+  const t = baseTransformation(r);
+  return hide.length ? [...hide, t].join("/") : t;
+}
+
+function baseTransformation(r: Recipe): string {
   switch (r.kind) {
     case "listing":
       return [

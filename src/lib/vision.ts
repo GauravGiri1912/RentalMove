@@ -26,7 +26,7 @@ export class VisionError extends Error {
 export interface VisionProvider {
   /** Recorded on comparisons so it is always clear which engine produced a result. */
   readonly name: string;
-  analyzeImage(input: { imageUrl: string; roomHint?: string }): Promise<ImageAnalysis>;
+  analyzeImage(input: { imageUrl: string; roomHint?: string; size?: { width: number; height: number } }): Promise<ImageAnalysis>;
   compareImages(input: {
     priorUrl: string;
     currentUrl: string;
@@ -44,7 +44,7 @@ export interface VisionProvider {
 export class MockVisionProvider implements VisionProvider {
   readonly name = "mock";
 
-  async analyzeImage(input: { imageUrl: string; roomHint?: string }): Promise<ImageAnalysis> {
+  async analyzeImage(input: { imageUrl: string; roomHint?: string; size?: { width: number; height: number } }): Promise<ImageAnalysis> {
     const { imageUrl, roomHint } = input;
     const lower = (imageUrl || "").toLowerCase();
 
@@ -189,6 +189,18 @@ export function normaliseBox(b: unknown): [number, number, number, number] | nul
   return [x1, y1, x2, y2].map((n) => Number(n.toFixed(3))) as [number, number, number, number];
 }
 
+/**
+ * The model reports box coordinates as fractions of the image's LONGER side (measured on
+ * landscape and portrait test photos: y came back × H/W on landscape, x × W/H on portrait).
+ * Converts such a box to true 0..1 fractions of width and height.
+ */
+export function fromLongSide(b: [number, number, number, number], width: number, height: number): [number, number, number, number] {
+  if (!width || !height) return b;
+  const sx = Math.max(width, height) / width, sy = Math.max(width, height) / height;
+  const c = (v: number) => Math.min(1, Math.max(0, v));
+  return [c(b[0] * sx), c(b[1] * sy), c(b[2] * sx), c(b[3] * sy)];
+}
+
 // =========================================================================
 // GROQ VISION / LLM PROVIDER (Real Multimodal Vision with Qwen)
 // =========================================================================
@@ -263,7 +275,7 @@ export class GroqVisionProvider implements VisionProvider {
     throw new VisionError(lastError?.message || "Failed to communicate with Groq Vision API");
   }
 
-  async analyzeImage(input: { imageUrl: string; roomHint?: string }): Promise<ImageAnalysis> {
+  async analyzeImage(input: { imageUrl: string; roomHint?: string; size?: { width: number; height: number } }): Promise<ImageAnalysis> {
     const prompt = `You are an objective AI property inspection assistant for rental condition documentation.
 Inspect this photo and output ONLY valid JSON matching this schema:
 {
@@ -280,11 +292,13 @@ Inspect this photo and output ONLY valid JSON matching this schema:
     }
   ],
   "can_assess": true | false,
+  "has_personal_items": true | false,
   "assess_note": "short reason when can_assess is false (e.g. glare on the floor, surface too far away, view blocked)",
   "visible_areas": [zero or more of: ${AREAS.join(", ")}]
 }
 STRICT RULES:
 0. visible_areas lists every one of those room areas that is clearly visible in the photo, even with no findings.
+0a. has_personal_items is true when letters, bills, documents, ID cards, notebooks, screens showing content, or family photos are visible.
 0b. It is better to say you are unsure than to guess: mark a finding "unsure" when it could be a shadow, reflection, texture or pattern. Set can_assess to false when glare, darkness, distance or clutter stops you judging the surfaces.
 1. Provide neutral, objective condition observations only.
 2. NEVER use blame, fault, damage claims, tenant liability, deposit deduction language, or repair costs.
@@ -308,7 +322,7 @@ Room hint: ${input.roomHint || "unknown"}`;
       ],
       response_format: { type: "json_object" },
       max_tokens: 800,
-      temperature: 0.1,
+      temperature: 0, // deterministic: same photo → same answer (reproducible evaluation)
     };
 
     // On Groq failure, postChat throws! The pipeline catches it and marks asset 'failed' with error.
@@ -319,10 +333,12 @@ Room hint: ${input.roomHint || "unknown"}`;
     if (Array.isArray(parsed.observations)) {
       rawObservations = parsed.observations.map((obs: any) => {
         let bbox: [number, number, number, number] = [0.1, 0.1, 0.4, 0.4];
+        let box_space: "fraction" | "scaled" = "fraction";
         if (Array.isArray(obs.bbox) && obs.bbox.length === 4) {
           let [x1, y1, x2, y2] = obs.bbox.map(Number);
           // Normalize coordinates if model returned percentages (0..100) or pixel coordinates (>1)
           if (x1 > 1 || y1 > 1 || x2 > 1 || y2 > 1) {
+            box_space = "scaled";
             const maxVal = Math.max(x1, y1, x2, y2);
             const scale = maxVal > 100 ? 1000 : 100;
             x1 = Math.min(1, Math.max(0, x1 / scale));
@@ -349,6 +365,10 @@ Room hint: ${input.roomHint || "unknown"}`;
           confidence: typeof obs.confidence === "number" ? Math.min(1, Math.max(0, obs.confidence)) : 0.7,
           bbox,
           unsure: obs.certainty === "unsure",
+          box_space,
+          // Fraction boxes use the long-side convention (measured: overlap with the real change
+          // 0.008 → 0.126 raw, 0.249 → 0.435 after pixel grounding). Needs the image's shape.
+          ...(box_space === "fraction" && input.size ? { bbox: fromLongSide(bbox, input.size.width, input.size.height) } : {}),
         };
       });
     }
@@ -363,6 +383,7 @@ Room hint: ${input.roomHint || "unknown"}`;
       observations: kept,
       visible_areas: cleanAreas(parsed.visible_areas),
       can_assess: parsed.can_assess === false ? false : true,
+      has_personal_items: parsed.has_personal_items === true,
       assess_note: parsed.can_assess === false && typeof parsed.assess_note === "string" ? parsed.assess_note.slice(0, 200) : undefined,
     });
   }
@@ -387,6 +408,33 @@ ${JSON.stringify(texts)}` }],
     });
     const arr = Array.isArray(parsed?.t) ? parsed.t : [];
     return texts.map((_, i) => (typeof arr[i] === "string" && arr[i].trim() ? String(arr[i]).trim().slice(0, 2000) : null));
+  }
+
+  /**
+   * Personal items that should not be visible in shared copies (privacy, not condition).
+   * Boxes from this model are approximate; callers pad them and label them as suggestions.
+   */
+  async detectPersonalItems(imageUrl: string, size?: { width: number; height: number }): Promise<{ label: string; bbox: [number, number, number, number] }[]> {
+    const parsed = await this.postChat({
+      model: this.modelName,
+      messages: [{ role: "user", content: [
+        { type: "text", text: `Find personal items in this rental-inspection photo that should be hidden before sharing: letters, envelopes, bills, documents, ID cards, notebooks or papers with writing, phone/tablet/laptop screens showing content, framed family photos, and anything else with readable personal text. Ignore fixtures, appliance logos and the room itself.
+List each physical item exactly once, with a tight box around that item only (not the surface it lies on). Do not repeat an item with a second, larger box.
+Output ONLY JSON: {"items": [{"label": "short name", "bbox": [x1, y1, x2, y2]}]} with bbox normalised 0..1. Return {"items": []} if there are none.` },
+        { type: "image_url", image_url: { url: imageUrl } },
+      ] }],
+      response_format: { type: "json_object" },
+      max_tokens: 400,
+      temperature: 0,
+    });
+    const items = Array.isArray(parsed?.items) ? parsed.items : [];
+    return items
+      .map((it: any) => {
+        const nb = normaliseBox(it?.bbox);
+        return { label: String(it?.label ?? "personal item").slice(0, 40), bbox: nb && size ? fromLongSide(nb, size.width, size.height) : nb };
+      })
+      .filter((it: any): it is { label: string; bbox: [number, number, number, number] } => !!it.bbox && (it.bbox[2] - it.bbox[0]) * (it.bbox[3] - it.bbox[1]) < 0.6)
+      .slice(0, 8);
   }
 
   /** Which room areas a photo shows (small prompt, used to backfill coverage). */
@@ -463,7 +511,7 @@ SYSTEM RULES:
       ],
       response_format: { type: "json_object" },
       max_tokens: 800,
-      temperature: 0.1,
+      temperature: 0, // deterministic: same photo → same answer (reproducible evaluation)
     };
 
     const parsed = await this.postChat(payload);
@@ -548,7 +596,7 @@ Output JSON only:
           ],
           response_format: { type: "json_object" },
           max_tokens: 350,
-          temperature: 0.1,
+          temperature: 0, // deterministic: same photo → same answer (reproducible evaluation)
         });
         analysedRegions++;
 

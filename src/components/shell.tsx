@@ -10,7 +10,7 @@ import {
 import { useStudio } from "./providers";
 import { Kbd } from "./ui";
 import { cn } from "@/lib/utils";
-import { getMeta, getProperties, getProperty, getWorkOrders } from "@/lib/view";
+import { getMeta, getProperties, getProperty, getWorkOrders, isUsablePhoto } from "@/lib/view";
 import { HoodDrawer } from "./hood";
 
 const NAV = [
@@ -48,7 +48,7 @@ function Logo() {
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
   const { observations, user, selectProperty, live } = useStudio();
-  const pending = observations.filter((o) => o.review_status === "pending").length;
+  const pending = observations.filter((o) => o.review_status === "pending" && isUsablePhoto(o.asset_id)).length;
   const openRepairs = getWorkOrders().filter((w) => w.status !== "done").length;
   const prop = getProperty();
   const all = getProperties();

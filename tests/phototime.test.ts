@@ -20,6 +20,11 @@ describe("photo-time check", () => {
     expect(old.level).toBe("warn");
     expect(old.label).toBe("Taken 24 months before this visit");
     expect(photoTimeCheck({ taken_at: "2026-06-05T09:00:00", software: null, camera: null }, visit, "2026-06-01T12:00:00Z").label).toMatch(/after the upload/);
+    // Filed under a June visit but taken in September (the real phone test).
+    const late = photoTimeCheck({ taken_at: "2026-09-30T18:05:34", software: null, camera: null }, visit, "2026-09-30T12:35:00Z");
+    expect(late.level).toBe("warn");
+    expect(late.label).toBe("Taken 4 months after this visit");
+    expect(photoTimeCheck({ taken_at: "2026-06-03T09:00:00", software: null, camera: null }, visit, null).level).toBe("ok"); // within 3 days
     expect(photoTimeCheck({ taken_at: "2026-06-01T10:00:00", software: "Adobe Photoshop 25.0", camera: null }, visit, null).label).toMatch(/Edited with Adobe Photoshop/);
     expect(photoTimeCheck({ taken_at: null, software: "Android 14", camera: null }, visit, null).level).toBe("none");
     expect(photoTimeCheck(null, visit, null).label).toBe("No capture time in file");

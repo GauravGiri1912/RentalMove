@@ -7,7 +7,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
 } from "@/lib/auth";
-import { observationWithProperty } from "@/lib/access";
+import { canDecide, observationWithProperty } from "@/lib/access";
 import { appendEvent } from "@/lib/events";
 
 /**
@@ -41,6 +41,13 @@ export async function PATCH(
 
     const db = getDatabase();
     const media = getMediaProvider();
+
+    // Only the person who ran the inspection decides; the other party agrees or disputes.
+    const inspection = (await db.getInspections(found.propertyId)).find((i) => i.id === found.asset.inspection_id);
+    const property = await db.getProperty(found.propertyId);
+    if (!canDecide(user.id, inspection?.created_by, property?.owner_id)) {
+      return forbiddenResponse("Only the person who ran this inspection can accept, reject or edit its findings. You can agree or dispute instead.");
+    }
 
     const updated = await db.updateObservation(id, {
       review_status: parsed.data.review_status,

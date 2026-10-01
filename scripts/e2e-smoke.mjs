@@ -174,6 +174,53 @@ for (const q of ["What is the AI not sure about?", "When were the photos taken?"
   await expectText(`ask: ${q}`, q.includes("sure") ? /the AI is not sure about \d+/ : /capture time/);
 }
 
+// Who decides, all photos per room, visit completeness.
+await page.goto(BASE + `/review?o=${grownId}`, { waitUntil: "networkidle2" });
+await page.waitForSelector("[data-testid=finding-facts]", { timeout: 30000 });
+const noteShown = await page.$("[data-testid=decider-note]").then((x) => !!x);
+const okNote = ROLE === "tenant" ? noteShown : !noteShown;
+console.log(`${okNote ? "ok " : "FAIL"} ${ROLE === "tenant" ? "tenant sees who decides (buttons disabled)" : "owner who ran the inspection can decide"}`);
+if (!okNote) problems.push("[assert] decider note");
+await page.goto(BASE + "/capture?room=room-living-room", { waitUntil: "networkidle2" });
+await page.waitForSelector("[data-testid=visit-completeness]", { timeout: 30000 }).catch(() => {});
+await expectText("capture shows visit completeness", /not complete yet|: complete/);
+await expectText("capture shows all photos of the room at this visit", /Photos of this room at this visit · \d+/);
+await expectText("mismatched photos are labelled", /Doesn.t match this room/);
+await page.screenshot({ path: path.join(OUT, `${ROLE}_capture_visit.png`), fullPage: true });
+
+// Private items panel: count, preview of the shared copy, draw an area, remove it again.
+const snapP = await page.evaluate(async () => (await fetch("/api/properties/prop-381/snapshot")).json());
+const pAssetId = Object.keys(snapP.privacy ?? {}).find((id) => (snapP.privacy[id] ?? []).length && snapP.observations.some((o) => o.asset_id === id));
+const pObs = pAssetId && snapP.observations.find((o) => o.asset_id === pAssetId);
+if (pObs) {
+  const before = snapP.privacy[pAssetId].length;
+  await page.goto(BASE + `/review?o=${pObs.id}`, { waitUntil: "networkidle2" });
+  await page.waitForSelector("[data-testid=privacy-panel]", { timeout: 30000 });
+  await expectText("privacy panel shows hidden areas", new RegExp(`${before} hidden in shared copies`));
+  await page.click("[data-testid=privacy-preview]");
+  const previewOk = await page.waitForFunction(() => { const i = document.querySelector("[data-testid=privacy-preview-modal] img"); return i && i.complete && i.naturalWidth > 0; }, { timeout: 30000 }).then(() => true, () => false);
+  console.log(`${previewOk ? "ok " : "FAIL"} shared-copy preview renders from Cloudinary`);
+  if (!previewOk) problems.push("[assert] privacy preview did not render");
+  await page.screenshot({ path: path.join(OUT, `${ROLE}_privacy_preview.png`) });
+  await page.click("[data-testid=privacy-preview-modal] button[aria-label=Close]");
+  await page.click("[data-testid=privacy-draw]");
+  await page.waitForSelector("[data-testid=privacy-canvas]");
+  const cb = await (await page.$("[data-testid=privacy-canvas]")).boundingBox();
+  await page.mouse.move(cb.x + cb.width * 0.7, cb.y + cb.height * 0.12);
+  await page.mouse.down();
+  await page.mouse.move(cb.x + cb.width * 0.85, cb.y + cb.height * 0.3, { steps: 8 });
+  await page.mouse.up();
+  await page.$eval("[data-testid=privacy-label]", (el) => { el.value = ""; });
+  await page.type("[data-testid=privacy-label]", "e2e test area");
+  await page.click("[data-testid=privacy-save]");
+  await expectText("drawn area is added", new RegExp(`${before + 1} hidden in shared copies`));
+  // Remove the test area again (no test data left behind).
+  await page.evaluate(() => { const li = [...document.querySelectorAll("[data-testid=privacy-region]")].find((l) => l.textContent.includes("e2e test area")); li?.querySelector("button")?.click(); });
+  await expectText("drawn area can be removed", new RegExp(`${before} hidden in shared copies`));
+} else {
+  console.log("skip privacy panel (no photo with hidden areas and findings)");
+}
+
 await browser.close();
 console.log(`\n${problems.length} problem(s):`);
 for (const p of [...new Set(problems)]) console.log("  " + p);
