@@ -41,10 +41,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       confidence: 1.0,
       bbox: [0, 0, 1, 1] as [number, number, number, number],
       sub_area: "general",
-      review_status: "accepted" as const, // Auto-accepted since owner created it
+      review_status: "pending" as const,
       reviewer_note: reviewerNote,
-      reviewed_by: user.id,
-      reviewed_at: new Date().toISOString(),
     };
 
     // Insert into DB
@@ -56,7 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const { getMediaProvider } = await import("@/lib/media");
         const media = getMediaProvider();
         media.updateMetadata(asset.cloudinary_public_id, {
-          review_status: "accepted",
+          review_status: "pending",
           issue_category: category,
         }).catch(() => {});
         

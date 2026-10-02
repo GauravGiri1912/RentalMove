@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check, FileText, Pencil, X, ZoomIn, ZoomOut, PartyPopper, History, HelpCircle, ScanLine, CameraOff, Plus } from "lucide-react";
+import { Check, FileText, Pencil, X, ZoomIn, ZoomOut, PartyPopper, History, HelpCircle, ScanLine, CameraOff, Plus, ThumbsDown, ThumbsUp } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { certaintyFor, photoAbstain } from "@/lib/insights";
 import { useStudio } from "@/components/providers";
@@ -246,11 +246,15 @@ function Review() {
                     </div>
                     <div className="truncate text-[11.5px] text-ink-3">{getRoom(a.room_id).name} · {o.sub_area}</div>
                   </div>
-                  {o.review_status !== "pending" && (
-                    <span className={cn("mt-1 grid size-4 shrink-0 place-items-center rounded-full", o.review_status === "rejected" ? "bg-ink-3" : o.review_status === "edited" ? "bg-info" : "bg-ok")}>
-                      {o.review_status === "rejected" ? <X className="size-2.5 text-white" strokeWidth={3} /> : <Check className="size-2.5 text-white" strokeWidth={3} />}
-                    </span>
-                  )}
+                  <div className="flex flex-col gap-1 items-end shrink-0">
+                    {o.review_status !== "pending" && (
+                      <span className={cn("grid size-4 place-items-center rounded-full", o.review_status === "rejected" ? "bg-ink-3" : o.review_status === "edited" ? "bg-info" : "bg-ok")}>
+                        {o.review_status === "rejected" ? <X className="size-2.5 text-white" strokeWidth={3} /> : <Check className="size-2.5 text-white" strokeWidth={3} />}
+                      </span>
+                    )}
+                    {view?.stances?.[o.id]?.tenant === "dispute" && <ThumbsDown className="size-3 text-danger" />}
+                    {view?.stances?.[o.id]?.tenant === "agree" && <ThumbsUp className="size-3 text-ok" />}
+                  </div>
                 </button>
               );
             })}
@@ -291,6 +295,7 @@ function Review() {
                 <button 
                   onClick={async () => {
                     const o = await createManualFinding(asset.id);
+                    setTab("active");
                     setSelId(o.id);
                     // Open edit mode directly for new finding
                     setEditing(true); 
