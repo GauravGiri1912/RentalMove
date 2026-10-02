@@ -4,9 +4,10 @@
 
 import type {
   Asset, BBox, Comparison, Inspection, IssueCategory, Observation, PipelineEvent, Property, Room,
-  SearchFilter, ShareLink, SignatureRecord, Stance, ThreadComment, User, Calibration, Measure, WorkOrder,
+  SearchFilter, ShareLink, SignatureRecord, Stance, ThreadComment, User, Calibration, Measure, WorkOrder, PrivacyRegion, OcrBudget, RoomMatch,
 } from "./view-types";
 import { named, reviewUrl } from "./cloudinary-urls";
+import { pickPrimary } from "./roommatch";
 
 export interface View {
   user: User;
@@ -29,6 +30,10 @@ export interface View {
   workOrders: Record<string, WorkOrder>;
   coverage: Record<string, string[]>;
   assessments: Record<string, { can_assess: boolean; note: string | null; unsure: string[]; at: string }>;
+  privacy: Record<string, PrivacyRegion[]>;
+  roomMatch: Record<string, RoomMatch>;
+  privacyScans: Record<string, { engine: string; found: number; at: string }>;
+  ocr: OcrBudget;
 }
 
 let current: View | null = null;
@@ -52,6 +57,7 @@ export function toView(snap: any, user: any, properties: any[]): View {
     captured_at: i.captured_at,
     status: i.status ?? "completed",
     captured_by: snap.people?.[i.created_by] ?? "",
+    created_by: i.created_by ?? null,
   }));
   const assets: Asset[] = snap.assets
     .filter((a: any) => (a.resource_type ?? "image") === "image")
@@ -133,6 +139,10 @@ export function toView(snap: any, user: any, properties: any[]): View {
     workOrders: snap.work_orders ?? {},
     coverage: snap.coverage ?? {},
     assessments: snap.assessments ?? {},
+    privacy: snap.privacy ?? {},
+    roomMatch: snap.room_match ?? {},
+    privacyScans: snap.privacy_scans ?? {},
+    ocr: snap.ocr ?? { used: 0, cap: 0, available: false, reason: null },
   };
 }
 
@@ -148,7 +158,20 @@ export const getInspections = () => V().inspections;
 export const getInspection = (id: string) => V().inspections.find((i) => i.id === id)!;
 export const getAssets = () => V().assets;
 export const getAsset = (id: string) => V().assets.find((a) => a.id === id)!;
-export const assetFor = (roomId: string, inspectionId: string) => V().assets.find((a) => a.room_id === roomId && a.inspection_id === inspectionId);
+/** Every photo of a room at one visit, oldest first. */
+export const assetsFor = (roomId: string, inspectionId: string) => V().assets.filter((a) => a.room_id === roomId && a.inspection_id === inspectionId);
+export const getRoomMatch = (assetId: string) => V().roomMatch[assetId];
+/** False for a photo that failed the room-match check (and nobody confirmed): its findings stay out of review and the report. */
+export const isUsablePhoto = (assetId: string) => V().roomMatch[assetId]?.verdict !== "mismatch";
+
+/**
+ * The photo used for comparisons, the report and the room views: among the visit's photos of
+ * the room, never one that failed the room-match check (unless a person confirmed it), and
+ * the one that lines up best with earlier photos. Undefined when no photo qualifies.
+ */
+export function assetFor(roomId: string, inspectionId: string) {
+  return pickPrimary(assetsFor(roomId, inspectionId), V().roomMatch);
+}
 export const observationsFor = (assetId: string) => V().observations.filter((o) => o.asset_id === assetId);
 export const getObservations = () => V().observations;
 export const getComparisons = () => V().comparisons;
@@ -162,6 +185,9 @@ export const getWorkOrder = (obsId: string) => V().workOrders[obsId];
 export const getWorkOrders = () => Object.values(V().workOrders);
 export const getCoverage = (assetId: string) => V().coverage[assetId];
 export const getAssessment = (assetId: string) => V().assessments[assetId];
+export const getPrivacy = (assetId: string) => V().privacy[assetId] ?? [];
+export const getPrivacyScan = (assetId: string) => V().privacyScans[assetId];
+export const getOcrBudget = () => V().ocr;
 
 /** Baseline (first move-in) and latest inspection — what the report and overview compare. */
 export function reportPair(): { baseline: Inspection | null; current: Inspection | null } {
@@ -186,7 +212,7 @@ export function reviewQueue(): Observation[] {
   const cur = reportPair().current;
   const ids = new Set(V().assets.filter((a) => a.inspection_id === cur?.id).map((a) => a.id));
   return V().observations
-    .filter((o) => ids.has(o.asset_id) && o.review_status === "pending")
+    .filter((o) => ids.has(o.asset_id) && o.review_status === "pending" && isUsablePhoto(o.asset_id))
     .sort((a, b) => Number(!!a.pre_existing) - Number(!!b.pre_existing) || a.confidence - b.confidence);
 }
 

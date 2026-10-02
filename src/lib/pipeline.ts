@@ -10,6 +10,8 @@ import { fingerprintAsset } from "./fingerprint";
 import { groundFindings, propertyIdForInspection } from "./grounding";
 import type { ObservationItem } from "./schemas";
 import { measureObservations } from "./measure-node";
+import { scanForPersonalItems } from "./privacy-node";
+import { checkRoomMatch } from "./roommatch-node";
 
 /** Records a pipeline step in the property's activity log (best effort). */
 async function logStep(propertyId: string | null, assetId: string, stage: string, label: string, detail: string) {
@@ -163,6 +165,18 @@ export async function runAnalysisForAsset(assetId: string): Promise<void> {
     }
   }
 
+  // Does it show the room it was filed under? Pixels only, so it runs even without the model.
+  if (propertyId) {
+    try {
+      const m = await checkRoomMatch(asset, propertyId);
+      if (m && (m.verdict === "mismatch" || m.verdict === "unclear")) {
+        await logStep(propertyId, asset.id, "match", m.verdict === "mismatch" ? "Photo doesn't match this room" : "Check: is this the right room?", `view ${m.view?.toFixed(2) ?? "—"} · hash ${m.phash ?? "—"} bits vs earlier photo`);
+      }
+    } catch (mErr) {
+      console.warn(`[Pipeline] Room-match check skipped for ${asset.cloudinary_public_id}:`, mErr);
+    }
+  }
+
   try {
     // Resolved inside the try so a missing key marks the asset failed instead of leaving it queued.
     const vision = getVisionProvider();
@@ -174,6 +188,8 @@ export async function runAnalysisForAsset(assetId: string): Promise<void> {
     const analysis = await vision.analyzeImage({
       imageUrl: resizedUrl,
       roomHint: asset.room_guess || undefined,
+      // The model's boxes need the photo's shape to be placed correctly (see fromLongSide).
+      size: asset.width && asset.height ? { width: asset.width, height: asset.height } : undefined,
     });
 
     // Ground the model's findings on pixels that actually changed since the previous photo.
@@ -215,6 +231,15 @@ export async function runAnalysisForAsset(assetId: string): Promise<void> {
         property_id: propertyId, type: "assessment", resource_id: asset.id, actor_id: null, actor_name: "RentalMove", actor_role: "system",
         payload: { can_assess: !cannot, note: cannot ? analysis.assess_note ?? QUALITY_NOTE[analysis.image_quality] ?? null : null, unsure: saved.filter((s) => s.unsure).map((s) => s.id) },
       }).catch(() => {});
+    }
+    // Personal items in view: find them now so shared copies hide them from the start.
+    if (propertyId && analysis.has_personal_items) {
+      try {
+        const r = await scanForPersonalItems(propertyId, asset, resizedUrl, { id: null, name: "RentalMove", role: "system" });
+        await logStep(propertyId, asset.id, "privacy", `${r.found} private area${r.found === 1 ? "" : "s"} hidden in shared copies`, r.engine === "ocr" ? "Cloudinary OCR" : "Vision model + pixels");
+      } catch (pErr) {
+        console.warn(`[Pipeline] Privacy scan skipped for ${asset.cloudinary_public_id}:`, pErr);
+      }
     }
     // Which room areas this photo shows (feeds the per-room checklist).
     if (propertyId && analysis.visible_areas) {

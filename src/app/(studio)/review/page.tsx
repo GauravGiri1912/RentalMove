@@ -10,8 +10,10 @@ import { useStudio } from "@/components/providers";
 import { Parties } from "@/components/parties";
 import { FindingFacts, PhotoTimeChip, RepairPanel } from "@/components/insights";
 import { Loader2 } from "lucide-react";
+import { PrivacyPanel } from "@/components/privacy-panel";
+import { RoomMatchBadge } from "@/components/visit";
 import { CATEGORY_META, CategoryBadge, Confidence, Crop, Kbd, Photo, Segmented, StatusBadge } from "@/components/ui";
-import { getProperty, getRoom, reportPair } from "@/lib/view";
+import { assetFor, getAsset, getAssets, getProperty, getRoom, isUsablePhoto, reportPair } from "@/lib/view";
 import { cn, fmtDate, INSPECTION_LABEL } from "@/lib/utils";
 import type { IssueCategory, Observation } from "@/lib/view-types";
 import { reviewUrl, named } from "@/lib/cloudinary-urls";
@@ -55,7 +57,8 @@ function Review() {
   const assets = view?.assets || [];
 
   const all = useMemo(() => {
-    const currentIds = new Set(assets.filter((a) => a.inspection_id === curInsp?.id).map((a) => a.id));
+    // Photos that don't match their room stay out of review until someone confirms them.
+    const currentIds = new Set(getAssets().filter((a) => a.inspection_id === curInsp?.id && isUsablePhoto(a.id)).map((a) => a.id));
     return observations.filter((o) => currentIds.has(o.asset_id));
   }, [observations, curInsp?.id, assets]);
 
@@ -265,10 +268,8 @@ function Review() {
           </div>
         </aside>
 
-        {/* Viewer */}
-        {sel && asset && room ? (
-          <>
-            <section className="min-w-0 space-y-3">
+        {sel && asset && room ? (<>
+        <section className="min-w-0 space-y-3">
             <div className="card p-2" data-tour="rv-photo">
               <div className="relative aspect-[1200/896] overflow-hidden rounded-xl">
               <div
@@ -280,6 +281,7 @@ function Review() {
               <div className="absolute left-3 top-3 flex gap-1.5">
                 <span className="rounded-md bg-black/60 px-2 py-1 font-mono text-[10.5px] uppercase tracking-[0.12em] text-white backdrop-blur">{room.name}</span>
                 <PhotoTimeChip asset={asset} onDark />
+                <RoomMatchBadge asset={asset} onDark withConfirm />
               </div>
               {photoAbstain(asset) && (
                 <div className="absolute inset-x-3 bottom-3 flex items-center gap-2 rounded-lg bg-black/70 px-3 py-2 text-[12px] text-white backdrop-blur" data-testid="photo-abstain">
@@ -328,6 +330,7 @@ function Review() {
               <p className="mt-2 text-[11px] text-ink-3">Same coordinates in both photos — framing can differ slightly between visits.</p>
             </div>
           )}
+          <PrivacyPanel asset={asset} />
         </section>
 
         {/* Decision */}
@@ -402,62 +405,38 @@ function Review() {
               </div>
             </>
           ) : (
-            <>
-              <div className="mt-4 space-y-3 border-t border-line pt-4">
-                <div className="rounded-xl border border-line bg-surface-2/40 p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="eyebrow">Owner decision</span>
-                    {sel.reviewed_at && <span className="text-[10px] text-ink-3 uppercase tracking-wider">{fmtDate(sel.reviewed_at, { hour: "numeric", minute: "numeric" })}</span>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge s={sel.review_status} />
-                    <span className="text-[12px] text-ink-2 font-medium">
-                      {sel.review_status === "pending"
-                        ? "Awaiting owner review"
-                        : sel.review_status === "accepted"
-                        ? "Accepted for evidence report"
-                        : sel.review_status === "edited"
-                        ? "Edited & accepted for report"
-                        : "Excluded from evidence report"}
-                    </span>
-                  </div>
+            <div className="mt-4 space-y-3" data-testid="decider-note">
+              <p className="rounded-lg bg-info/[.07] p-2.5 text-[12px] leading-relaxed text-ink-2">The owner decides whether each finding goes into the report. You can agree or dispute it below — your position is recorded in the report.</p>
+              <div className="rounded-xl border border-line bg-surface-2/40 p-3">
+                <span className="eyebrow block mb-1">Owner decision</span>
+                <div className="flex items-center gap-2">
+                  <StatusBadge s={sel.review_status} />
+                  <span className="text-[12px] text-ink-2 font-medium">
+                    {sel.review_status === "pending"
+                      ? "Awaiting owner review"
+                      : sel.review_status === "accepted"
+                      ? "Accepted for evidence report"
+                      : sel.review_status === "edited"
+                      ? "Edited & accepted for report"
+                      : "Excluded from evidence report"}
+                  </span>
                 </div>
-                {sel.reviewer_note && (
-                  <div className="rounded-xl border border-line bg-surface-2/25 p-3 text-[12px]">
-                    <span className="eyebrow block mb-1">Owner reviewer note</span>
-                    <p className="text-ink-2 leading-relaxed">{sel.reviewer_note}</p>
-                  </div>
-                )}
               </div>
-              
-              <Parties obsId={sel.id} />
-              
-              <div className="mt-5 border-t border-line pt-4">
-                <span className="eyebrow block mb-3">Evidence Details</span>
-                <dl className="grid grid-cols-2 gap-3 text-[12px]">
-                  <div><dt className="text-ink-3">Location</dt><dd className="mt-0.5 font-medium">{sel.sub_area}</dd></div>
-                  <div><dt className="text-ink-3">Confidence</dt><dd className="mt-1"><Confidence value={sel.confidence} /></dd></div>
-                  <div><dt className="text-ink-3">Source</dt><dd className="mt-0.5 font-medium">{sel.source === "ai" ? "Vision model" : "Reviewer"}</dd></div>
-                  <div><dt className="text-ink-3">Model</dt><dd className="mt-0.5 font-mono text-[11px]">qwen3.8-27b</dd></div>
-                </dl>
-              </div>
-            </>
+              {sel.reviewer_note && (
+                <div className="rounded-xl border border-line bg-surface-2/25 p-3 text-[12px]">
+                  <span className="eyebrow block mb-1">Owner reviewer note</span>
+                  <p className="text-ink-2 leading-relaxed">{sel.reviewer_note}</p>
+                </div>
+              )}
+            </div>
           )}
-
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-3">The system describes what it sees. It never decides who is responsible — that is always a person&apos;s call.</p>
           <FindingFacts obs={sel} />
           {sel.review_status !== "rejected" && <RepairPanel obs={sel} />}
+          <Parties obsId={sel.id} />
         </aside>
-          </>
-        ) : (
-          <div className="col-span-1 lg:col-span-2 2xl:col-span-2 flex h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-line bg-surface/50 p-8 text-center">
-            <Check className="mb-4 size-10 text-ok opacity-80" />
-            <h2 className="text-[18px] font-medium">You're all caught up!</h2>
-            <p className="mt-2 max-w-sm text-[14px] text-ink-3">
-              There are no findings that require your attention in this tab.
-            </p>
-          </div>
-        )}
+        </>
+        ) : null}
       </div>
     </div>
   );

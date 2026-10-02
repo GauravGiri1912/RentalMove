@@ -12,7 +12,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import type { Capability } from "@/lib/permissions";
 import { Kbd } from "./ui";
 import { cn } from "@/lib/utils";
-import { getMeta, getProperties, getProperty, getWorkOrders, reportPair } from "@/lib/view";
+import { getMeta, getProperties, getProperty, getWorkOrders, isUsablePhoto, reportPair } from "@/lib/view";
 import { HoodDrawer } from "./hood";
 
 interface NavItem {
@@ -68,6 +68,8 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pending = useMemo(() => {
     const { current } = reportPair();
     return observations.filter((o) => {
+      // Photos that don't match their room are not waiting for review until someone confirms them.
+      if (!isUsablePhoto(o.asset_id)) return false;
       if (!current) return true;
       const a = view?.assets.find((x) => x.id === o.asset_id);
       if (!a) return true;
@@ -79,7 +81,6 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       return o.review_status === "pending";
     }).length;
   }, [observations, view?.assets, view?.stances, user.role]);
-
   const openRepairs = getWorkOrders().filter((w) => w.status !== "done").length;
   const prop = getProperty();
   const all = getProperties();

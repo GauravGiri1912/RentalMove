@@ -21,6 +21,8 @@ export interface TimeCheck { level: TimeLevel; label: string; detail: string; da
 
 /** Days a capture may precede the visit date before it is flagged (time zones, late uploads). */
 export const EARLY_TOLERANCE_DAYS = 2;
+/** Days a capture may follow the visit date (a visit can span a few days). */
+export const LATE_TOLERANCE_DAYS = 3;
 const EDITORS = /photoshop|lightroom|gimp|snapseed|picsart|facetune|affinity|pixelmator|canva|photoroom|remini|luminar|paint\.net/i;
 
 /** Extracts the fields we keep from Cloudinary's image_metadata (drops everything else, incl. GPS). */
@@ -55,12 +57,15 @@ export function photoTimeCheck(exif: PhotoExif | null | undefined, visitIso: str
   const taken = asTime(exif.taken_at);
   const day = exif.taken_at.slice(0, 10);
   const issues: string[] = [];
+  // An impossible time (after the upload) means a wrong camera clock: report that first,
+  // since it also explains any visit-date mismatch.
+  if (uploadedIso && taken - new Date(uploadedIso).getTime() > DAY) issues.push("capture time is after the upload (camera clock?)");
   let before: number | null = null;
   if (visitIso) {
     before = Math.round((new Date(visitIso.slice(0, 10) + "T00:00:00Z").getTime() - new Date(day + "T00:00:00Z").getTime()) / DAY);
     if (before > EARLY_TOLERANCE_DAYS) issues.push(`taken ${fmtDays(before)} before this visit`);
+    else if (-before > LATE_TOLERANCE_DAYS) issues.push(`taken ${fmtDays(-before)} after this visit`);
   }
-  if (uploadedIso && taken - new Date(uploadedIso).getTime() > DAY) issues.push("capture time is after the upload (camera clock?)");
   if (editor) issues.push(`edited with ${editor}`);
   if (issues.length) return { level: "warn", label: cap(issues[0]), detail: `File says taken ${day}${exif.camera ? ` on ${exif.camera}` : ""}. ${issues.map(cap).join(". ")}.`, days_before_visit: before };
   return { level: "ok", label: `Taken ${day}`, detail: `Capture time in the file matches the visit${exif.camera ? ` (${exif.camera})` : ""}.`, days_before_visit: before };

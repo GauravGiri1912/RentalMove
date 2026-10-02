@@ -8,6 +8,7 @@
  *
  *   npx tsx scripts/eval-change-detection.ts          # pixel engine only (no API calls)
  *   npx tsx scripts/eval-change-detection.ts --vlm    # + Groq vision model (uses API quota)
+ *   npx tsx scripts/eval-change-detection.ts --vlm --runs 5   # repeat the model part, report mean + range
  *
  * Writes docs/eval/change-detection.json and prints a summary table.
  */
@@ -17,10 +18,17 @@ import path from "path";
 import sharp from "sharp";
 import { changeMap, regionsInCurrentFrame } from "../src/lib/pixel-node";
 import { ground, iou, type BBox } from "../src/lib/pixel";
+import { fromLongSide } from "../src/lib/vision";
 
 const ROOT = process.cwd();
 const GT = JSON.parse(fs.readFileSync(path.join(ROOT, "seed/ground-truth.json"), "utf8"));
 const useVlm = process.argv.includes("--vlm");
+/** --runs N repeats the vision-model part N times (the pixel part is deterministic). */
+const RUNS = Math.max(1, Number(process.argv[process.argv.indexOf("--runs") + 1]) || 1);
+/** A staged change counts as found when the best box overlaps it with IoU ≥ this. */
+const FOUND_IOU = 0.1;
+/** Differences smaller than this count as "equal". */
+const EQUAL_TOL = 0.01;
 
 const centreIn = (g: BBox, r: BBox) => {
   const cx = (g[0] + g[2]) / 2, cy = (g[1] + g[3]) / 2;
@@ -70,15 +78,21 @@ async function main() {
 
       if (vision && condition === "as captured" && gts.length) {
         const dataUrl = "data:image/jpeg;base64," + current.toString("base64");
-        const a = await vision.analyzeImage({ imageUrl: dataUrl, roomHint: p.room });
-        for (const g of p.changes) {
-          const same = a.observations.filter((o: any) => o.category === g.category || true);
-          const raw = Math.max(0, ...same.map((o: any) => iou(g.bbox, o.bbox)));
-          const grounded = Math.max(0, ...same.map((o: any) => {
-            const gr = ground(o.bbox, regions);
-            return gr ? iou(g.bbox, gr.box) : iou(g.bbox, o.bbox);
-          }));
-          vlmRows.push({ pair: name, change: g.label, modelBoxIou: +raw.toFixed(3), groundedIou: +grounded.toFixed(3), modelFindings: a.observations.length });
+        const meta = await sharp(current).metadata();
+        for (let run = 1; run <= RUNS; run++) {
+          // Raw model answer (no size passed, so no correction inside analyzeImage).
+          const a = await vision.analyzeImage({ imageUrl: dataUrl, roomHint: p.room });
+          const boxes = a.observations.map((o: any) => o.bbox as BBox);
+          // Same answer with the long-side correction (lib/vision.ts fromLongSide).
+          const fixed = a.observations.map((o: any) => (o.box_space === "fraction" ? fromLongSide(o.bbox, meta.width!, meta.height!) : o.bbox) as BBox);
+          const best = (list: BBox[], g: BBox, snap: boolean) => Math.max(0, ...list.map((b) => { const gr = snap ? ground(b, regions) : null; return gr ? iou(g, gr.box) : iou(g, b); }));
+          for (const g of p.changes) {
+            vlmRows.push({
+              run, pair: name, change: g.label, modelFindings: a.observations.length,
+              raw: +best(boxes, g.bbox, false).toFixed(3), fixed: +best(fixed, g.bbox, false).toFixed(3),
+              grounded: +best(boxes, g.bbox, true).toFixed(3), groundedFixed: +best(fixed, g.bbox, true).toFixed(3),
+            });
+          }
         }
       }
     }
@@ -97,14 +111,28 @@ async function main() {
     };
   }
   if (vlmRows.length) {
+    const runs = [...new Set(vlmRows.map((r) => r.run))];
+    const perRun = (key: string) => runs.map((run) => { const rs = vlmRows.filter((r) => r.run === run); return rs.reduce((a, r) => a + r[key], 0) / rs.length; });
+    const foundPerRun = (key: string) => runs.map((run) => vlmRows.filter((r) => r.run === run && r[key] >= FOUND_IOU).length);
+    const stat = (xs: number[], d = 3) => ({ mean: +(xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(d), min: +Math.min(...xs).toFixed(d), max: +Math.max(...xs).toFixed(d) });
+    const compare = (before: string, after: string) => {
+      let improved = 0, equal = 0, worse = 0;
+      for (const r of vlmRows) { const d = r[after] - r[before]; if (d > EQUAL_TOL) improved++; else if (d < -EQUAL_TOL) worse++; else equal++; }
+      return { improved, equal, worse, of: vlmRows.length };
+    };
+    const findingsPerRun = runs.map((run) => { const seen = new Set<string>(); let n = 0; for (const r of vlmRows.filter((x) => x.run === run)) if (!seen.has(r.pair)) { seen.add(r.pair); n += r.modelFindings; } return n; });
     summary.vlm = {
-      meanModelBoxIou: +(vlmRows.reduce((a, r) => a + r.modelBoxIou, 0) / vlmRows.length).toFixed(3),
-      meanGroundedIou: +(vlmRows.reduce((a, r) => a + r.groundedIou, 0) / vlmRows.length).toFixed(3),
+      runs: runs.length, changes: vlmRows.length / runs.length, found_iou: FOUND_IOU,
+      meanIou: { raw: stat(perRun("raw")), corrected: stat(perRun("fixed")), grounded: stat(perRun("grounded")), groundedCorrected: stat(perRun("groundedFixed")) },
+      changesFound: { raw: stat(foundPerRun("raw"), 1), corrected: stat(foundPerRun("fixed"), 1), grounded: stat(foundPerRun("grounded"), 1), groundedCorrected: stat(foundPerRun("groundedFixed"), 1) },
+      modelFindingsPerRun: stat(findingsPerRun, 1),
+      afterCorrection: { modelBoxes: compare("raw", "fixed"), afterGrounding: compare("grounded", "groundedFixed") },
+      identicalRuns: runs.length > 1 && runs.every((run) => JSON.stringify(vlmRows.filter((r) => r.run === run).map(({ run: _r, ...x }) => x)) === JSON.stringify(vlmRows.filter((r) => r.run === runs[0]).map(({ run: _r, ...x }) => x))),
     };
   }
 
   console.table(rows.map((r) => ({ ...r, meanIou: +r.meanIou.toFixed(2), alignScore: +(r.alignScore ?? 0).toFixed(2) })));
-  if (vlmRows.length) console.table(vlmRows);
+  if (vlmRows.length) console.table(vlmRows.filter((r) => r.run === 1));
   console.log(JSON.stringify(summary, null, 2));
 
   const out = path.join(ROOT, "docs/eval/change-detection.json");

@@ -11,10 +11,11 @@
 import crypto from "crypto";
 import { getDatabase } from "./db";
 import {
-  deriveAssessments, deriveCalibrations, deriveCoverage, deriveFingerprints, deriveMeasures, deriveSignatures, deriveStances, deriveThreads, deriveWorkOrders,
+  deriveAssessments, deriveCalibrations, deriveCoverage, derivePrivacy, derivePrivacyScans, deriveRoomMatch, deriveFingerprints, deriveMeasures, deriveSignatures, deriveStances, deriveThreads, deriveWorkOrders,
   eventStoreKind, listEvents,
 } from "./events";
 import { iou } from "./pixel";
+import { ocrBudget } from "./privacy-node";
 import { isSameSpot } from "./matching-config";
 import type { Asset, Comparison, Inspection, Observation, Property, Room, ShareLink, User } from "./schemas";
 
@@ -60,6 +61,12 @@ export interface Snapshot {
   coverage: ReturnType<typeof deriveCoverage>;
   /** Photo-level assessment per asset id (could the model judge it; unsure findings). */
   assessments: ReturnType<typeof deriveAssessments>;
+  /** Areas pixelated in shared copies, per asset id; last scan per asset; OCR budget. */
+  privacy: ReturnType<typeof derivePrivacy>;
+  /** Does each photo show the room it was filed under (per asset id). */
+  room_match: ReturnType<typeof deriveRoomMatch>;
+  privacy_scans: ReturnType<typeof derivePrivacyScans>;
+  ocr: { used: number; cap: number; available: boolean; reason: string | null };
 }
 
 /** Marks findings that match a non-rejected finding at the same spot in an earlier photo of the room. */
@@ -211,6 +218,10 @@ export async function buildSnapshot(propertyId: string, user: User): Promise<Sna
     work_orders: workOrders,
     coverage: deriveCoverage(events),
     assessments: deriveAssessments(events),
+    privacy: derivePrivacy(events),
+    room_match: deriveRoomMatch(events),
+    privacy_scans: derivePrivacyScans(events),
+    ocr: await ocrBudget().catch(() => ({ used: 0, cap: 0, available: false, reason: "unknown" })),
     people: Object.fromEntries(users.filter((u) => inspections.some((i) => i.created_by === u.id) || observations.some((o) => o.reviewed_by === u.id)).map((u) => [u.id, u.name])),
   };
 }

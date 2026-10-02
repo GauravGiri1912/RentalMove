@@ -102,6 +102,11 @@ check("register outside the token's scope is refused (403)", (await call({}, "PO
 
 // Security fixes
 check("finding edits require access (tenant → unknown finding 403)", (await call(tenant, "PATCH", "/api/observations/obs-nope", { review_status: "accepted" })).status === 403);
+// Only whoever ran the inspection decides (all demo inspections were run by the owner).
+const decObs = snap.body.observations[0];
+const tenantDecide = await call(tenant, "PATCH", `/api/observations/${decObs.id}`, { review_status: "rejected" });
+check("tenant cannot accept/reject findings of an inspection the owner ran (403)", tenantDecide.status === 403, tenantDecide.body?.error);
+check("the owner who ran it can (re-saving the current status)", (await call(owner, "PATCH", `/api/observations/${decObs.id}`, { review_status: decObs.review_status })).status === 200);
 const sign = await call(owner, "POST", "/api/uploads/sign", { property_id: P, inspection_id: insp.id, room: room.category });
 check("upload tags carry the real inspection type", sign.status === 200 && sign.body.tags.includes(insp.type), sign.body?.tags);
 
@@ -143,6 +148,35 @@ check("voice upload signature is scoped to the finding, no webhook", vs.status =
 check("voice note from another finding's folder is refused (400)", (await call(tenant, "POST", `/api/observations/${obs.id}/comments`, { text: "", voice: { public_id: `properties/${P}/voice/other/x`, lang: "hi-IN" } })).status === 400);
 check("empty comment without voice is refused (400)", (await call(tenant, "POST", `/api/observations/${obs.id}/comments`, { text: "" })).status === 400);
 check("voice sign on a foreign finding is refused (403)", (await call(tenant, "POST", "/api/observations/obs-nope/voice")).status === 403);
+
+// Private items: hide an area, check it is applied to signed copies, un-hide it.
+check("snapshot carries privacy areas and OCR budget", "privacy" in snap.body && typeof snap.body.ocr?.cap === "number", `OCR ${snap.body.ocr?.used}/${snap.body.ocr?.cap}${snap.body.ocr?.reason ? " · " + snap.body.ocr.reason : ""}`);
+const pAsset = snap.body.assets[0].id;
+check("privacy on a foreign photo is refused (403)", (await call(tenant, "POST", "/api/assets/asset-nope/privacy", { action: "add", bbox: [0.1, 0.1, 0.3, 0.3] })).status === 403);
+check("a too-small hidden area is refused (400)", (await call(tenant, "POST", `/api/assets/${pAsset}/privacy`, { action: "add", bbox: [0.1, 0.1, 0.105, 0.3] })).status === 400);
+const added = await call(tenant, "POST", `/api/assets/${pAsset}/privacy`, { action: "add", bbox: [0.62, 0.12, 0.78, 0.3], label: "smoke test" });
+check("tenant can hide an area", added.status === 200 && added.body.region?.source === "manual");
+const signedPriv = await call(owner, "POST", "/api/media/sign", { items: [{ asset_id: pAsset, recipe: { kind: "evidence", pixelate: true, boxes: [] } }] });
+check("signed copies pixelate the hidden area (server-side)", signedPriv.status === 200 && signedPriv.body.urls[0].includes("e_pixelate_region:") && signedPriv.body.urls[0].includes("x_0.6200,y_0.1200"));
+const imgPriv = await fetch(signedPriv.body.urls[0]);
+check("…and Cloudinary renders it", imgPriv.ok && (imgPriv.headers.get("content-type") ?? "").startsWith("image/"), `${imgPriv.status} ${imgPriv.headers.get("content-type")}`);
+check("removing an unknown area is 404", (await call(owner, "POST", `/api/assets/${pAsset}/privacy`, { action: "remove", id: "pr-nope" })).status === 404);
+check("owner can un-hide it", (await call(owner, "POST", `/api/assets/${pAsset}/privacy`, { action: "remove", id: added.body.region.id })).status === 200);
+const signedAfter = await call(owner, "POST", "/api/media/sign", { items: [{ asset_id: pAsset, recipe: { kind: "evidence", pixelate: true, boxes: [] } }] });
+check("un-hidden area is no longer applied", !signedAfter.body.urls[0].includes("x_0.6200,y_0.1200"));
+
+// Which photos belong where.
+const rm = snap.body.room_match ?? {};
+check("snapshot carries room-match results", Object.keys(rm).length > 0, Object.entries(Object.values(rm).reduce((c, m) => ((c[m.verdict] = (c[m.verdict] ?? 0) + 1), c), {})).map(([k, v]) => `${v} ${k}`).join(", "));
+check("room-match on a foreign photo is refused (403)", (await call(tenant, "POST", "/api/assets/asset-nope/room-match", { action: "check" })).status === 403);
+const rmCheck = await call(owner, "POST", `/api/assets/${snap.body.assets[0].id}/room-match`, { action: "check" });
+check("room-match check runs (pixels only)", rmCheck.status === 200 && ["first", "match", "unclear", "mismatch"].includes(rmCheck.body.verdict), `${rmCheck.body?.verdict} view ${rmCheck.body?.view}`);
+const shared2 = await call(owner, "POST", "/api/share", { property_id: P, expires_in_days: 1, recipient: "room-match test" });
+const pub2 = await call({}, "GET", `/api/share/${shared2.body.token}`);
+const mismatchedIds = Object.entries(rm).filter(([, m]) => m.verdict === "mismatch").map(([id]) => id);
+const mismatchedPids = snap.body.assets.filter((a) => mismatchedIds.includes(a.id)).map((a) => a.cloudinary_public_id);
+check("shared report never shows a photo that doesn't match its room", pub2.status === 200 && !JSON.stringify(pub2.body).match(new RegExp(mismatchedPids.map((p) => p.split("/").pop()).join("|") || "^$")), `${mismatchedPids.length} mismatched photo(s) kept out`);
+await call(owner, "DELETE", `/api/share/${shared2.body.token}`);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

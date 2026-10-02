@@ -144,3 +144,13 @@ function correlationOutside(a: Gray, b: Gray, box: BBox): number {
   const va = saa / n - (sa / n) ** 2, vb = sbb / n - (sb / n) ** 2;
   return va > 0 && vb > 0 ? cov / Math.sqrt(va * vb) : 0;
 }
+
+/**
+ * How well two photos show the same view: correlation of their luminance after aligning the
+ * second onto the first (shift + zoom). Same room from roughly the same spot ≈ 0.9+; a
+ * different room or house is low. Used by the room-match check (lib/roommatch.ts).
+ */
+export function viewMatch(ref: Gray, other: Gray): number {
+  const t = align(ref, other);
+  return round(correlationOutside(ref, warp(other, t), [0, 0, 0, 0]));
+}

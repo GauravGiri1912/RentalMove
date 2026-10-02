@@ -11,6 +11,8 @@ import { named, evidenceTransformation, type EvidenceBox } from "./cloudinary-ur
 import { signedDeliveryUrl } from "./media";
 import { buildSnapshot, reportInspections } from "./snapshot";
 import { listEvents } from "./events";
+import { pixelateSteps } from "./privacy";
+import { pickPrimary } from "./roommatch";
 import { cachedTranslations } from "./translate";
 import type { ShareLink, User } from "./schemas";
 
@@ -19,18 +21,18 @@ function watermark(text: string): string {
   return `l_text:Arial_20_bold:${safe},co_white,o_70,b_rgb:00000080/fl_layer_apply,g_south_east,x_16,y_16`;
 }
 
-export function sharedImageUrl(publicId: string, recipient: string | null, linkHint: string): string {
-  if (!recipient) return named(publicId, "rm_shared"); // faces pixelated, named transformation
-  // Pixelate, then the per-recipient watermark layer, then delivery format — signed, because
-  // the recipe is dynamic (it contains the recipient's name).
-  return signedDeliveryUrl(publicId, `c_limit,w_1600,h_1200,e_pixelate_faces:20/${watermark(`Shared with ${recipient} · ${linkHint}`)}/f_auto,q_auto`);
+export function sharedImageUrl(publicId: string, recipient: string | null, linkHint: string, hide: string[] = []): string {
+  if (!recipient && !hide.length) return named(publicId, "rm_shared"); // faces pixelated, named transformation
+  // Private areas, pixelated faces, then the per-recipient watermark, then delivery format —
+  // signed, because the recipe is dynamic.
+  return signedDeliveryUrl(publicId, [...hide, "c_limit,w_1600,h_1200,e_pixelate_faces:20", recipient ? watermark(`Shared with ${recipient} · ${linkHint}`) : "", "f_auto,q_auto"].filter(Boolean).join("/"));
 }
 
 /** Evidence rendition (boxes drawn by Cloudinary, faces pixelated, optional watermark) — signed. */
-export function evidenceImageUrl(publicId: string, boxes: EvidenceBox[], recipient: string | null, linkHint: string): string {
+export function evidenceImageUrl(publicId: string, boxes: EvidenceBox[], recipient: string | null, linkHint: string, hide: string[] = []): string {
   const parts = evidenceTransformation(boxes, { pixelateFaces: true }).split("/");
   if (recipient) parts.splice(parts.length - 1, 0, watermark(`Shared with ${recipient} · ${linkHint}`));
-  return signedDeliveryUrl(publicId, parts.join("/"));
+  return signedDeliveryUrl(publicId, [...hide, ...parts].join("/"));
 }
 
 export async function buildSharedReport(link: ShareLink) {
@@ -43,19 +45,21 @@ export async function buildSharedReport(link: ShareLink) {
   const hint = link.token.slice(0, 6);
   const { baseline, current } = reportInspections(snap.inspections);
 
+  const hideFor = (a: { id: string; width?: number | null; height?: number | null }) => pixelateSteps(snap.privacy[a.id] ?? [], a.width ?? 0, a.height ?? 0);
   const rooms = snap.rooms.map((room) => {
-    const before = snap.assets.find((a) => a.room_id === room.id && a.inspection_id === baseline?.id);
-    const after = snap.assets.find((a) => a.room_id === room.id && a.inspection_id === current?.id);
+    // Same choice as the app: never a photo that failed the room-match check.
+    const before = pickPrimary(snap.assets.filter((a) => a.room_id === room.id && a.inspection_id === baseline?.id), snap.room_match);
+    const after = pickPrimary(snap.assets.filter((a) => a.room_id === room.id && a.inspection_id === current?.id), snap.room_match);
     const obs = after ? snap.observations.filter((o) => o.asset_id === after.id) : [];
     return {
       id: room.id,
       name: room.name,
-      before: before ? { url: sharedImageUrl(before.cloudinary_public_id, recipient, hint), captured_at: before.captured_at, sha256: before.sha256 ?? null } : null,
+      before: before ? { url: sharedImageUrl(before.cloudinary_public_id, recipient, hint, hideFor(before)), captured_at: before.captured_at, sha256: before.sha256 ?? null } : null,
       after: after
         ? {
-            url: sharedImageUrl(after.cloudinary_public_id, recipient, hint),
+            url: sharedImageUrl(after.cloudinary_public_id, recipient, hint, hideFor(after)),
             // Same photo with the reviewed findings drawn by Cloudinary into the pixels.
-            evidence_url: evidenceImageUrl(after.cloudinary_public_id, obs.filter((o) => !o.pre_existing && (o.review_status === "accepted" || o.review_status === "edited")).map((o, i) => ({ bbox: o.bbox, label: `${i + 1} ${o.category}` })), recipient, hint),
+            evidence_url: evidenceImageUrl(after.cloudinary_public_id, obs.filter((o) => !o.pre_existing && (o.review_status === "accepted" || o.review_status === "edited")).map((o, i) => ({ bbox: o.bbox, label: `${i + 1} ${o.category}` })), recipient, hint, hideFor(after)),
             captured_at: after.captured_at,
             sha256: after.sha256 ?? null,
             analysed: after.analysis_status === "done",

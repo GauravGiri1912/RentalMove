@@ -1,5 +1,6 @@
 "use client";
 
+import { VisitCompleteness } from "@/components/visit";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -10,7 +11,7 @@ import { useStudio } from "@/components/providers";
 import { Confidence, Crop, Empty, Photo, SectionTitle, Stat } from "@/components/ui";
 import { FloorPlan } from "@/components/floor-plan";
 import { SUGGESTED } from "@/lib/assistant";
-import { assetFor, comparisonFor, getAssets, getEvents, getInspections, getProperties, getProperty, getRooms, reportPair } from "@/lib/view";
+import { assetFor, comparisonFor, getAssets, getEvents, getInspections, getProperties, getProperty, getRooms, isUsablePhoto, reportPair } from "@/lib/view";
 import { hasPlan } from "@/lib/floorplan";
 import { cn, fmtDate, INSPECTION_LABEL, relTime } from "@/lib/utils";
 
@@ -25,7 +26,7 @@ export default function Overview() {
   const inspections = getInspections();
   const assets = getAssets();
   const { baseline, current } = reportPair();
-  const currentIds = new Set(assets.filter((a) => a.inspection_id === current?.id).map((a) => a.id));
+  const currentIds = new Set(assets.filter((a) => a.inspection_id === current?.id && isUsablePhoto(a.id)).map((a) => a.id));
   const pending = observations.filter((o) => o.review_status === "pending" && currentIds.has(o.asset_id));
   const newFindings = pending.filter((o) => !o.pre_existing).length;
   const reused = assets.filter((a) => a.reused_of);
@@ -153,6 +154,8 @@ export default function Overview() {
           <Link href="/memory" className="btn-ghost h-8 text-[12px]">Show <ArrowRight className="size-3.5" /></Link>
         </div>
       )}
+
+      {current && <VisitCompleteness inspectionId={current.id} compact />}
 
       <section data-tour="ov-stats" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Photos in memory" value={assets.length} sub={`${inspections.length} inspection${inspections.length === 1 ? "" : "s"} since ${fmtDate(inspections[0].captured_at, { month: "short", year: "numeric" })}`} />

@@ -8,6 +8,7 @@
  */
 
 import { getDatabase } from "./db";
+import { listEvents } from "./events";
 import { named } from "./cloudinary-urls";
 import { changeMap, regionsInCurrentFrame, ground, describeRegion, type ChangeMap } from "./pixel-node";
 import type { Asset, ObservationItem } from "./schemas";
@@ -48,9 +49,12 @@ export async function earlierAssetsFor(asset: Asset): Promise<{ baseline: Asset 
     .filter((i) => new Date(i.captured_at).getTime() < new Date(current.captured_at).getTime())
     .sort((a, b) => a.captured_at.localeCompare(b.captured_at));
   const candidates: { asset: Asset; type: string; at: string }[] = [];
+  // Photos that failed the room-match check never serve as the "before" photo.
+  const mismatched = new Set((await listEvents(propertyId, ["roommatch"])).filter((e) => e.payload.verdict === "mismatch").map((e) => e.resource_id));
+  const confirmed = new Set((await listEvents(propertyId, ["roommatch"])).filter((e) => e.payload.action === "confirm").map((e) => e.resource_id));
   for (const insp of earlier) {
     for (const a of await db.getAssets(insp.id, asset.room_id)) {
-      if (a.id !== asset.id && (a.resource_type ?? "image") === "image") candidates.push({ asset: a, type: insp.type, at: insp.captured_at });
+      if (a.id !== asset.id && (a.resource_type ?? "image") === "image" && (!mismatched.has(a.id) || confirmed.has(a.id))) candidates.push({ asset: a, type: insp.type, at: insp.captured_at });
     }
   }
   if (!candidates.length) return none;

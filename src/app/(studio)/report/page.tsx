@@ -20,7 +20,7 @@ import { fmtDateL, makeT, needsMachine, REPORT_LANGS, type ReportLang } from "@/
 /** Translator for the report document (English = identity). */
 const TCtx = createContext<(s: string) => string>((s) => s);
 const useT = () => useContext(TCtx);
-import { getObservations, getWorkOrders } from "@/lib/view";
+import { getObservations, getPrivacy, getWorkOrders, isUsablePhoto } from "@/lib/view";
 
 const EXPIRY = [{ d: 1, l: "24 hours" }, { d: 7, l: "7 days" }, { d: 14, l: "14 days" }, { d: 30, l: "30 days" }];
 
@@ -56,6 +56,16 @@ export default function ReportPage() {
     }).slice(0, 8);
   }, [rooms, current, observations, privacy]);
   const { urls: evidenceUrls } = useSignedUrls(evidenceItems.length ? evidenceItems.map(({ asset_id, recipe }) => ({ asset_id, recipe })) : null);
+  // Photos with private areas need a signed copy (the server adds the pixelation); the
+  // named presets below cannot carry per-photo areas.
+  const privateItems = useMemo(() => {
+    if (!baseline || !current) return [];
+    return getAssets()
+      .filter((a) => (a.inspection_id === baseline.id || a.inspection_id === current.id) && getPrivacy(a.id).length > 0)
+      .slice(0, 8)
+      .map((a) => ({ asset_id: a.id, recipe: { kind: "evidence" as const, pixelate: privacy, boxes: [] } }));
+  }, [baseline?.id, current?.id, privacy, observations]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { urls: privateUrls } = useSignedUrls(privateItems.length ? privateItems : null);
   const evidenceFor = (roomId: string) => {
     const i = evidenceItems.findIndex((e) => e.room === roomId);
     return i >= 0 ? evidenceUrls?.[i] : undefined;
@@ -97,7 +107,7 @@ export default function ReportPage() {
     return <Empty icon={<Camera className="size-5" />} title="The report needs two inspections" body="It compares the move-in baseline with the latest inspection. Capture both, and the report builds itself." action={<Link href="/capture" className="btn-primary">Capture</Link>} />;
   }
 
-  const currentIds = new Set(getAssets().filter((a) => a.inspection_id === current.id).map((a) => a.id));
+  const currentIds = new Set(getAssets().filter((a) => a.inspection_id === current.id && isUsablePhoto(a.id)).map((a) => a.id));
   const curObs = observations.filter((o) => currentIds.has(o.asset_id));
   const counts = {
     included: curObs.filter((o) => !o.pre_existing && (o.review_status === "accepted" || o.review_status === "edited")).length,
@@ -106,7 +116,11 @@ export default function ReportPage() {
   };
   const disputed = curObs.filter((o) => stances[o.id]?.tenant === "dispute" || stances[o.id]?.owner === "dispute").length;
   const reportId = `RM-${prop.id.replace(/[^0-9a-z]/gi, "").toUpperCase().slice(-6)}-${current.captured_at.slice(0, 10).replace(/-/g, "")}`;
-  const img = (a: Asset) => presetUrl(a.cloudinary_public_id, privacy && a.people_detected ? "privacy" : "evidence");
+  const img = (a: Asset) => {
+    const i = privateItems.findIndex((p) => p.asset_id === a.id);
+    if (i >= 0) return privateUrls?.[i] ?? ""; // never fall back to the unhidden copy
+    return presetUrl(a.cloudinary_public_id, privacy && a.people_detected ? "privacy" : "evidence");
+  };
   const links = getShareLinks();
 
   const createLink = async () => {

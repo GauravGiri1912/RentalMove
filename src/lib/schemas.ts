@@ -62,6 +62,8 @@ export const ObservationItemSchema = z.object({
   bbox: BoundingBoxSchema,
   /** The model's own "I am not sure about this one" (lib/certainty.ts). */
   unsure: z.boolean().optional(),
+  /** How the model wrote this box: 0..1 fractions, or 0..100 / 0..1000 numbers (not stored). */
+  box_space: z.enum(["fraction", "scaled"]).optional(),
 });
 export type ObservationItem = z.infer<typeof ObservationItemSchema>;
 
@@ -73,6 +75,8 @@ export const ImageAnalysisSchema = z.object({
   visible_areas: z.array(z.string()).optional(),
   /** False when the model cannot judge the photo (glare, too far, view blocked…). */
   can_assess: z.boolean().optional(),
+  /** Letters, documents, screens or personal photos visible (triggers a privacy scan). */
+  has_personal_items: z.boolean().optional(),
   assess_note: z.string().max(200).optional(),
 });
 export type ImageAnalysis = z.infer<typeof ImageAnalysisSchema>;
