@@ -1,6 +1,8 @@
 "use client";
 
 import { VisitCompleteness } from "@/components/visit";
+import { TenantInvites } from "@/components/invites";
+import { GettingStarted } from "@/components/getting-started";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -75,8 +77,10 @@ export default function Overview() {
 
   if (!inspections.length) {
     return (
-      <div className="pt-10">
-        <Empty icon={<Camera className="size-5" />} title={`${prop.address_label} has no inspections yet`} body="Start with a move-in capture. Every later visit is compared with it." action={<Link href="/capture" className="btn-primary"><Camera className="size-4" /> Start move-in capture</Link>} />
+      <div className="space-y-6 pt-10">
+        <Empty icon={<Camera className="size-5" />} title={`${prop.address_label} has no visits yet`} body="Start with a move-in capture. Every later visit is compared with it." action={<Link href="/capture" className="btn-primary"><Camera className="size-4" /> Start move-in capture</Link>} />
+        <GettingStarted />
+        {user.role === "owner" && <div id="tenant-invites"><TenantInvites /></div>}
       </div>
     );
   }
@@ -96,7 +100,7 @@ export default function Overview() {
           <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-2">
             {current && baseline
               ? `${assets.filter((a) => currentIds.has(a.id)).length} rooms were captured on ${fmtDate(current.captured_at)} and compared with move-in (${fmtDate(baseline.captured_at)}). ${newFindings} finding${newFindings === 1 ? " is" : "s are"} new since move-in${pending.length ? " — each waits for a human decision" : ""}.${analysing ? ` ${analysing} photo${analysing === 1 ? " is" : "s are"} still being analysed.` : ""}`
-              : "The move-in photos are the baseline every later inspection is compared with."}
+              : "The move-in photos are the baseline every later visit is compared with."}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {pending.length > 0 && <Link href="/review" className="btn-signal h-10 px-4"><ScanSearch className="size-4" /> Review {pending.length} finding{pending.length === 1 ? "" : "s"}</Link>}
@@ -145,6 +149,9 @@ export default function Overview() {
         )}
       </header>
 
+      <GettingStarted />
+      {user.role === "owner" && <div id="tenant-invites"><TenantInvites /></div>}
+
       {reused.length > 0 && (
         <div className="flex items-start gap-3 rounded-2xl border border-danger/30 bg-danger/[.05] p-4 text-[13px] animate-fade-up">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" />
@@ -158,7 +165,7 @@ export default function Overview() {
       {current && <VisitCompleteness inspectionId={current.id} compact />}
 
       <section data-tour="ov-stats" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Photos in memory" value={assets.length} sub={`${inspections.length} inspection${inspections.length === 1 ? "" : "s"} since ${fmtDate(inspections[0].captured_at, { month: "short", year: "numeric" })}`} />
+        <Stat label="Photos in memory" value={assets.length} sub={`${inspections.length} visit${inspections.length === 1 ? "" : "s"} since ${fmtDate(inspections[0].captured_at, { month: "short", year: "numeric" })}`} />
         <Stat label="Awaiting review" value={pending.length} sub={`${newFindings} new · ${pending.length - newFindings} pre-existing`} accent />
         <Stat label="Rooms with changes" value={`${comparedRooms}/${rooms.length}`} sub={analysing ? `${analysing} photo${analysing === 1 ? "" : "s"} analysing` : "compared with move-in"} />
         <Stat label="Integrity sealed" value={`${assets.filter((a) => a.sha256).length}/${assets.length}`} sub={<span className="inline-flex items-center gap-1"><Fingerprint className="size-3" /> SHA-256 of originals</span>} />

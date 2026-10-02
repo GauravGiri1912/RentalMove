@@ -5,9 +5,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, CircleDashed, HelpCircle, Loader2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleDashed, HelpCircle, Loader2, ShieldCheck, Trash2 } from "lucide-react";
 import { api, useStudio } from "@/components/providers";
-import { assetFor, assetsFor, getInspection, getRoomMatch, getRooms, observationsFor } from "@/lib/view";
+import { assetFor, assetsFor, getInspection, getRoomMatch, getRooms, getSubmitted, observationsFor } from "@/lib/view";
 import { photoTimeOf, roomCoverage } from "@/lib/insights";
 import { MATCH_LABEL } from "@/lib/roommatch";
 import { cn, fmtDate, INSPECTION_LABEL } from "@/lib/utils";
@@ -55,9 +55,25 @@ export function RoomMatchBadge({ asset, onDark, withConfirm }: { asset: Asset; o
 
 /** Every photo of a room at one visit, marking the one used for comparisons. */
 export function VisitPhotos({ roomId, inspectionId }: { roomId: string; inspectionId: string }) {
+  const { refresh, toast } = useStudio();
+  const [busy, setBusy] = useState<string | null>(null);
   const photos = assetsFor(roomId, inspectionId);
   const primary = assetFor(roomId, inspectionId);
-  if (photos.length <= 1 && !photos.some((p) => getRoomMatch(p.id)?.verdict === "mismatch")) return null;
+  // A photo can be removed only while its visit is still a draft: in progress and not yet submitted.
+  const insp = getInspection(inspectionId);
+  const draft = !!insp && insp.status === "in_progress" && !getSubmitted(inspectionId);
+  if (!photos.length || (photos.length <= 1 && !draft && !photos.some((p) => getRoomMatch(p.id)?.verdict === "mismatch"))) return null;
+  const remove = async (id: string) => {
+    if (!window.confirm("Remove this photo? It is deleted, and the visit records that a photo was removed. This cannot be undone.")) return;
+    setBusy(id);
+    try {
+      await api(`/api/assets/${id}`, { method: "DELETE" });
+      await refresh();
+      toast({ title: "Photo removed", tone: "ok" });
+    } catch (e: any) {
+      toast({ title: "Could not remove the photo", detail: e?.message, tone: "danger" });
+    } finally { setBusy(null); }
+  };
   return (
     <div className="card p-3" data-testid="visit-photos">
       <div className="mb-2 flex items-center justify-between text-[12.5px]">
@@ -72,6 +88,11 @@ export function VisitPhotos({ roomId, inspectionId }: { roomId: string; inspecti
             <figcaption className="space-y-1 p-1.5 text-[10.5px] text-ink-3">
               <div>{p.id === primary?.id ? <span className="font-semibold text-ink">Used for comparison</span> : "Extra evidence"} · {observationsFor(p.id).length} finding{observationsFor(p.id).length === 1 ? "" : "s"}</div>
               <RoomMatchBadge asset={p} withConfirm />
+              {draft && (
+                <button onClick={() => remove(p.id)} disabled={busy === p.id} className="inline-flex items-center gap-1 text-danger hover:underline" data-testid={`remove-photo-${p.id}`}>
+                  {busy === p.id ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />} Remove photo
+                </button>
+              )}
             </figcaption>
           </figure>
         ))}
@@ -87,10 +108,10 @@ export function VisitCompleteness({ inspectionId, compact }: { inspectionId: str
   const rooms = getRooms();
   const perRoom = rooms.map((r) => {
     const photos = assetsFor(r.id, insp.id);
-    return { room: r, photos, primary: assetFor(r.id, insp.id), cov: roomCoverage(r.id, insp.id) };
+    return { room: r, photos, primary: assetFor(r.id, insp.id), cov: roomCoverage(r.id, insp.id, { strict: insp.status === "in_progress" }) };
   });
   const captured = perRoom.filter((x) => x.primary).length;
-  const covTotal = perRoom.reduce((n, x) => n + (x.cov?.total ?? 0), 0), covDone = perRoom.reduce((n, x) => n + (x.cov?.covered ?? 0), 0);
+  const covTotal = perRoom.reduce((n, x) => n + (x.cov?.total ?? 0), 0), covDone = perRoom.reduce((n, x) => n + (x.cov?.covered ?? 0) + (x.cov?.skipped ?? 0), 0);
   const all = perRoom.flatMap((x) => x.photos.map((p) => ({ p, room: x.room })));
   const mismatched = all.filter(({ p }) => getRoomMatch(p.id)?.verdict === "mismatch");
   const unclear = all.filter(({ p }) => getRoomMatch(p.id)?.verdict === "unclear");
@@ -103,7 +124,7 @@ export function VisitCompleteness({ inspectionId, compact }: { inspectionId: str
     ...unclear.map(({ p, room }) => ({ key: `u-${p.id}`, text: `${room.name}: a photo needs a "this is the room" check`, href: `/capture?room=${room.id}`, tone: "warn" as const })),
     ...timeWarn.map(({ p, room }) => ({ key: `t-${p.id}`, text: `${room.name}: ${photoTimeOf(p)!.label.toLowerCase()}`, href: `/capture?room=${room.id}`, tone: "warn" as const })),
     ...failed.map(({ p, room }) => ({ key: `f-${p.id}`, text: `${room.name}: analysis failed — retry from Compare`, href: `/compare?room=${room.id}`, tone: "warn" as const })),
-    ...perRoom.filter((x) => x.cov && x.cov.covered < x.cov.total).map((x) => ({ key: `c-${x.room.id}`, text: `${x.room.name}: ${x.cov!.items.filter((i) => !i.covered).map((i) => i.label.toLowerCase()).join(", ")} not in any photo`, href: `/capture?room=${x.room.id}`, tone: "warn" as const })),
+    ...perRoom.filter((x) => x.cov && x.cov.items.some((i) => !i.covered && !i.resolved)).map((x) => ({ key: `c-${x.room.id}`, text: `${x.room.name}: ${x.cov!.items.filter((i) => !i.covered && !i.resolved).map((i) => i.label.toLowerCase()).join(", ")} not in any photo`, href: `/capture?room=${x.room.id}`, tone: "warn" as const })),
   ];
   const complete = issues.length === 0;
   return (

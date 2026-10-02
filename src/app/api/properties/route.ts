@@ -3,11 +3,14 @@ import { getDatabase } from "@/lib/db";
 import { PropertyCreateSchema } from "@/lib/schemas";
 import {
   getAuthenticatedUserOrThrow,
+  canCreateProperty,
+  invalidateAuthCaches,
   getSessionUser,
   forbiddenResponse,
   unauthorizedResponse,
 } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { rateLimit } from "@/lib/rate-limit";
+import { createSupabaseAdminClient } from "@/lib/supabase-server";
 
 /**
  * GET /api/properties
@@ -34,15 +37,16 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/properties
- * Creates a new property. Only owners are authorized.
+ * Creates a new property; whoever creates it becomes its owner. Not available to someone who is a tenant.
  */
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUserOrThrow(req);
 
-    if (!can(user, "property:create")) {
-      return forbiddenResponse("Only property owners can create properties.");
-    }
+    const allowed = canCreateProperty(user);
+    if (!allowed.ok) return forbiddenResponse(allowed.reason);
+    const rl = await rateLimit(req, { limit: 10, windowMs: 3_600_000, prefix: "property-create" });
+    if (!rl.success) return rl.response;
 
     const body = await req.json();
     const parsed = PropertyCreateSchema.safeParse(body);
@@ -62,6 +66,9 @@ export async function POST(req: NextRequest) {
 
     const property = await db.createProperty(propertyData);
     const rooms = await db.getRooms(property.id);
+    // Keep the legacy label in step (best effort) and make the new role visible immediately.
+    try { await createSupabaseAdminClient().from("users").update({ role: "owner" }).eq("id", user.id); } catch {}
+    invalidateAuthCaches();
 
     return NextResponse.json({ property, rooms }, { status: 201 });
   } catch (err: any) {

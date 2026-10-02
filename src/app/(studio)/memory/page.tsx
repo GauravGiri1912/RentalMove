@@ -20,7 +20,7 @@ export default function MemoryPage() {
       <PageHeader
         eyebrow="381 Elmwood Ave · Unit 4B"
         title={<>Property <em>memory</em></>}
-        lede="Every room, at every inspection, in one grid. Read across a row to watch a room age; read down a column to see a whole visit."
+        lede="Every room, at every visit, in one grid. Read across a row to watch a room age; read down a column to see a whole visit."
         actions={
           <>
             <button onClick={() => setShowBoxes((s) => !s)} className="btn-outline">{showBoxes ? "Hide" : "Show"} findings</button>
@@ -132,7 +132,7 @@ function Lightbox({ r, i, onMove, onClose }: { r: number; i: number; onMove: (r:
           {a ? (
             <Photo src={a.src} alt={room.name} observations={obs} activeId={active} onBoxClick={setActive} className="max-h-full w-auto max-w-[min(100%,1200px)] shadow-2xl [aspect-ratio:1200/896]" />
           ) : (
-            <div className="text-white/60">Not captured at this inspection.</div>
+            <div className="text-white/60">Not captured at this visit.</div>
           )}
           <button className="absolute right-0 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30" disabled={i === inspections.length - 1} onClick={() => onMove(r, i + 1)} aria-label="Later"><ArrowRight className="size-5" /></button>
         </div>

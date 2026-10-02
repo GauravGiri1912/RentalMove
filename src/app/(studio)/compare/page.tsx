@@ -7,6 +7,7 @@ import { AlertTriangle, Blend, Columns2, Loader2, Maximize2, ScanLine, SplitSqua
 import { CompareViewer, type CompareMode, type DiffStats } from "@/components/compare-viewer";
 import { Confidence, Kbd, PageHeader, Segmented } from "@/components/ui";
 import { UrlExplain } from "@/components/hood";
+import { CompareContext } from "@/components/compare-context";
 import { assetFor, comparisonFor, getInspections, getProperty, getRooms } from "@/lib/view";
 import { api, useStudio } from "@/components/providers";
 import { Empty } from "@/components/ui";
@@ -81,7 +82,7 @@ function Compare() {
     return (
       <div>
         <PageHeader eyebrow={room?.name ?? "Compare"} title={<>What <em>changed</em>?</>} lede="Comparing needs the same room captured at two visits." />
-        <Empty icon={<GitCompareArrows className="size-5" />} title={`${room?.name ?? "This room"} has only ${available.length} capture${available.length === 1 ? "" : "s"}`} body="Capture it again at the next inspection and it can be compared with move-in." action={<Link href="/capture" className="btn-primary">Capture</Link>} />
+        <Empty icon={<GitCompareArrows className="size-5" />} title={`${room?.name ?? "This room"} has only ${available.length} capture${available.length === 1 ? "" : "s"}`} body="Capture it again at the next visit and it can be compared with move-in." action={<Link href="/capture" className="btn-primary">Capture</Link>} />
       </div>
     );
   }
@@ -170,6 +171,8 @@ function Compare() {
               <span className="ml-auto hidden items-center gap-1.5 md:flex"><Kbd>1</Kbd><Kbd>2</Kbd><Kbd>3</Kbd><Kbd>4</Kbd> modes</span>
             </div>
           </div>
+
+          <CompareContext roomId={room.id} roomName={room.name} priorInsp={priorInsp} currentInsp={currentInsp} prior={prior} current={current} />
 
           {mode === "diff" && (
             <div className="card mt-3 grid grid-cols-1 gap-4 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center animate-fade-up">

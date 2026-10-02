@@ -73,7 +73,7 @@ export const CHAPTERS: Chapter[] = [
     beats: [
       { target: "[data-tour=rv-photo]", text: "Every AI finding is checked by a person. The box shows exactly where the change is, and the chip shows the capture time stored inside the photo file." },
       { target: "[data-testid=finding-facts]", text: "Here: the size in centimetres once a scale is set, how much it grew since the last visit, and neutral context on whether this is typical of everyday use. It never says who is responsible." },
-      { target: "[data-tour=rv-queue]", text: "Weak findings go to the “Not sure” tab instead of being shown as fact — for example when the pixels show no change at that spot." },
+      { target: "[data-tour=rv-queue]", text: "Weak findings are marked with a warning icon instead of being shown as fact — for example when the pixels show no change at that spot." },
       { target: "[data-tour=rv-decide]", text: "One key decides each finding: A to accept, R to reject, E to edit. Only accepted findings reach the report." },
       { target: "[data-testid=repair-panel]", text: "The owner can turn a finding into a repair job. A repair photo taken from the same spot is checked automatically: is the change really gone?" },
       { target: "[data-testid=voice-idle]", text: "Tenant and owner can agree, dispute, write — or leave a voice note in English or Hindi, transcribed by the browser." },

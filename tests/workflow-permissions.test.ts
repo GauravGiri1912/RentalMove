@@ -100,7 +100,9 @@ describe("Role & Capability Architecture Comprehensive Suite", () => {
     });
 
     it("conditionally renders triage controls for owners and Owner Decision for tenants", () => {
-      expect(reviewPageSource).toContain("{canTriage ? (");
+      // The triage controls are gated by a ternary on a pending finding for the owner role / triage
+      // capability (the exact condition has been refactored before, so only its shape is pinned).
+      expect(reviewPageSource).toMatch(/review_status === "pending" && (user\.role === "owner"|canTriage) \? \(/);
       expect(reviewPageSource).toContain("Reviewer note");
       expect(reviewPageSource).toContain("Accept");
       expect(reviewPageSource).toContain("Reject");

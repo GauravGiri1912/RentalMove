@@ -7,13 +7,15 @@ import {
   ArrowRight, Camera, Check, Command, FileText, FlaskConical, GitCompareArrows, History, LayoutGrid, Menu, Moon,
   ScanSearch, Search, Sun, Hammer, Undo2, X, Grid3x3, Cpu, Sparkles, Map as MapIcon, Wand2, Play, LogOut, Loader2, AlertTriangle, Radio, ShieldCheck,
 } from "lucide-react";
-import { useStudio } from "./providers";
+import { useStudio, NO_PROPERTY } from "./providers";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Capability } from "@/lib/permissions";
 import { Kbd } from "./ui";
 import { cn } from "@/lib/utils";
 import { getMeta, getProperties, getProperty, getWorkOrders, isUsablePhoto, reportPair } from "@/lib/view";
 import { HoodDrawer } from "./hood";
+import { Onboarding } from "./onboarding";
+import { DEMO_NOTE, isDemoProperty } from "@/lib/demo";
 
 interface NavItem {
   href: string;
@@ -92,7 +94,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="eyebrow">{user.role === "tenant" ? "Your home" : "Selected property"}</div>
         {all.length > 1 ? (
           <select value={prop.id} onChange={(e) => selectProperty(e.target.value)} className="mt-1 w-full bg-transparent text-[13px] font-semibold outline-none" aria-label="Property">
-            {all.map((p) => <option key={p.id} value={p.id}>{p.address_label}</option>)}
+            {all.map((p) => <option key={p.id} value={p.id}>{p.address_label}{isDemoProperty(p.id) ? " (demo)" : ""}</option>)}
           </select>
         ) : (
           <div className="mt-1 text-[13px] font-semibold">{prop.address_label}</div>
@@ -365,7 +367,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (status === "ready") return <ShellInner>{children}</ShellInner>;
   return (
     <div className="grid min-h-screen place-items-center p-6">
-      {status === "error" ? (
+      {status === "error" && error === NO_PROPERTY ? (
+        <Onboarding />
+      ) : status === "error" ? (
         <div className="card max-w-md p-6 text-center">
           <AlertTriangle className="mx-auto mb-3 size-6 text-warn" />
           <div className="text-[15px] font-semibold">Could not load your property</div>
@@ -436,7 +440,10 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       )}
       <div className="min-w-0">
         <Topbar onMenu={() => setDrawer(true)} />
-        <main className="mx-auto w-full max-w-[1320px] px-4 pb-24 pt-8 md:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1320px] px-4 pb-24 pt-8 md:px-8">
+          {isDemoProperty(getProperty().id) && <div className="mb-5 rounded-xl border border-signal/30 bg-signal/[.06] px-4 py-2.5 text-[12.5px] text-ink-2" data-testid="demo-banner"><span className="mr-2 font-mono text-[10.5px] font-semibold tracking-wider text-signal">DEMO</span>{DEMO_NOTE}</div>}
+          {children}
+        </main>
       </div>
       <Palette />
       <ShortcutSheet open={sheet} onClose={() => setSheet(false)} />

@@ -13,7 +13,7 @@ import type { SearchFilter } from "@/lib/view-types";
 
 const SUGGESTIONS = ["kitchen scratches at move-out", "bathroom stains from 2024", "anything pending review", "bedroom dents", "cracks in the bathroom", "move-in baseline"];
 
-const FILTER_LABEL: Record<keyof SearchFilter, string> = { room: "Room", inspection_type: "Inspection", issue_category: "Issue", review_status: "Review", date_from: "From", date_to: "To", free_text: "Text" };
+const FILTER_LABEL: Record<keyof SearchFilter, string> = { room: "Room", inspection_type: "Visit", issue_category: "Issue", review_status: "Review", date_from: "From", date_to: "To", free_text: "Text" };
 
 function valueLabel(k: keyof SearchFilter, v: string) {
   if (k === "room") return ROOM_LABEL[v] ?? v;

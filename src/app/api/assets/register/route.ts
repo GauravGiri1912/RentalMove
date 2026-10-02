@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AssetRegisterRequestSchema } from "@/lib/schemas";
 import { registerAsset } from "@/lib/pipeline";
+import { deriveSubmitted, listEvents } from "@/lib/events";
 import {
   getAuthenticatedUserOrThrow,
   canUserAccessProperty,
@@ -32,6 +33,11 @@ export async function POST(req: NextRequest) {
     const authorized = await canUserAccessProperty(user, parsed.data.property_id);
     if (!authorized) {
       return forbiddenResponse("You do not have permission to register assets for this property.");
+    }
+
+    // A submitted visit is closed: its checklist was locked, so no further photos are added to it.
+    if (deriveSubmitted(await listEvents(parsed.data.property_id, ["coverage"]))[parsed.data.inspection_id]) {
+      return NextResponse.json({ error: "This visit was already submitted. Start a new visit to add more photos." }, { status: 409 });
     }
 
     const asset = await registerAsset(parsed.data);

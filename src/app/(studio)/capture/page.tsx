@@ -1,19 +1,18 @@
 "use client";
 
-import { CoverageList } from "@/components/insights";
 import { VisitCompleteness, VisitPhotos } from "@/components/visit";
 import { photoAbstain, roomCoverage } from "@/lib/insights";
-import { coverageFor } from "@/lib/coverage";
+import { isResolved } from "@/lib/coverage";
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle, Camera, CameraOff, Check, CheckCircle2, Circle, Copy, Fingerprint, ImagePlus, Loader2, RotateCcw,
-  ScanSearch, Upload, Ghost, Grid3x3, Crosshair, Plus, Smartphone, XCircle,
+  ScanSearch, Upload, Ghost, Grid3x3, Crosshair, Plus, Smartphone, XCircle, CircleDashed, Lock, Ban,
 } from "lucide-react";
 import { api, useStudio } from "@/components/providers";
 import { CategoryBadge, Confidence, Photo, Segmented } from "@/components/ui";
-import { assetFor, getAsset, getInspections, getProperty, getRooms, observationsFor, reportPair } from "@/lib/view";
+import { assetFor, assetsFor, getAsset, getCoverageSlot, getInspection, getInspections, getProperty, getRooms, getSubmitted, observationsFor, reportPair } from "@/lib/view";
 import { measureQuality, type Quality, QUALITY_LIMITS } from "@/lib/quality";
 import { align, lumaFromRGB, warp, type Gray } from "@/lib/pixel";
 import { named } from "@/lib/cloudinary-urls";
@@ -61,9 +60,12 @@ function Capture() {
   const [inspId, setInspId] = useState<string>(inspections[inspections.length - 1]?.id ?? "");
   const [roomId, setRoomId] = useState<string>(params.get("room") ?? rooms[0]?.id ?? "");
   const room = rooms.find((r) => r.id === roomId) ?? rooms[0];
-  const insp = inspections.find((i) => i.id === inspId);
-  const ghostAsset = room && baseline && baseline.id !== inspId ? assetFor(room.id, baseline.id) : undefined;
+  // After switching property the remembered visit may belong to the previous one: fall back to this property's latest.
+  const insp = inspections.find((i) => i.id === inspId) ?? inspections[inspections.length - 1];
+  const ghostAsset = room && baseline && baseline.id !== insp?.id ? assetFor(room.id, baseline.id) : undefined;
   const existing = room && insp ? assetFor(room.id, insp.id) : undefined;
+  const cov = room && insp ? roomCoverage(room.id, insp.id, { strict: true }) : null;
+  const submitted = insp ? getSubmitted(insp.id) : null;
 
   const [source, setSource] = useState<"camera" | "upload">("upload");
   const [ghost, setGhost] = useState(0.35);
@@ -74,13 +76,24 @@ function Capture() {
   const [liveQuality, setLiveQuality] = useState<Quality | null>(null);
   const [guide, setGuide] = useState<Guide | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [newType, setNewType] = useState<InspectionType>("inspection");
+  const [newType, setNewType] = useState<InspectionType>(inspections.length ? "inspection" : "move_in");
+  // The checklist item the next photo is filed under ("" = not decided, "__other" = something off the list).
+  const [slot, setSlot] = useState<string>("");
+  // Retake: the earlier photo of the chosen item, removed once its replacement has been saved.
+  const [replaceId, setReplaceId] = useState<string | null>(null);
+  const slotItem = cov?.items.find((i) => i.key === slot) ?? null;
   const [creating, setCreating] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const ghostGray = useRef<Gray | null>(null);
   const steadySince = useRef<number | null>(null);
+
+  // After each photo, move on to the next item that still has neither a photo nor a reason.
+  useEffect(() => {
+    if (!cov) { setSlot(""); return; }
+    setSlot((cur) => cur === "__other" || cov.items.some((i) => i.key === cur && !i.covered && !i.resolved) ? cur : cov.items.find((i) => !i.covered && !i.resolved)?.key ?? "");
+  }, [room?.id, insp?.id, cov?.covered, cov?.skipped]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- camera lifecycle -------------------------------------------------------
   useEffect(() => {
@@ -138,6 +151,7 @@ function Capture() {
   // ---- the real pipeline -----------------------------------------------------
   const process = useCallback(async (blob: Blob, name: string) => {
     if (!room || !insp) return;
+    if (submitted) { toast({ title: "This visit was already submitted", detail: "Start a new visit to add more photos.", tone: "danger" }); return; }
     const preview = URL.createObjectURL(blob);
     const stages = Object.fromEntries(STAGES.map((s) => [s.key, "idle"])) as Record<StageKey, StageState>;
     let state: Run = { name, preview, stages, detail: {}, progress: 0 };
@@ -229,13 +243,29 @@ function Capture() {
       });
     } catch (e: any) { return fail("register", e.message); }
     set({ assetId: asset.id });
+    if (slot && slot !== "__other") {
+      try { await api(`/api/inspections/${insp.id}/coverage`, { method: "POST", json: { action: "assign", asset_id: asset.id, item: slot } }); }
+      catch (e: any) { toast({ title: "Photo saved, but not filed under the checklist item", detail: e?.message, tone: "danger" }); }
+    }
+    if (replaceId) {
+      try { await api(`/api/assets/${replaceId}`, { method: "DELETE" }); toast({ title: "Photo replaced", detail: "The earlier photo was removed.", tone: "ok" }); }
+      catch (e: any) { toast({ title: "New photo saved, but the earlier one could not be removed", detail: e?.message, tone: "danger" }); }
+      setReplaceId(null);
+    }
     stage("register", "done", `asset ${asset.id} · analysis ${asset.analysis_status}`);
     stage("analyze", "run", "Cloudinary fingerprint → Groq vision → pixel grounding…");
     await refresh();
-  }, [room, insp, prop.id, toast, refresh]);
+  }, [room, insp, prop.id, toast, refresh, slot, submitted, replaceId]);
 
   // Follow the server-side analysis through the live snapshot.
   const liveAsset = run?.assetId && view ? view.assets.find((a) => a.id === run.assetId) : undefined;
+  // If the photo this panel is showing is removed (from the photo list), clear the panel instead of leaving it stuck on it.
+  const seenRunAsset = useRef<string | null>(null);
+  useEffect(() => {
+    if (!run?.assetId || !view) return;
+    if (liveAsset) seenRunAsset.current = run.assetId;
+    else if (seenRunAsset.current === run.assetId) { seenRunAsset.current = null; setRun(null); }
+  }, [run?.assetId, liveAsset?.id, view]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!run?.assetId || run.stages.analyze !== "run" || !liveAsset) return;
     if (liveAsset.analysis_status === "done" || liveAsset.analysis_status === "completed") {
@@ -276,7 +306,7 @@ function Capture() {
       setInspId(i.id);
       toast({ title: `${INSPECTION_LABEL[newType]} inspection started`, tone: "signal" });
     } catch (e: any) {
-      toast({ title: "Could not start inspection", detail: e?.message, tone: "danger" });
+      toast({ title: "Could not start the visit", detail: e?.message, tone: "danger" });
     } finally {
       setCreating(false);
     }
@@ -296,16 +326,16 @@ function Capture() {
           <h1 className="h-display text-[44px] md:text-[56px]">Capture <em>{room.name.toLowerCase()}</em></h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select value={inspId} onChange={(e) => { setInspId(e.target.value); setRun(null); }} className="input h-9 w-auto" aria-label="Inspection">
+          <select value={insp?.id ?? ""} onChange={(e) => { setInspId(e.target.value); setRun(null); }} className="input h-9 w-auto" aria-label="Inspection">
             {inspections.map((i) => <option key={i.id} value={i.id}>{INSPECTION_LABEL[i.type]} · {fmtDate(i.captured_at, { day: "numeric", month: "short", year: "numeric" })}</option>)}
           </select>
           <Segmented value={source} onChange={(v) => { setSource(v); setGuide(null); }} options={[{ value: "upload", label: <><Upload className="size-3.5" /> Upload</> }, { value: "camera", label: <><Camera className="size-3.5" /> Camera</> }]} />
-          <HandoffButton inspectionId={inspId} roomId={room.id} />
+          <HandoffButton inspectionId={insp?.id ?? inspId} roomId={room.id} />
         </div>
       </div>
 
       <details className="mb-5 rounded-xl border border-line bg-surface p-3 text-[13px]">
-        <summary className="flex cursor-pointer items-center gap-2 font-medium"><Plus className="size-4" /> Start a new inspection</summary>
+        <summary className="flex cursor-pointer items-center gap-2 font-medium"><Plus className="size-4" /> Start a new visit</summary>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Segmented size="sm" value={newType} onChange={setNewType} options={[{ value: "move_in", label: "Move-in" }, { value: "inspection", label: "Periodic" }, { value: "move_out", label: "Move-out" }]} />
           <button onClick={createInspection} disabled={creating} className="btn-primary h-8 text-[12px]">{creating ? <Loader2 className="size-3.5 animate-spin" /> : "Start"}</button>
@@ -318,6 +348,8 @@ function Capture() {
         {rooms.map((r) => {
           const captured = insp ? assetFor(r.id, insp.id) : undefined;
           const thumbAsset = captured ?? (baseline ? assetFor(r.id, baseline.id) : undefined);
+          const rc = insp && insp.status === "in_progress" ? roomCoverage(r.id, insp.id, { strict: true }) : null;
+          const done = rc ? isResolved(rc) : !!captured;
           return (
             <li key={r.id}>
               <button onClick={() => { setRoomId(r.id); setRun(null); setGuide(null); }} className={cn("flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition", r.id === room.id ? "border-ink bg-surface shadow-card" : "border-line hover:bg-surface")}>
@@ -327,9 +359,9 @@ function Capture() {
                 ) : <span className="grid size-9 place-items-center rounded-md bg-surface-2"><Camera className="size-4 text-ink-3" /></span>}
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[12.5px] font-medium">{r.name}</div>
-                  <div className="text-[11px] text-ink-3">{captured ? "Captured" : "To do"}</div>
+                  <div className={cn("text-[11px]", rc && !done && captured ? "text-warn" : "text-ink-3")}>{rc ? (done ? "Complete" : captured ? `${rc.covered + rc.skipped}/${rc.total} areas` : "Not started") : captured ? "Captured" : "To do"}</div>
                 </div>
-                {captured ? <CheckCircle2 className="size-4 text-ok" /> : <Circle className="size-4 text-line" />}
+                {done ? <CheckCircle2 className="size-4 text-ok" /> : captured ? <CircleDashed className="size-4 text-warn" /> : <Circle className="size-4 text-line" />}
               </button>
             </li>
           );
@@ -378,9 +410,9 @@ function Capture() {
                 {grid && <GridLines dark />}
                 <div className="relative px-4 text-center">
                   <span className="mx-auto mb-3 grid size-12 place-items-center rounded-2xl bg-surface shadow-card"><ImagePlus className="size-5" /></span>
-                  <div className="text-[15px] font-semibold">Drop a photo of the {room.name.toLowerCase()}</div>
+                  <div className="text-[15px] font-semibold">{replaceId ? "Drop the new photo of the " : "Drop a photo of the "}{slotItem ? slotItem.label.toLowerCase() : room.name.toLowerCase()}{slotItem ? ` (${room.name.toLowerCase()})` : ""}</div>
                   <p className="mt-1 text-[13px] text-ink-2">{ghostAsset ? "Match the faded move-in shot behind this box." : "This becomes the baseline for later visits."}</p>
-                  {existing && <p className="mt-1 text-[12px] text-warn">This room already has a photo for this inspection; a new one is added alongside.</p>}
+                  {existing && <p className="mt-1 text-[12px] text-warn">This room already has a photo for this visit; a new one is added alongside.</p>}
                   <div className="mt-4 flex flex-wrap justify-center gap-2">
                     <button className="btn-primary" onClick={() => fileInput.current?.click()}>Choose file</button>
                     {ghostAsset && <button className="btn-outline" onClick={reuploadBaseline} title="Uploads the move-in photo again — the pipeline should flag it as re-used"><Copy className="size-4" /> Test: re-upload move-in photo</button>}
@@ -422,6 +454,7 @@ function Capture() {
         </div>
 
         <aside className="space-y-4">
+          {insp && <VisitSubmit insp={insp} />}
           {insp && <VisitCompleteness inspectionId={insp.id} />}
           {existing && photoAbstain(existing) && (
             <div className="card border-warn/40 p-4 text-[12.5px]" data-testid="capture-abstain">
@@ -429,7 +462,7 @@ function Capture() {
               <p className="mt-1 text-ink-2">{photoAbstain(existing)}. It made no findings rather than guessing — retake it from closer or with better light.</p>
             </div>
           )}
-          {room && insp && <RoomChecklist roomId={room.id} inspectionId={insp.id} category={room.category} hasPhoto={!!existing} />}
+          {room && insp && <RoomChecklist room={room} insp={insp} slot={slot} onSlot={(k) => { setSlot(k); setReplaceId(null); if (!run || finished) setRun(null); }} onRetake={(k, id) => { setSlot(k); setReplaceId(id); if (!run || finished) setRun(null); }} replacing={!!replaceId} locked={!!submitted} />}
           <div className="card p-4" data-tour="cap-pipeline">
             <div className="mb-4 flex items-center justify-between">
               <span className="text-[13px] font-semibold">Pipeline</span>
@@ -503,18 +536,105 @@ function Capture() {
 // Smart checklist: what this room's photos should show, and what is still missing.
 // ---------------------------------------------------------------------------
 
-function RoomChecklist({ roomId, inspectionId, category, hasPhoto }: { roomId: string; inspectionId: string; category: string; hasPhoto: boolean }) {
-  const seen = roomCoverage(roomId, inspectionId);
-  const plan = coverageFor(category, []);
-  if (!plan.total) return null;
+function RoomChecklist({ room, insp, slot, onSlot, onRetake, replacing, locked }: { room: { id: string; name: string }; insp: { id: string }; slot: string; onSlot: (k: string) => void; onRetake: (k: string, assetId: string) => void; replacing: boolean; locked: boolean }) {
+  const { refresh, toast } = useStudio();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const cov = roomCoverage(room.id, insp.id, { strict: true });
+  if (!cov) return null;
+  const draft = getInspection(insp.id)?.status === "in_progress";
+  const call = async (key: string, json: Record<string, unknown>) => {
+    setBusy(key);
+    try {
+      await api(`/api/inspections/${insp.id}/coverage`, { method: "POST", json });
+      await refresh();
+      setAsking(null); setReason("");
+    } catch (e: any) {
+      toast({ title: "Could not update the checklist", detail: e?.message, tone: "danger" });
+    } finally { setBusy(null); }
+  };
   return (
-    <div className="card p-4">
-      {seen ? (
-        <CoverageList result={seen} />
+    <div className="card p-4" data-testid="room-checklist">
+      <div className="mb-1 flex items-center gap-2">
+        <span className="text-[13px] font-semibold">What this room needs</span>
+        <span className={cn("chip ml-auto", isResolved(cov) ? "border-ok/40 text-ok" : "border-warn/40 text-warn")} data-testid="checklist-count">{cov.covered}/{cov.total} photographed{cov.skipped ? ` · ${cov.skipped} skipped` : ""}</span>
+      </div>
+      <p className="mb-3 text-[11.5px] leading-relaxed text-ink-3">{locked ? "This visit was submitted, so the checklist is locked." : "Choose what the next photo shows, then add it. One photo is not enough to judge a room: anything you cannot photograph needs a reason, and the report will say so."}</p>
+      <ul className="space-y-2">
+        {cov.items.map((i) => {
+          const open = !i.covered && !i.resolved;
+          return (
+            <li key={i.key} className={cn("rounded-lg border p-2.5 text-[12px]", slot === i.key ? "border-ink bg-surface" : "border-line")} data-testid={`item-${i.key}`}>
+              <div className="flex items-start gap-2">
+                {i.covered ? <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-ok" /> : i.resolved ? <Ban className="mt-0.5 size-3.5 shrink-0 text-ink-3" /> : <CircleDashed className="mt-0.5 size-3.5 shrink-0 text-warn" />}
+                <div className="min-w-0 flex-1">
+                  <div className={cn("font-medium", !open && "text-ink-2")}>{i.label}
+                    {i.covered && <span className="ml-1.5 font-normal text-ink-3">{i.source === "declared" ? "photographed" : "seen in a photo by the vision model"}</span>}
+                    {i.resolved && <span className="ml-1.5 font-normal text-ink-3">{i.resolved.kind === "na" ? "not applicable" : "skipped"}{i.resolved.reason && i.resolved.kind === "skip" ? `: ${i.resolved.reason}` : ""}</span>}
+                  </div>
+                  {open && <div className="text-ink-3">{i.why}</div>}
+                  {i.check && <div className="mt-0.5 text-warn" data-testid="item-check">{i.check}</div>}
+                </div>
+                {!locked && (
+                  <div className="flex shrink-0 gap-1">
+                    {!i.resolved && <button onClick={() => onSlot(i.key)} className={cn("rounded-md border px-2 py-1 text-[11px]", slot === i.key ? "border-ink bg-ink text-bg" : "border-line hover:border-ink-3")} data-testid={`pick-${i.key}`}>{slot === i.key ? "Next photo" : i.covered ? "Add another" : "Photograph"}</button>}
+                    {draft && i.source === "declared" && (() => {
+                      const old = assetsFor(room.id, insp.id).find((a) => getCoverageSlot(a.id) === i.key);
+                      return old ? <button onClick={() => onRetake(i.key, old.id)} className={cn("rounded-md border px-2 py-1 text-[11px]", slot === i.key && replacing ? "border-ink bg-ink text-bg" : "border-line hover:border-ink-3")} data-testid={`retake-${i.key}`}>{slot === i.key && replacing ? "Retaking" : "Retake"}</button> : null;
+                    })()}
+                    {open && <button onClick={() => setAsking(asking === i.key ? null : i.key)} className="rounded-md border border-line px-2 py-1 text-[11px] hover:border-ink-3" data-testid={`skip-${i.key}`}>Can&apos;t</button>}
+                    {i.resolved && <button onClick={() => call(i.key, { action: "unskip", room_id: room.id, item: i.key })} disabled={busy === i.key} className="rounded-md border border-line px-2 py-1 text-[11px] hover:border-ink-3" data-testid={`undo-${i.key}`}>Undo</button>}
+                  </div>
+                )}
+              </div>
+              {asking === i.key && !locked && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-line pt-2">
+                  <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder="Why? e.g. locked cupboard" aria-label="Reason" className="input h-8 min-w-[140px] flex-1 text-[12px]" data-testid="skip-reason" />
+                  <button disabled={busy === i.key || reason.trim().length < 3} onClick={() => call(i.key, { action: "skip", room_id: room.id, item: i.key, kind: "skip", reason })} className="btn-primary h-8 text-[11.5px]" data-testid="skip-confirm">Skip with reason</button>
+                  <button disabled={busy === i.key} onClick={() => call(i.key, { action: "skip", room_id: room.id, item: i.key, kind: "na" })} className="btn-outline h-8 text-[11.5px]" data-testid="na-confirm">Not in this room</button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {!locked && <button onClick={() => onSlot("__other")} className={cn("mt-2 text-[11.5px] underline", slot === "__other" && "font-semibold")}>{slot === "__other" ? "Next photo: something else" : "Photograph something else"}</button>}
+    </div>
+  );
+}
+
+/** Submit the visit: allowed only when every room has all items photographed or explained. The server checks again. */
+function VisitSubmit({ insp }: { insp: { id: string; status: string } }) {
+  const { refresh, toast } = useStudio();
+  const [busy, setBusy] = useState(false);
+  const sub = getSubmitted(insp.id);
+  const rooms = getRooms();
+  if (insp.status !== "in_progress" && !sub) return null;
+  const rows = rooms.map((r) => { const c = roomCoverage(r.id, insp.id, { strict: true }); return { r, c, ok: c ? isResolved(c) : !!assetFor(r.id, insp.id) }; });
+  const open = rows.filter((x) => !x.ok);
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await api(`/api/inspections/${insp.id}/coverage`, { method: "POST", json: { action: "submit" } });
+      await refresh();
+      toast({ title: "Visit submitted", detail: "The checklist is now locked and the owner can review it.", tone: "ok" });
+    } catch (e: any) {
+      toast({ title: "Not ready to submit", detail: e?.message, tone: "danger" });
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className={cn("card p-4", sub && "border-ok/40")} data-testid="visit-submit">
+      {sub ? (
+        <div className="flex items-start gap-2 text-[12.5px]"><Lock className="mt-0.5 size-4 text-ok" /><div><div className="font-semibold">Submitted{sub.by ? ` by ${sub.by}` : ""}</div><div className="text-ink-3">{fmtDate(sub.at)} · checklist locked</div><Link href={`/submission?visit=${insp.id}`} className="mt-1 inline-block underline" data-testid="view-submission">View what was submitted</Link>{sub.reopen_request && <div className="mt-1 text-info">Reopen requested: &ldquo;{sub.reopen_request.note}&rdquo;</div>}</div></div>
       ) : (
         <>
-          <CoverageList result={plan} title={hasPhoto ? "Photo checklist (after analysis)" : "Make sure the photos show"} />
-          <p className="mt-2 text-[11px] text-ink-3">{hasPhoto ? "Coverage is filled in once the vision model has analysed this room's photo." : "After upload, the vision model marks which of these each photo shows."}</p>
+          <div className="text-[13px] font-semibold">Submit this visit</div>
+          <p className="mt-0.5 text-[11.5px] text-ink-3" data-testid="submit-next">What happens next: your record is sealed and locked, and the owner reviews it and decides what goes into the report.</p>
+          {open.length ? (
+            <p className="mt-1 text-[12px] text-ink-2" data-testid="submit-blockers">Not ready: {open.map((x) => x.c ? `${x.r.name} (${x.c.items.filter((i) => !i.covered && !i.resolved).length} left)` : `${x.r.name} (no photo)`).join(" · ")}</p>
+          ) : <p className="mt-1 text-[12px] text-ink-2">Every room is covered or explained. After you submit, this visit&apos;s checklist is locked.</p>}
+          <button className="btn-primary mt-3 w-full" disabled={busy || open.length > 0} onClick={submit} data-testid="submit-visit">{busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />} Submit visit</button>
         </>
       )}
     </div>

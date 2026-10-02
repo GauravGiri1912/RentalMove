@@ -333,7 +333,7 @@ export function CoverageList({ result, title = "Photo checklist" }: { result: Co
     <div data-testid="coverage">
       <div className="mb-2 flex items-center gap-2">
         <span className="text-[13px] font-semibold">{title}</span>
-        <span className={cn("chip ml-auto", gaps.length ? "border-warn/40 text-warn" : "border-ok/40 text-ok")}>{result.covered}/{result.total} covered</span>
+        <span className={cn("chip ml-auto", gaps.some((g) => !g.resolved) ? "border-warn/40 text-warn" : "border-ok/40 text-ok")}>{result.covered}/{result.total} covered{result.skipped ? ` · ${result.skipped} explained` : ""}</span>
       </div>
       <ul className="space-y-1.5">
         {result.items.map((i) => (
@@ -341,7 +341,8 @@ export function CoverageList({ result, title = "Photo checklist" }: { result: Co
             {i.covered ? <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-ok" /> : <CircleDashed className="mt-0.5 size-3.5 shrink-0 text-warn" />}
             <span>
               <span className={cn(i.covered ? "text-ink-2" : "font-medium")}>{i.label}</span>
-              {!i.covered && <span className="text-ink-3"> — not in any photo yet. {i.why}</span>}
+              {!i.covered && !i.resolved && <span className="text-ink-3"> — not in any photo yet. {i.why}</span>}
+              {!i.covered && i.resolved && <span className="text-ink-3"> — {i.resolved.kind === "na" ? "not applicable" : `skipped: ${i.resolved.reason}`}</span>}
             </span>
           </li>
         ))}

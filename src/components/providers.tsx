@@ -6,6 +6,9 @@ import type { Observation, ReviewStatus, Stance, ThreadComment, SignatureRecord,
 
 type Toast = { id: number; title: string; detail?: string; tone?: "ok" | "signal" | "neutral" | "danger"; undo?: () => void };
 
+/** Value of `error` when the signed-in account has no property yet (shows the first-property screen, not an error). */
+export const NO_PROPERTY = "no-property";
+
 export class ApiError extends Error {
   constructor(public status: number, message: string, public body?: any) { super(message); }
 }
@@ -172,6 +175,7 @@ export function StudioProvider({
           meta: { generated_at: new Date().toISOString(), event_store: "supabase" },
           calibrations: {}, work_orders: {}, coverage: {}
         }, userRef.current, propsRef.current);
+        const keep = <T,>(fresh: T | undefined, old: T): T => (fresh === undefined ? old : fresh);
 
         applyView({
           ...before,
@@ -183,6 +187,15 @@ export function StudioProvider({
           threads: { ...before.threads, ...updated.threads },
           measures: summary.measures ?? before.measures,
           assessments: summary.assessments ?? before.assessments,
+          submitted: summary.submitted ?? before.submitted,
+          calibrations: keep(summary.calibrations, before.calibrations),
+          workOrders: keep(summary.work_orders, before.workOrders),
+          privacy: keep(summary.privacy, before.privacy),
+          privacyScans: keep(summary.privacy_scans, before.privacyScans),
+          roomMatch: keep(summary.room_match, before.roomMatch),
+          coverage: keep(summary.coverage, before.coverage),
+          coverageSlots: keep(summary.coverage_slots, before.coverageSlots),
+          coverageSkips: keep(summary.coverage_skips, before.coverageSkips),
         });
       } else {
         const shallowSnap = {
@@ -190,8 +203,10 @@ export function StudioProvider({
           assets: [], observations: [], comparisons: [], activity: [],
           stances: summary.stances ?? {}, threads: summary.threads ?? {}, signatures: {}, share_links: [],
           meta: { generated_at: new Date().toISOString(), event_store: "supabase" },
-          calibrations: {}, work_orders: {}, coverage: {},
-          measures: summary.measures ?? {}, assessments: summary.assessments ?? {}
+          calibrations: summary.calibrations ?? {}, work_orders: summary.work_orders ?? {}, coverage: summary.coverage ?? {},
+          privacy: summary.privacy ?? {}, privacy_scans: summary.privacy_scans ?? {}, room_match: summary.room_match ?? {},
+          coverage_slots: summary.coverage_slots ?? {}, coverage_skips: summary.coverage_skips ?? {},
+          measures: summary.measures ?? {}, assessments: summary.assessments ?? {}, submitted: summary.submitted ?? {}
         };
         applyView(toView(shallowSnap, userRef.current, propsRef.current));
       }
@@ -218,7 +233,7 @@ export function StudioProvider({
         setSessionUser({ ...s.user, initials: s.user.name.split(/\s+/).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() });
         const { properties } = await api<{ properties: any[] }>("/api/properties");
         propsRef.current = properties;
-        if (!properties.length) { setStatus("error"); setError("No property is linked to your account yet."); return; }
+        if (!properties.length) { setStatus("error"); setError(NO_PROPERTY); return; }
         const saved = readLS<string | null>("rm.property", null);
         const pid = properties.find((p) => p.id === saved)?.id ?? s.user.assigned_property_id ?? properties[0].id;
         setPropertyId(pid);

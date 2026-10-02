@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react";
 import { PrivacyPanel } from "@/components/privacy-panel";
 import { RoomMatchBadge } from "@/components/visit";
 import { CATEGORY_META, CategoryBadge, Confidence, Crop, Kbd, Photo, Segmented, StatusBadge } from "@/components/ui";
-import { assetFor, getAsset, getAssets, getProperty, getRoom, isUsablePhoto, reportPair } from "@/lib/view";
+import { assetFor, getAsset, getAssets, getInspections, getProperty, getRoom, getSubmitted, isUsablePhoto, reportPair } from "@/lib/view";
 import { cn, fmtDate, INSPECTION_LABEL } from "@/lib/utils";
 import type { IssueCategory, Observation } from "@/lib/view-types";
 import { reviewUrl, named } from "@/lib/cloudinary-urls";
@@ -202,6 +202,15 @@ function Review() {
           </div>
         </div>
       </div>
+
+      {(() => {
+        const open = getInspections().filter((i) => i.status === "in_progress" && !getSubmitted(i.id));
+        return open.length ? (
+          <div className="mb-5 rounded-xl border border-warn/40 bg-warn/[.06] p-3 text-[12.5px] text-ink-2" data-testid="unsubmitted-visit">
+            <span className="font-semibold text-warn">Not submitted yet:</span> {open.map((i) => `${INSPECTION_LABEL[i.type]} · ${fmtDate(i.captured_at)}`).join(", ")}. The photographer is still adding photos, so rooms may be incomplete and findings can change.
+          </div>
+        ) : null;
+      })()}
 
       {done && (
         <div className="card mb-5 flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center animate-fade-up">
@@ -405,8 +414,9 @@ function Review() {
               </div>
             </>
           ) : (
-            <div className="mt-4 space-y-3" data-testid="decider-note">
-              <p className="rounded-lg bg-info/[.07] p-2.5 text-[12px] leading-relaxed text-ink-2">The owner decides whether each finding goes into the report. You can agree or dispute it below — your position is recorded in the report.</p>
+            <div className="mt-4 space-y-3">
+              {/* Only for the other party: an owner looking at a finding they already decided needs no such note. */}
+              {!canTriage && <p className="rounded-lg bg-info/[.07] p-2.5 text-[12px] leading-relaxed text-ink-2" data-testid="decider-note">The owner decides whether each finding goes into the report. You can agree or dispute it below — your position is recorded in the report.</p>}
               <div className="rounded-xl border border-line bg-surface-2/40 p-3">
                 <span className="eyebrow block mb-1">Owner decision</span>
                 <div className="flex items-center gap-2">

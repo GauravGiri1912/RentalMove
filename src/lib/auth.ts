@@ -226,30 +226,18 @@ async function loadUserProfile(authUid: string, email?: string | null): Promise<
     admin.from("properties").select("id").eq("owner_id", user.id),
   ]);
 
-  let assigned_property_id: string | undefined;
-  let owned_properties: string[] = [];
-
-  if (user.role === "tenant") {
-    const assignments = assignmentsRes.data;
-    if (assignments && assignments.length > 0) {
-      assigned_property_id = assignments[0].property_id;
-    } else {
-      assigned_property_id = undefined;
-    }
-  } else if (user.role === "owner") {
-    const props = propsRes.data;
-    if (props && props.length > 0) {
-      owned_properties = props.map((p: any) => p.id);
-    } else {
-      owned_properties = [];
-    }
-  }
+  // The role comes from the person's relationship to properties, not from the label stored on the account
+  // (which anyone could choose at signup): whoever owns a property is an owner; everyone else is a tenant.
+  // One account is either an owner or a tenant, so owner powers can never apply to a property someone only rents.
+  const owned_properties: string[] = (propsRes.data ?? []).map((p: any) => p.id);
+  const role: "owner" | "tenant" = owned_properties.length > 0 ? "owner" : "tenant";
+  const assigned_property_id: string | undefined = role === "tenant" ? assignmentsRes.data?.[0]?.property_id : undefined;
 
   return {
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.role,
+    role,
     assigned_property_id,
     owned_properties,
     created_at: user.created_at,
@@ -285,6 +273,14 @@ export async function canUserAccessProperty(
     return user.assigned_property_id === propertyId;
   }
   return false;
+}
+
+/** Anyone signed in may start a property (and so becomes its owner), unless they are already a tenant somewhere. */
+export const MAX_OWNED_PROPERTIES = 3;
+export function canCreateProperty(user: User): { ok: true } | { ok: false; reason: string } {
+  if (user.role === "tenant" && user.assigned_property_id) return { ok: false, reason: "This account is a tenant of a property. Use a different account to manage a property of your own." };
+  if ((user.owned_properties ?? []).length >= MAX_OWNED_PROPERTIES) return { ok: false, reason: `An account can manage up to ${MAX_OWNED_PROPERTIES} properties.` };
+  return { ok: true };
 }
 
 export function unauthorizedResponse(

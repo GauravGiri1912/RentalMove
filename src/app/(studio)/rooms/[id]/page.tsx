@@ -6,8 +6,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, GitCompareArrows, MessageSquare, Pause, Play, Table2, BarChart3 } from "lucide-react";
 import { useStudio } from "@/components/providers";
 import { FloorPlan } from "@/components/floor-plan";
-import { CategoryBadge, Confidence, StatusBadge } from "@/components/ui";
-import { assetFor, getInspections, getRooms } from "@/lib/view";
+import { CategoryBadge, Confidence, StatusBadge, DemoMark } from "@/components/ui";
+import { assetFor, getInspections, getRoomMatch, getRooms } from "@/lib/view";
+import { MATCH_LABEL } from "@/lib/roommatch";
 import { PLAN_ROOMS } from "@/lib/floorplan";
 import { roomCoverage, sizeOf, trendLabel, trendOf, workOrderOf } from "@/lib/insights";
 import { fmtLength } from "@/lib/measure";
@@ -99,6 +100,7 @@ export default function RoomPage() {
       {/* Time machine */}
       <section className="card p-2" data-tour="room-tm">
         <div className="relative aspect-[1200/896] overflow-hidden rounded-xl bg-surface-2 md:aspect-[16/9]">
+          <DemoMark />
           {frames.map((f, i) => {
             const op = i === 0 ? 1 : Math.min(1, Math.max(0, t - i + 1));
             return (
@@ -144,12 +146,36 @@ export default function RoomPage() {
         </div>
       </section>
 
+      {/* The room's visits in order: each photo says which visit it belongs to. */}
+      <section className="mt-4" data-testid="room-visits">
+        <div className="eyebrow mb-2">Visits of this room, oldest first</div>
+        <ol className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {frames.map((f, i) => {
+            const cov = roomCoverage(room.id, f.insp.id);
+            const m = getRoomMatch(f.asset!.id);
+            return (
+              <li key={f.insp.id} className="card overflow-hidden" data-testid={`visit-${i}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={f.asset!.thumb} alt={`${room.name}, ${INSPECTION_LABEL[f.insp.type]}`} className="aspect-[4/3] w-full object-cover" loading="lazy" />
+                <div className="p-2.5 text-[12px]">
+                  <div className="font-semibold">{i + 1}. {INSPECTION_LABEL[f.insp.type]}</div>
+                  <div className="text-ink-3">{fmtDate(f.insp.captured_at)}</div>
+                  <div className="mt-1 text-ink-3">{cov ? `${cov.covered}/${cov.total} areas photographed` : "Coverage not recorded"}</div>
+                  {m && m.verdict !== "first" && m.verdict !== "match" && <div className={cn("mt-0.5", m.verdict === "mismatch" ? "text-danger" : m.verdict === "unclear" ? "text-warn" : "text-ink-3")}>{MATCH_LABEL[m.verdict]}</div>}
+                  {i > 0 && <Link href={`/compare?room=${room.id}`} className="mt-1.5 inline-block underline">Compare with the previous visit</Link>}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.3fr]">
         <section className="card p-5" data-tour="room-history">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="eyebrow mb-1">Condition history</div>
-              <h2 className="text-[15px] font-semibold">Findings per inspection</h2>
+              <h2 className="text-[15px] font-semibold">Findings per visit</h2>
             </div>
             <div className="flex gap-1">
               <button onClick={() => setView("chart")} aria-pressed={view === "chart"} className={cn("btn-ghost h-8 px-2", view === "chart" && "bg-surface-2 text-ink")} aria-label="Chart view"><BarChart3 className="size-4" /></button>
@@ -158,7 +184,7 @@ export default function RoomPage() {
           </div>
           {view === "chart" ? <HistoryChart rows={history.map((h) => ({ label: `${INSPECTION_LABEL[h.f.insp.type]} ${new Date(h.f.insp.captured_at).getFullYear()}`, pre: h.pre, fresh: h.fresh }))} /> : (
             <table className="w-full text-left text-[13px]">
-              <thead><tr className="border-b border-line text-[12px] text-ink-3"><th className="py-2 font-normal">Inspection</th><th className="py-2 text-right font-normal">Already there</th><th className="py-2 text-right font-normal">New</th></tr></thead>
+              <thead><tr className="border-b border-line text-[12px] text-ink-3"><th className="py-2 font-normal">Visit</th><th className="py-2 text-right font-normal">Already there</th><th className="py-2 text-right font-normal">New</th></tr></thead>
               <tbody>{history.map((h) => <tr key={h.f.insp.id} className="border-b border-line/60"><td className="py-2">{INSPECTION_LABEL[h.f.insp.type]} · {fmtDate(h.f.insp.captured_at, { month: "short", year: "numeric" })}</td><td className="py-2 text-right font-mono">{h.pre}</td><td className="py-2 text-right font-mono">{h.fresh}</td></tr>)}</tbody>
             </table>
           )}
@@ -217,7 +243,7 @@ function HistoryChart({ rows }: { rows: { label: string; pre: number; fresh: num
         <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[rgb(var(--chart-new))]" /> New since move-in</span>
       </div>
       <div className="relative">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Findings per inspection, stacked by already there and new">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Findings per visit, stacked by already there and new">
           {ticks.map((v) => (
             <g key={v}>
               <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="rgb(var(--line))" strokeWidth={v === 0 ? 1.2 : 0.6} />

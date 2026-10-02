@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { reportInspections } from "@/lib/snapshot";
 import { getServerSessionUser } from "@/lib/auth";
-import { listEvents, deriveMeasures, deriveAssessments, deriveStances, deriveThreads } from "@/lib/events";
+import { listEvents, deriveMeasures, deriveAssessments, deriveCalibrations, deriveCoverage, deriveCoverageSkips, deriveCoverageSlots, derivePrivacy, derivePrivacyScans, deriveRoomMatch, deriveStances, deriveSubmitted, deriveThreads, deriveWorkOrders } from "@/lib/events";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -38,6 +38,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       threads: deriveThreads(events),
       measures: deriveMeasures(events),
       assessments: deriveAssessments(events),
+      submitted: deriveSubmitted(events),
+      // Everything else that a screen can change and then needs to see again (a scale, a hidden area, a repair, a room check,
+      // a checklist decision). Leaving these out made such changes succeed on the server and never appear on the Review page.
+      calibrations: deriveCalibrations(events),
+      work_orders: deriveWorkOrders(events),
+      privacy: derivePrivacy(events),
+      privacy_scans: derivePrivacyScans(events),
+      room_match: deriveRoomMatch(events),
+      coverage: deriveCoverage(events),
+      coverage_slots: deriveCoverageSlots(events),
+      coverage_skips: deriveCoverageSkips(events),
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

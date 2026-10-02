@@ -54,12 +54,54 @@ export const CHECKLIST: Record<string, Item[]> = {
   ],
 };
 
-export interface CoverageResult { total: number; covered: number; items: { label: string; covered: boolean; why: string }[] }
+/** Stable id of a checklist item ("Shower or bath" -> "shower_or_bath"); what a photo is filed under. */
+export const itemKey = (label: string) => label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+/** A person's decision that an item will not be photographed: skipped (with a reason) or not applicable. */
+export interface Resolution { kind: "skip" | "na"; reason: string; by?: string | null; at?: string }
+
+/** What one photo contributes: the item its photographer filed it under, and what the vision model saw in it. */
+export interface PhotoInfo { id: string; slot?: string | null; areas?: string[] | null }
+
+export interface CoverageItem {
+  key: string;
+  label: string;
+  why: string;
+  /** Photographed: a photo was filed under this item, or the vision model saw the area in some photo. */
+  covered: boolean;
+  source: "declared" | "seen" | null;
+  /** Set only when NOT photographed but a person said why. */
+  resolved: Resolution | null;
+  /** The model analysed the photo filed under this item and could not see it there. */
+  check: string | null;
+}
+
+export interface CoverageResult { total: number; covered: number; skipped: number; items: CoverageItem[] }
+
+/**
+ * The room's required items vs what the visit's photos show. Two independent sources:
+ * the photographer files each photo under an item (it is what they say they shot)
+ * and the vision model reports which areas it can see (used to fill gaps and to cross-check).
+ */
+export function computeCoverage(category: string, photos: PhotoInfo[], resolutions: Record<string, Resolution> = {}): CoverageResult {
+  const items: CoverageItem[] = (CHECKLIST[category] ?? []).map((i) => {
+    const key = itemKey(i.label);
+    const filed = photos.filter((p) => p.slot === key);
+    const seen = photos.some((p) => p.areas?.some((a) => (i.areas as string[]).includes(a)));
+    const covered = filed.length > 0 || seen;
+    const analysed = filed.filter((p) => Array.isArray(p.areas));
+    const check = !seen && filed.length > 0 && analysed.length === filed.length
+      ? `The vision model could not see ${i.label.toLowerCase()} in the photo filed under it. Check it is the right photo.` : null;
+    return { key, label: i.label, why: i.why, covered, source: filed.length ? ("declared" as const) : seen ? ("seen" as const) : null, resolved: !covered ? resolutions[key] ?? null : null, check };
+  });
+  return { total: items.length, covered: items.filter((i) => i.covered).length, skipped: items.filter((i) => i.resolved).length, items };
+}
+
+/** Every item is either photographed or has a recorded reason. */
+export const isResolved = (r: CoverageResult) => r.total > 0 && r.items.every((i) => i.covered || i.resolved);
 
 export function coverageFor(category: string, seen: string[]): CoverageResult {
-  const set = new Set(seen);
-  const items = (CHECKLIST[category] ?? []).map((i) => ({ label: i.label, why: i.why, covered: i.areas.some((a) => set.has(a)) }));
-  return { total: items.length, covered: items.filter((i) => i.covered).length, items };
+  return computeCoverage(category, [{ id: "seen", areas: seen }]);
 }
 
 /** Keeps only known area names (the model's output is untrusted). */

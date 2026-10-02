@@ -11,7 +11,9 @@ const KITCHEN_IN = "properties/prop-381/insp-2024-move-in/kitchen/cabinet-base-0
 const KITCHEN_OUT = "properties/prop-381/insp-2026-move-out/kitchen/cabinet-base-03";
 
 export default function Welcome() {
-  const { theme, toggleTheme, setTour } = useStudio();
+  const { theme, toggleTheme, setTour, status } = useStudio();
+  // "/" sends signed-out visitors back here, so "Open studio" only makes sense once signed in.
+  const signedIn = status === "ready";
   return (
     <div className="min-h-screen overflow-x-hidden">
       <nav className="mx-auto flex max-w-[1240px] items-center gap-3 px-5 py-5 md:px-8">
@@ -20,9 +22,16 @@ export default function Welcome() {
         </span>
         <span className="text-[15px] font-semibold tracking-tight">RentalMove</span>
         <div className="flex-1" />
-        <button onClick={toggleTheme} className="btn-ghost px-2" aria-label="Toggle theme">{theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}</button>
-        <button onClick={() => setTour({ active: true, step: 0, playing: true })} className="btn-outline"><Play className="size-4" /> Watch the tour</button>
-        <Link href="/" className="btn-primary">Open studio <ArrowRight className="size-4" /></Link>
+        <button onClick={toggleTheme} className="btn-ghost hidden px-2 sm:inline-flex" aria-label="Toggle theme">{theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}</button>
+        <button onClick={() => setTour({ active: true, step: 0, playing: true })} className="btn-outline hidden whitespace-nowrap sm:inline-flex"><Play className="size-4" /> Watch the tour</button>
+        {signedIn ? (
+          <Link href="/" className="btn-primary whitespace-nowrap" data-testid="nav-studio">Open studio <ArrowRight className="size-4" /></Link>
+        ) : (
+          <>
+            <Link href="/login" className="btn-ghost whitespace-nowrap" data-testid="nav-login">Log in</Link>
+            <Link href="/signup" className="btn-primary whitespace-nowrap" data-testid="nav-signup">Sign up</Link>
+          </>
+        )}
       </nav>
 
       {/* Hero */}
@@ -37,9 +46,14 @@ export default function Welcome() {
               Photograph a home at move-in. Photograph it again at move-out. RentalMove lines the two up, shows exactly what changed, and hands both sides the same sealed evidence.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/capture" className="btn-signal h-11 px-5 text-[14px]"><Camera className="size-4" /> Try a capture</Link>
-              <Link href="/compare" className="btn-outline h-11 px-5 text-[14px]"><GitCompareArrows className="size-4" /> See a comparison</Link>
+              <Link href="/kit" className="btn-signal h-11 px-5 text-[14px]" data-testid="hero-kit"><Camera className="size-4" /> Start your free move-in kit</Link>
+              {signedIn ? (
+                <Link href="/compare" className="btn-outline h-11 px-5 text-[14px]"><GitCompareArrows className="size-4" /> See a comparison</Link>
+              ) : (
+                <Link href="/login" className="btn-outline h-11 px-5 text-[14px]" data-testid="hero-demo"><GitCompareArrows className="size-4" /> Try the live demo</Link>
+              )}
             </div>
+            <p className="mt-3 text-[12.5px] text-ink-3">The kit is free and needs no account: photograph each room on move-in day and get a sealed record to send to your landlord.</p>
           </div>
 
           <div className="relative animate-fade-up [animation-delay:120ms]">
@@ -179,11 +193,18 @@ export default function Welcome() {
         <div className="card relative overflow-hidden p-10 text-center md:p-16">
           <div className="hairline-grid pointer-events-none absolute inset-0 opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
           <h2 className="h-display relative text-[44px] md:text-[64px]">Capture once. Find instantly.<br /><em className="text-signal">Compare over time.</em></h2>
-          <Link href="/" className="btn-primary relative mt-8 h-11 px-6 text-[14px]">Open the studio <ArrowRight className="size-4" /></Link>
+          <div className="relative mt-8 flex flex-wrap justify-center gap-3">
+            <Link href="/kit" className="btn-signal h-11 px-6 text-[14px]">Start your free move-in kit <ArrowRight className="size-4" /></Link>
+            {signedIn ? (
+              <Link href="/" className="btn-outline h-11 px-6 text-[14px]">Open the studio</Link>
+            ) : (
+              <Link href="/login" className="btn-outline h-11 px-6 text-[14px]">Log in</Link>
+            )}
+          </div>
         </div>
         <footer className="mt-10 flex flex-wrap justify-between gap-2 text-[12px] text-ink-3">
           <span>RentalMove · Pixels to Products, Cloudinary AI Hackathon 2026</span>
-          <span>Design preview — demo data; later inspections are staged images.</span>
+          <span>Design preview — demo data; later visits are staged images.</span>
         </footer>
       </section>
     </div>

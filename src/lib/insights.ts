@@ -3,11 +3,11 @@
 // call these while rendering.
 
 import type { Observation } from "./view-types";
-import { getAsset, getAssessment, getAssets, getCalibration, getCoverage, getInspection, getMeasure, getRoom, getWorkOrder, reportPair } from "./view";
+import { getAsset, getAssessment, getAssets, getCalibration, getCoverage, getCoverageSkips, getCoverageSlot, getInspection, getMeasure, getRoom, getWorkOrder, reportPair } from "./view";
 import { certaintyOf, type Certainty } from "./certainty";
 import { findingSize, trend, type Size, type TrendKind } from "./measure";
 import { monthsBetween, wearContext, type WearContext } from "./wear";
-import { coverageFor, type CoverageResult } from "./coverage";
+import { computeCoverage, type CoverageResult } from "./coverage";
 import { photoTimeCheck, type TimeCheck } from "./phototime";
 import type { Asset } from "./view-types";
 
@@ -85,10 +85,12 @@ export const workOrderOf = (o: Observation) => getWorkOrder(o.id);
  * What a room's photos from one inspection show vs its checklist. Null when no photo of that
  * room/inspection has coverage data yet (not analysed, or analysed before coverage existed).
  */
-export function roomCoverage(roomId: string, inspectionId: string): CoverageResult | null {
+export function roomCoverage(roomId: string, inspectionId: string, opts: { strict?: boolean } = {}): CoverageResult | null {
   const photos = getAssets().filter((a) => a.room_id === roomId && a.inspection_id === inspectionId);
-  const lists = photos.map((a) => getCoverage(a.id)).filter((x): x is string[] => !!x);
-  if (!lists.length) return null;
-  const r = coverageFor(getRoom(roomId).category, lists.flat());
+  const infos = photos.map((a) => ({ id: a.id, slot: getCoverageSlot(a.id) ?? null, areas: getCoverage(a.id) ?? null }));
+  const skips = getCoverageSkips(roomId, inspectionId);
+  // Older visits (no filing, no model data, no decisions) stay "unknown" rather than showing every item as a gap.
+  if (!opts.strict && !infos.some((p) => p.slot || p.areas) && !Object.keys(skips).length) return null;
+  const r = computeCoverage(getRoom(roomId).category, infos, skips);
   return r.total ? r : null;
 }

@@ -13,8 +13,8 @@ const SignupSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["tenant", "owner"]),
-});
+  // A "role" sent by an older client is accepted and IGNORED: roles come from properties (owning one, or an invite).
+}).passthrough();
 
 export async function POST(req: NextRequest) {
   const rl = await authRateLimit(req);
@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, password, role } = parsed.data;
+    const { name, email, password } = parsed.data;
+    const role = "tenant"; // neutral placeholder for the legacy column; never used to decide permissions
     const cleanEmail = email.trim().toLowerCase();
     const admin = createSupabaseAdminClient();
 
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
       email: cleanEmail,
       password,
       email_confirm: true,
-      user_metadata: { name: name.trim(), role },
+      user_metadata: { name: name.trim() },
     });
 
     if (authError) {

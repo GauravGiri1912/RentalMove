@@ -6,7 +6,7 @@ import { useSignedUrls } from "@/lib/use-signed";
 import { AlertTriangle, Ban, EyeOff, Fingerprint, Link2, Loader2, Printer, ShieldCheck, Clock, PenLine, BadgeCheck, CircleAlert, Camera, Stamp } from "lucide-react";
 import { StanceDot } from "@/components/parties";
 import { api, useStudio } from "@/components/providers";
-import { CATEGORY_META, Empty, Photo } from "@/components/ui";
+import { CATEGORY_META, Empty, Photo, DemoMark } from "@/components/ui";
 import { CopyButton } from "@/components/hood";
 import { assetFor, getAssets, getInspection, getProperty, getReport, getRooms, getShareLinks, reportPair } from "@/lib/view";
 import { presetUrl } from "@/lib/cld";
@@ -104,7 +104,7 @@ export default function ReportPage() {
   }, [lang, recordTexts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!baseline || !current) {
-    return <Empty icon={<Camera className="size-5" />} title="The report needs two inspections" body="It compares the move-in baseline with the latest inspection. Capture both, and the report builds itself." action={<Link href="/capture" className="btn-primary">Capture</Link>} />;
+    return <Empty icon={<Camera className="size-5" />} title="The report needs two visits" body="It compares the move-in baseline with the latest inspection. Capture both, and the report builds itself." action={<Link href="/capture" className="btn-primary">Capture</Link>} />;
   }
 
   const currentIds = new Set(getAssets().filter((a) => a.inspection_id === current.id && isUsablePhoto(a.id)).map((a) => a.id));
@@ -202,7 +202,7 @@ export default function ReportPage() {
                 <figure>
                   {before ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={img(before)} alt={`${room.name} at move-in`} className="aspect-[1200/896] w-full rounded-lg bg-surface-2 object-cover" />
+                    <span className="relative block"><img src={img(before)} alt={`${room.name} at move-in`} className="aspect-[1200/896] w-full rounded-lg bg-surface-2 object-cover" /><DemoMark /></span>
                   ) : <div className="grid aspect-[1200/896] place-items-center rounded-lg border border-dashed border-line text-[12.5px] text-ink-3">{t("Not captured at move-in")}</div>}
                   <figcaption className="mt-1.5 flex items-center justify-between text-[11.5px] text-ink-3">
                     <span>{t(INSPECTION_LABEL[baseline.type])} · {fmtDateL(baseline.captured_at, lang)}</span>
@@ -212,13 +212,17 @@ export default function ReportPage() {
                 <figure>
                   {!after ? (
                     <div className="grid aspect-[1200/896] place-items-center rounded-lg border border-dashed border-line text-[12.5px] text-ink-3">{t("Not captured at this visit")}</div>
-                  ) : analysing ? (
-                    <div className="grid aspect-[1200/896] place-items-center rounded-lg border border-dashed border-line text-[12.5px] text-ink-3"><span className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> {t("Analysis pending — excluded")}</span></div>
-                  ) : evidenceFor(room.id) ? (
+                  ) : !analysing && evidenceFor(room.id) ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={evidenceFor(room.id)} alt={`${room.name} at ${INSPECTION_LABEL[current.type]}, findings marked`} className="aspect-[1200/896] w-full rounded-lg bg-surface-2 object-cover" />
+                    <span className="relative block"><img src={evidenceFor(room.id)} alt={`${room.name} at ${INSPECTION_LABEL[current.type]}, findings marked`} className="aspect-[1200/896] w-full rounded-lg bg-surface-2 object-cover" /><DemoMark /></span>
                   ) : (
                     <Photo src={img(after)} alt={`${room.name} at ${INSPECTION_LABEL[current.type]}`} observations={included} rounded className="aspect-[1200/896]" showLabels={false} />
+                  )}
+                  {analysing && after && (
+                    <p className="mt-1.5 flex items-start gap-1.5 rounded-lg bg-warn/[.07] px-2.5 py-1.5 text-[11.5px] leading-snug text-ink-2" data-testid="report-analysis-note">
+                      {(after.analysis_status === "queued" || after.analysis_status === "running") ? <Loader2 className="mt-0.5 size-3.5 shrink-0 animate-spin" /> : <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" />}
+                      <span>{t(after.analysis_status === "queued" || after.analysis_status === "running" ? "Analysis is still running; findings appear here when it finishes." : after.analysis_status === "quota_limited" ? "The photo was saved but the AI analysis was limited by its daily quota, so no findings are recorded for it yet. That is not the same as no damage." : after.analysis_status === "failed" ? "The photo was saved but the AI analysis failed, so no findings are recorded for it. That is not the same as no damage." : "The photo was saved but its analysis was interrupted, so no findings are recorded for it yet. That is not the same as no damage.")}</span>
+                    </p>
                   )}
                   <figcaption className="mt-1.5 flex items-center justify-between text-[11.5px] text-ink-3">
                     <span>{t(INSPECTION_LABEL[current.type])} · {fmtDateL(current.captured_at, lang)}{evidenceFor(room.id) ? ` · ${t("boxes drawn by Cloudinary")}` : ""}</span>
@@ -255,7 +259,7 @@ export default function ReportPage() {
               {after && !analysing && (() => {
                 const cov = roomCoverage(room.id, current.id);
                 const gaps = cov?.items.filter((x) => !x.covered) ?? [];
-                return gaps.length ? <p className="mt-3 text-[11.5px] text-ink-3" data-testid="report-gaps">{t("Not shown in this visit's photos")}: {gaps.map((g) => t(g.label)).join(", ")}. {t("Condition there is not recorded by this report.")}</p> : null;
+                return gaps.length ? <p className="mt-3 text-[11.5px] text-ink-3" data-testid="report-gaps">{t("Not shown in this visit's photos")}: {gaps.map((g) => g.resolved?.kind === "skip" && g.resolved.reason ? `${t(g.label)} (${g.resolved.reason})` : g.resolved?.kind === "na" ? `${t(g.label)} (n/a)` : t(g.label)).join(", ")}. {t("Condition there is not recorded by this report.")}</p> : null;
               })()}
               {showPre && pre.length > 0 && (
                 <div className="mt-4 rounded-lg bg-surface-2/60 p-3 text-[12px] text-ink-2">

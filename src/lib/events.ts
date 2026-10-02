@@ -27,10 +27,15 @@ export type EventType =
   | "calibration" // resource = asset; payload: { line: [x1,y1,x2,y2] normalised, cm, reference }
   | "measure" // resource = observation; payload: { extent, long_side, bbox_area } (fractions of the frame)
   | "workorder" // resource = observation; payload: { action: create|status|photo, ... }
-  | "coverage" // resource = asset; payload: { areas: string[] }
+  | "coverage" // resource = asset; payload: { areas: string[] } (model) or { action: "slot", item } (photo filed under a checklist item);
+  //            resource = room: { action: "skip"|"unskip", inspection_id, item, kind, reason };
+  //            no resource: { action: "submit", inspection_id, hash, photos, skipped } | "reopen_request" { note } | "reopen"
   | "translation" // payload: { lang, entries: { [sha1 of English text]: translated } }
   | "assessment" // resource = asset; payload: { can_assess, note, unsure: observation ids the model was unsure about }
   | "decision" // resource = observation; payload: { status, category?, description?, note? }
+  | "removal" // resource = asset id (the asset itself is gone); payload: { room_id, inspection_id, sha256, public_id } — audit of a photo removed from a draft visit
+  | "invite" // payload: { action: "create", id, email?, expires_at } | { action: "accept", id } | { action: "revoke", id } — how a tenant joins a property
+  | "kit" // payload: { action: create|shot|skip|seal, ... } — the free move-in kit (see lib/kit.ts)
   | "roommatch" // resource = asset; payload: { verdict, reason, ref, view, phash } or { action: "confirm" }
   | "privacy"; // resource = asset; payload: { action: add|remove|scan, region?, id?, engine?, found? } — areas pixelated in shared copies
 
@@ -367,6 +372,88 @@ export function deriveCoverage(events: PropertyEvent[]): Record<string, string[]
   return out;
 }
 
+/** The checklist item each photo was filed under by whoever took it (latest wins; null clears it). */
+export function deriveCoverageSlots(events: PropertyEvent[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const e of events) {
+    if (e.type !== "coverage" || e.payload.action !== "slot" || !e.resource_id) continue;
+    if (e.payload.item) out[e.resource_id] = String(e.payload.item); else delete out[e.resource_id];
+  }
+  return out;
+}
+
+/** Items a person chose not to photograph, keyed `room|inspection|item`. */
+export function deriveCoverageSkips(events: PropertyEvent[]): Record<string, { kind: "skip" | "na"; reason: string; by: string | null; at: string }> {
+  const out: Record<string, { kind: "skip" | "na"; reason: string; by: string | null; at: string }> = {};
+  for (const e of events) {
+    if (e.type !== "coverage" || !e.resource_id || !e.payload.inspection_id || !e.payload.item) continue;
+    const k = `${e.resource_id}|${e.payload.inspection_id}|${e.payload.item}`;
+    if (e.payload.action === "skip") out[k] = { kind: e.payload.kind === "na" ? "na" : "skip", reason: String(e.payload.reason ?? ""), by: e.actor_name, at: e.created_at };
+    else if (e.payload.action === "unskip") delete out[k];
+  }
+  return out;
+}
+
+export interface Submission { at: string; by: string | null; hash: string | null; photos: number; skipped: number; reopen_request: { by: string | null; at: string; note: string } | null }
+
+/**
+ * Visits whose photographer said they are finished, with the seal taken at that moment. An owner can reopen
+ * a visit (it then needs submitting again, with a new seal); the history stays in the event log.
+ */
+export function deriveSubmitted(events: PropertyEvent[]): Record<string, Submission> {
+  const out: Record<string, Submission> = {};
+  for (const e of events) {
+    if (e.type !== "coverage" || !e.payload.inspection_id) continue;
+    const id = String(e.payload.inspection_id);
+    if (e.payload.action === "submit" && !out[id]) out[id] = { at: e.created_at, by: e.actor_name, hash: e.payload.hash ? String(e.payload.hash) : null, photos: Number(e.payload.photos ?? 0), skipped: Number(e.payload.skipped ?? 0), reopen_request: null };
+    else if (e.payload.action === "reopen_request" && out[id]) out[id].reopen_request = { by: e.actor_name, at: e.created_at, note: String(e.payload.note ?? "") };
+    else if (e.payload.action === "reopen") delete out[id];
+  }
+  return out;
+}
+
+export interface Removal { asset_id: string; room_id: string; inspection_id: string; sha256: string | null; at: string; by: string | null }
+
+/** Photos removed from draft visits: who, when and the fingerprint of what was removed (never the image). */
+export function deriveRemovals(events: PropertyEvent[]): Removal[] {
+  return events.filter((e) => e.type === "removal" && e.resource_id).map((e) => ({
+    asset_id: String(e.resource_id), room_id: String(e.payload.room_id ?? ""), inspection_id: String(e.payload.inspection_id ?? ""),
+    sha256: e.payload.sha256 ? String(e.payload.sha256) : null, at: e.created_at, by: e.actor_name,
+  }));
+}
+
+export interface Invite {
+  id: string;
+  email: string | null;
+  created_at: string;
+  created_by: string | null;
+  expires_at: string;
+  status: "pending" | "accepted" | "revoked" | "expired";
+  accepted_by: string | null;
+  accepted_by_id: string | null;
+  accepted_at: string | null;
+}
+
+/** Invitations of one property, in creation order. The first acceptance wins; "expired" is computed at read time. */
+export function deriveInvites(events: PropertyEvent[], now = Date.now()): Invite[] {
+  const byId = new Map<string, Invite>();
+  for (const e of events) {
+    if (e.type !== "invite") continue;
+    const id = String(e.payload.id ?? "");
+    if (!id) continue;
+    if (e.payload.action === "create") {
+      if (!byId.has(id)) byId.set(id, { id, email: e.payload.email ? String(e.payload.email) : null, created_at: e.created_at, created_by: e.actor_name, expires_at: String(e.payload.expires_at), status: "pending", accepted_by: null, accepted_by_id: null, accepted_at: null });
+    } else {
+      const inv = byId.get(id);
+      if (!inv || inv.status !== "pending") continue;
+      if (e.payload.action === "accept") { inv.status = "accepted"; inv.accepted_by = e.actor_name; inv.accepted_by_id = e.actor_id; inv.accepted_at = e.created_at; }
+      else if (e.payload.action === "revoke") inv.status = "revoked";
+    }
+  }
+  for (const inv of byId.values()) if (inv.status === "pending" && Date.parse(inv.expires_at) < now) inv.status = "expired";
+  return [...byId.values()];
+}
+
 /** Cached machine translations per language, keyed by sha1 of the English source text. */
 export function deriveTranslations(events: PropertyEvent[]): Record<string, Record<string, string>> {
   const out: Record<string, Record<string, string>> = {};
@@ -433,4 +520,51 @@ export function deriveRoomMatch(events: PropertyEvent[]): Record<string, RoomMat
     }
   }
   return out;
+}
+
+export interface KitState {
+  name: string;
+  address: string;
+  created_at: string;
+  /** Latest photo per room + shot; later events replace earlier ones (a retake). */
+  shots: Record<string, Record<string, string>>;
+  skipped: Record<string, string[]>;
+  sealed: { hash: string; at: string; photos: number; missing: number } | null;
+  /** Generation of the read-only link. Replacing the link bumps it; older read links stop working. */
+  readGen: number;
+  /** The record is private until its creator turns sharing on; while off, no read-only link opens it. */
+  sharing: boolean;
+  /** People who confirmed they have seen the sealed record (each tied to its fingerprint). */
+  acks: { name: string; at: string; hash: string }[];
+}
+
+/** Rebuilds a kit from its events. Null when the kit does not exist. */
+export function deriveKit(events: PropertyEvent[]): KitState | null {
+  let kit: KitState | null = null;
+  for (const e of events) {
+    if (e.type !== "kit") continue;
+    const p = e.payload;
+    if (p.action === "create") {
+      kit = { name: String(p.name ?? ""), address: String(p.address ?? ""), created_at: e.created_at, shots: {}, skipped: {}, sealed: null, readGen: 0, sharing: false, acks: [] };
+    } else if (!kit) {
+      continue;
+    } else if (p.action === "shot" && p.room_id && p.shot_id && p.asset_id) {
+      (kit.shots[p.room_id] ??= {})[p.shot_id] = String(p.asset_id);
+      kit.skipped[p.room_id] = (kit.skipped[p.room_id] ?? []).filter((s) => s !== p.shot_id);
+    } else if (p.action === "unshot" && p.room_id && p.shot_id) {
+      delete kit.shots[p.room_id]?.[p.shot_id];
+    } else if (p.action === "skip" && p.room_id && p.shot_id) {
+      if (!kit.shots[p.room_id]?.[p.shot_id]) kit.skipped[p.room_id] = [...new Set([...(kit.skipped[p.room_id] ?? []), String(p.shot_id)])];
+    } else if (p.action === "seal" && p.hash && !kit.sealed) {
+      kit.sealed = { hash: String(p.hash), at: e.created_at, photos: Number(p.photos ?? 0), missing: Number(p.missing ?? 0) };
+    } else if (p.action === "share") {
+      kit.sharing = !!p.on;
+    } else if (p.action === "rotate") {
+      kit.readGen += 1;
+    } else if (p.action === "ack" && p.name && kit.sealed && p.hash === kit.sealed.hash) {
+      // Only confirmations of the exact sealed record count.
+      if (!kit.acks.some((a) => a.name.toLowerCase() === String(p.name).toLowerCase())) kit.acks.push({ name: String(p.name), at: e.created_at, hash: String(p.hash) });
+    }
+  }
+  return kit;
 }

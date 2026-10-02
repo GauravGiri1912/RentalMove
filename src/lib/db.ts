@@ -24,9 +24,12 @@ export interface DatabaseService {
   getProperty(id: string): Promise<Property | null>;
   listProperties(userId?: string, role?: string): Promise<Property[]>;
   createProperty(data: {
+    /** Optional fixed id (kits use a random one; the default is time-based). */
+    id?: string;
     address_label: string;
     unit_label: string;
-    owner_id?: string;
+    /** `null` = deliberately no owner (a tenant's move-in kit). Omitted = the demo owner. */
+    owner_id?: string | null;
     rooms?: Array<{ name: string; category: any }>;
   }): Promise<Property>;
 
@@ -528,7 +531,7 @@ export class PersistentDatabaseService implements DatabaseService {
     id?: string;
     address_label: string;
     unit_label: string;
-    owner_id?: string;
+    owner_id?: string | null;
     rooms?: Array<{ name: string; category: any }>;
   }): Promise<Property> {
     const propertyId = data.id || `prop-${Date.now()}`;
@@ -536,7 +539,7 @@ export class PersistentDatabaseService implements DatabaseService {
       id: propertyId,
       address_label: data.address_label,
       unit_label: data.unit_label,
-      owner_id: data.owner_id,
+      owner_id: data.owner_id ?? undefined,
       created_at: new Date().toISOString(),
     };
 

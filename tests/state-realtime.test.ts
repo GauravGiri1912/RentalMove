@@ -36,7 +36,8 @@ describe("Phase 9: State Management & Realtime Transport Consolidation", () => {
     // optimistic function no longer unconditionally refetches entire snapshot
     expect(providersContent).not.toContain("await request();\n      if (propertyId) await loadSnapshot(propertyId);");
     // review directly applies returned updated observation
-    expect(providersContent).toContain("observations: view.observations.map((o) => (o.id === id ? { ...o, ...updated } : o))");
+    expect(providersContent).toContain("observations: current.observations.map((o) => (o.id === id ? { ...o, ...updated } : o))");
+    expect(providersContent).toContain("applyView({");
   });
 
   it("4. signOut clears both React state and module singleton to prevent state leakage", () => {

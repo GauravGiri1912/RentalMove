@@ -94,6 +94,8 @@ await expectText("review shows everyday-use context + disclaimer", /not a findin
 await expectText(ROLE === "owner" ? "owner sees Request a repair" : "tenant sees no repair requested", ROLE === "owner" ? /Request a repair/ : /No repair requested/);
 await page.click("[data-testid=set-scale]");
 await page.waitForSelector("[data-testid=scale-canvas]");
+await page.$eval("[data-testid=scale-canvas]", (el) => el.scrollIntoView({ block: "center" })); // the demo banner pushes it below the fold
+await new Promise((r) => setTimeout(r, 400));
 const box = await (await page.$("[data-testid=scale-canvas]")).boundingBox();
 await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.5);
 await page.mouse.down();
@@ -111,13 +113,17 @@ await page.evaluate(async (id) => fetch(`/api/assets/${id}/calibration`, { metho
 
 // Capture checklist, room coverage, report additions.
 await page.goto(BASE + "/capture?room=room-bathroom", { waitUntil: "networkidle2" });
-await page.waitForSelector("[data-testid=coverage]", { timeout: 30000 }).catch(() => {});
-await expectText("capture shows the room checklist", /covered/);
+await page.waitForSelector("[data-testid=room-checklist], [data-testid=coverage]", { timeout: 30000 }).catch(() => {});
+await expectText("capture shows the room checklist", /photographed|covered/);
 await page.goto(BASE + "/report", { waitUntil: "networkidle2" });
 await new Promise((r) => setTimeout(r, 1500));
 // Findings only reach the report once accepted; with none accepted it must say so.
 await expectText("report shows everyday-use context (or no reviewed changes)", /Everyday-use context|No reviewed changes since move-in/);
-await page.goto(BASE + "/rooms/room-bathroom", { waitUntil: "networkidle2" });
+// Navigate to the room dossier for the room that actually contains the grown observation.
+const grownObs = snapRes.observations.find((o) => o.id === grownId);
+const grownAsset = grownObs && snapRes.assets.find((a) => a.id === grownObs.asset_id);
+const grownRoomId = grownAsset?.room_id ?? "room-bathroom";
+await page.goto(BASE + `/rooms/${grownRoomId}`, { waitUntil: "networkidle2" });
 await new Promise((r) => setTimeout(r, 1500));
 await expectText("room dossier shows trend chip", /Grew ×\d/);
 
@@ -133,17 +139,21 @@ for (const q of ["What got worse?", "What needs repair?", "What did the photos m
 await page.goto(BASE + `/review?o=${grownId}`, { waitUntil: "networkidle2" });
 await page.waitForSelector("[data-testid=finding-facts]", { timeout: 30000 });
 await expectText("review shows the photo-time chip", /No capture time in file|Taken \d{4}/);
-await expectText("review has a Not sure tab with a count", /Not sure · \d+/);
-const unsureId = await page.evaluate(() => {
-  const btn = [...document.querySelectorAll("button")].find((b) => /^Not sure · \d+/.test(b.textContent || ""));
-  btn?.click();
-  return !!btn;
-});
-await new Promise((r) => setTimeout(r, 800));
-if (unsureId) {
-  const firstQueue = await page.$$("aside button.flex.w-full");
-  if (firstQueue[0]) await firstQueue[0].click();
-  await expectText("a Not sure finding explains why", /Not sure — check before accepting|No pixel change at this spot/);
+// The review queue marks uncertain findings with a "Not sure" icon (there is no separate tab any more).
+const unsureIcons = await page.$$eval('[aria-label="Not sure"]', (els) => els.length);
+console.log(`${unsureIcons > 0 ? "ok " : "FAIL"} review marks Not-sure findings in the queue (${unsureIcons})`); if (!unsureIcons) problems.push("[assert] review marks Not-sure findings");
+// Click the first unsure finding's queue entry (the icon is inside the button).
+if (unsureIcons > 0) {
+  const clicked = await page.evaluate(() => {
+    const icon = document.querySelector('[aria-label="Not sure"]');
+    const btn = icon?.closest("button");
+    btn?.click();
+    return !!btn;
+  });
+  await new Promise((r) => setTimeout(r, 800));
+  if (clicked) {
+    await expectText("a Not sure finding explains why", /Not sure — check before accepting|No pixel change at this spot/);
+  }
 }
 // Voice note: fake microphone → record → stop → preview (not sent, so no lasting comment).
 await page.goto(BASE + `/review?o=${grownId}`, { waitUntil: "networkidle2" });
@@ -185,6 +195,7 @@ await page.goto(BASE + "/capture?room=room-living-room", { waitUntil: "networkid
 await page.waitForSelector("[data-testid=visit-completeness]", { timeout: 30000 }).catch(() => {});
 await expectText("capture shows visit completeness", /not complete yet|: complete/);
 await expectText("capture shows all photos of the room at this visit", /Photos of this room at this visit · \d+/);
+await page.select("select[aria-label=Inspection]", "insp-2024-move-in"); // the demo's mismatched living-room photo is in the move-in visit
 await expectText("mismatched photos are labelled", /Doesn.t match this room/);
 await page.screenshot({ path: path.join(OUT, `${ROLE}_capture_visit.png`), fullPage: true });
 
@@ -205,6 +216,8 @@ if (pObs) {
   await page.click("[data-testid=privacy-preview-modal] button[aria-label=Close]");
   await page.click("[data-testid=privacy-draw]");
   await page.waitForSelector("[data-testid=privacy-canvas]");
+  await page.$eval("[data-testid=privacy-canvas]", (el) => el.scrollIntoView({ block: "center" }));
+  await new Promise((r) => setTimeout(r, 400));
   const cb = await (await page.$("[data-testid=privacy-canvas]")).boundingBox();
   await page.mouse.move(cb.x + cb.width * 0.7, cb.y + cb.height * 0.12);
   await page.mouse.down();

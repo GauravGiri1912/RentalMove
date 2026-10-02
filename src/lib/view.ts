@@ -2,6 +2,7 @@
 // GET /api/properties/:id/snapshot by StudioProvider; getters are synchronous so pages stay
 // simple. Mutations live in the provider (they call the API, then refresh the snapshot).
 
+import type { Submission } from "./events";
 import type {
   Asset, BBox, Comparison, Inspection, IssueCategory, Observation, PipelineEvent, Property, Room,
   SearchFilter, ShareLink, SignatureRecord, Stance, ThreadComment, User, Calibration, Measure, WorkOrder, PrivacyRegion, OcrBudget, RoomMatch,
@@ -29,6 +30,9 @@ export interface View {
   measures: Record<string, Measure>;
   workOrders: Record<string, WorkOrder>;
   coverage: Record<string, string[]>;
+  coverageSlots: Record<string, string>;
+  coverageSkips: Record<string, { kind: "skip" | "na"; reason: string; by: string | null; at: string }>;
+  submitted: Record<string, Submission>;
   assessments: Record<string, { can_assess: boolean; note: string | null; unsure: string[]; at: string }>;
   privacy: Record<string, PrivacyRegion[]>;
   roomMatch: Record<string, RoomMatch>;
@@ -138,6 +142,9 @@ export function toView(snap: any, user: any, properties: any[]): View {
     measures: snap.measures ?? {},
     workOrders: snap.work_orders ?? {},
     coverage: snap.coverage ?? {},
+    coverageSlots: snap.coverage_slots ?? {},
+    coverageSkips: snap.coverage_skips ?? {},
+    submitted: snap.submitted ?? {},
     assessments: snap.assessments ?? {},
     privacy: snap.privacy ?? {},
     roomMatch: snap.room_match ?? {},
@@ -184,6 +191,14 @@ export const getMeasure = (obsId: string) => V().measures[obsId];
 export const getWorkOrder = (obsId: string) => V().workOrders[obsId];
 export const getWorkOrders = () => Object.values(V().workOrders);
 export const getCoverage = (assetId: string) => V().coverage[assetId];
+export const getCoverageSlot = (assetId: string) => V().coverageSlots[assetId];
+export const getCoverageSkips = (roomId: string, inspectionId: string) => {
+  const out: Record<string, { kind: "skip" | "na"; reason: string; by: string | null; at: string }> = {};
+  const pre = `${roomId}|${inspectionId}|`;
+  for (const [k, v] of Object.entries(V().coverageSkips)) if (k.startsWith(pre)) out[k.slice(pre.length)] = v;
+  return out;
+};
+export const getSubmitted = (inspectionId: string) => V().submitted[inspectionId] ?? null;
 export const getAssessment = (assetId: string) => V().assessments[assetId];
 export const getPrivacy = (assetId: string) => V().privacy[assetId] ?? [];
 export const getPrivacyScan = (assetId: string) => V().privacyScans[assetId];

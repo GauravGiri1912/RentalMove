@@ -303,17 +303,19 @@ export class SupabaseDatabaseService implements DatabaseService {
   }
 
   async createProperty(data: {
+    id?: string;
     address_label: string;
     unit_label: string;
-    owner_id?: string;
+    owner_id?: string | null;
     rooms?: Array<{ name: string; category: any }>;
   }): Promise<Property> {
-    const id = `prop-${Date.now()}`;
+    const id = data.id || `prop-${Date.now()}`;
     const newProperty = {
       id,
       address_label: data.address_label,
       unit_label: data.unit_label,
-      owner_id: data.owner_id || "user-owner-1",
+      // null = no owner on purpose (move-in kits); omitted = the legacy demo owner.
+      owner_id: data.owner_id === null ? (null as unknown as string) : data.owner_id || "user-owner-1",
       created_at: new Date().toISOString(),
     };
 

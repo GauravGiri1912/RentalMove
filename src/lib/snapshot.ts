@@ -11,7 +11,7 @@
 import crypto from "crypto";
 import { getDatabase } from "./db";
 import {
-  deriveAssessments, deriveCalibrations, deriveCoverage, derivePrivacy, derivePrivacyScans, deriveRoomMatch, deriveFingerprints, deriveMeasures, deriveSignatures, deriveStances, deriveThreads, deriveWorkOrders,
+  deriveAssessments, deriveCalibrations, deriveCoverage, deriveCoverageSkips, deriveCoverageSlots, deriveSubmitted, derivePrivacy, derivePrivacyScans, deriveRoomMatch, deriveFingerprints, deriveMeasures, deriveSignatures, deriveStances, deriveThreads, deriveWorkOrders,
   eventStoreKind, listEvents,
 } from "./events";
 import { iou } from "./pixel";
@@ -59,6 +59,9 @@ export interface Snapshot {
   work_orders: ReturnType<typeof deriveWorkOrders>;
   /** Visible room areas per asset id. */
   coverage: ReturnType<typeof deriveCoverage>;
+  coverage_slots: ReturnType<typeof deriveCoverageSlots>;
+  coverage_skips: ReturnType<typeof deriveCoverageSkips>;
+  submitted: ReturnType<typeof deriveSubmitted>;
   /** Photo-level assessment per asset id (could the model judge it; unsure findings). */
   assessments: ReturnType<typeof deriveAssessments>;
   /** Areas pixelated in shared copies, per asset id; last scan per asset; OCR budget. */
@@ -217,6 +220,9 @@ export async function buildSnapshot(propertyId: string, user: User): Promise<Sna
     measures: deriveMeasures(events),
     work_orders: workOrders,
     coverage: deriveCoverage(events),
+    coverage_slots: deriveCoverageSlots(events),
+    coverage_skips: deriveCoverageSkips(events),
+    submitted: deriveSubmitted(events),
     assessments: deriveAssessments(events),
     privacy: derivePrivacy(events),
     room_match: deriveRoomMatch(events),

@@ -52,7 +52,7 @@ for (;;) {
   await page.screenshot({ path: path.join(OUT, `${String(++i).padStart(2, "0")}.png`) });
   lastText = s.text;
   if (s.label.includes("That's RentalMove")) break;
-  await page.click("button[aria-label=Next]");
+  await page.click('button[aria-label="Next step"]');
   if (i > 60) break;
 }
 console.log(`\n${i} beats, ${missing} without spotlight, ${problems.length} error(s)`);

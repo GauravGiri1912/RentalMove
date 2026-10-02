@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { cn, pct } from "@/lib/utils";
 import type { BBox, IssueCategory, Observation, ReviewStatus } from "@/lib/view-types";
+import { hasView, getProperty } from "@/lib/view";
+import { isDemoProperty } from "@/lib/demo";
 
 export const CATEGORY_META: Record<IssueCategory, { label: string; glyph: string }> = {
   scratch: { label: "Scratch", glyph: "∕∕" },
@@ -129,6 +131,12 @@ export function useCoverRect(container: React.RefObject<HTMLElement | null>, nat
 }
 
 /** Photo with observation boxes. Boxes are overlays — the original is never altered. */
+/** "DEMO" corner mark on a photo, shown only while the demo property is the one on screen. Place inside a relatively positioned frame. */
+export function DemoMark() {
+  if (!hasView() || !isDemoProperty(getProperty().id)) return null;
+  return <span className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-black/55 px-1.5 py-0.5 font-mono text-[9.5px] font-semibold tracking-wider text-white/90" data-testid="demo-chip">DEMO</span>;
+}
+
 export function Photo({
   src,
   alt,
@@ -196,6 +204,7 @@ export function Photo({
         className={cn("block h-full w-full object-cover transition-opacity duration-500", loaded ? "opacity-100" : "opacity-0", imgClassName)}
         draggable={false}
       />
+      <DemoMark />
       <div className="pointer-events-none absolute" style={rect}>
       {items.map((b) => {
         const [x1, y1, x2, y2] = b.bbox;

@@ -97,7 +97,7 @@ function HandoffDialog({ inspectionId, roomId, onClose }: { inspectionId: string
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> Your phone can&apos;t open “localhost”. Open this app via your computer&apos;s network address (e.g. http://192.168.x.x:3000, same Wi-Fi) or the deployed URL, then create the code again.
                 </p>
               )}
-              <p className="mt-3 text-[11.5px] leading-relaxed text-ink-3">The link works for 15 minutes and only for this room and inspection. It is signed by the server, so it can&apos;t be edited to reach anything else.</p>
+              <p className="mt-3 text-[11.5px] leading-relaxed text-ink-3">The link works for 15 minutes and only for this room and visit. It is signed by the server, so it can&apos;t be edited to reach anything else.</p>
             </>
           )}
         </div>

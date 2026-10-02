@@ -13,9 +13,10 @@ import { createServerClient } from "@supabase/ssr";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-/** App routes that require authentication. Public: /welcome, /login, /signup, /verify, /r/:token, /h/:token. */
+/** App routes that require authentication. Public: /welcome, /login, /signup, /verify, /kit, /k/:token, /r/:token, /h/:token. */
 const PROTECTED_ROUTES = [
   "/capture",
+  "/submission",
   "/review",
   "/timeline",
   "/rooms",

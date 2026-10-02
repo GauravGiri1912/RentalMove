@@ -19,6 +19,9 @@ export const pixelUrl = (publicIdOrUrl: string) => named(publicIdOrUrl, "rm_pixe
 
 export async function propertyIdForInspection(inspectionId: string): Promise<string | null> {
   const db = getDatabase();
+  // Direct lookup first: scanning every property gets slower with every move-in kit created.
+  const direct = await db.getInspectionById(inspectionId).catch(() => null);
+  if (direct?.property_id) return direct.property_id;
   for (const p of await db.listProperties()) {
     if ((await db.getInspections(p.id)).some((i) => i.id === inspectionId)) return p.id;
   }

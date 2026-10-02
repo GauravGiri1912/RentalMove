@@ -37,7 +37,7 @@ export default function MapPage() {
       <PageHeader
         eyebrow={`${getProperty().address_label} · ${getProperty().unit_label}`}
         title={<>Home <em>map</em></>}
-        lede="Every photo has a place. Each pin marks where the camera stood and which way it faced, so the next inspection can stand in the same spot."
+        lede="Every photo has a place. Each pin marks where the camera stood and which way it faced, so the next visit can stand in the same spot."
         actions={
           <Segmented
             value={inspId}
@@ -68,7 +68,7 @@ export default function MapPage() {
             {asset ? (
               <Photo key={asset.id} src={asset.thumb} alt={room.name} observations={obs} showLabels={false} scanning={asset.analysis_status === "running"} rounded={false} className="aspect-[4/3]" />
             ) : (
-              <div className="grid aspect-[4/3] place-items-center bg-surface-2 text-[13px] text-ink-3">Not captured at this inspection</div>
+              <div className="grid aspect-[4/3] place-items-center bg-surface-2 text-[13px] text-ink-3">Not captured at this visit</div>
             )}
             <div className="p-4">
               <div className="flex items-baseline justify-between">
@@ -96,7 +96,7 @@ export default function MapPage() {
               </div>
             </div>
           </div>
-          <p className="px-1 text-[12px] leading-relaxed text-ink-3">Tip: hover a room to preview it, click to pin it. Switch inspections above to watch findings appear across the home.</p>
+          <p className="px-1 text-[12px] leading-relaxed text-ink-3">Tip: hover a room to preview it, click to pin it. Switch visits above to watch findings appear across the home.</p>
         </aside>
       </div>
     </div>

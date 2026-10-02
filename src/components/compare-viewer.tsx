@@ -1,5 +1,7 @@
 "use client";
 
+import { DemoMark } from "./ui";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { BBox } from "@/lib/view-types";
@@ -47,7 +49,7 @@ function Boxes({ boxes, active, onHover }: { boxes: Box[]; active: string | null
 
 function Img({ src, alt }: { src: string; alt: string }) {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full select-none object-cover" />;
+  return <><img src={src} alt={alt} draggable={false} className="absolute inset-0 h-full w-full select-none object-cover" /><DemoMark /></>;
 }
 
 function Tag({ children, side }: { children: React.ReactNode; side: "left" | "right" }) {

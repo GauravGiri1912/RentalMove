@@ -55,9 +55,11 @@ const STAGES = [
 export function HoodDrawer() {
   const { hoodOpen, setHoodOpen } = useStudio();
   const cloudAssets = getAssets().filter((a) => a.cloudinary_public_id);
-  const [assetId, setAssetId] = useState(cloudAssets[0].id);
+  const [assetId, setAssetId] = useState(cloudAssets[0]?.id ?? "");
   if (!hoodOpen) return null;
-  const asset = cloudAssets.find((a) => a.id === assetId)!;
+  // A property with no photos yet (a new account) has nothing to show here, and must not crash the whole studio.
+  const asset = cloudAssets.find((a) => a.id === assetId) ?? cloudAssets[0];
+  if (!asset) return null;
   const pid = asset.cloudinary_public_id!;
   return (
     <div className="fixed inset-0 z-50" onMouseDown={() => setHoodOpen(false)}>

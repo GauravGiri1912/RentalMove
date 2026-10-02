@@ -17,7 +17,7 @@ export default function TimelinePage() {
   const inspections = getInspections();
   const rooms = getRooms();
   if (!inspections.length) {
-    return <Empty icon={<Camera className="size-5" />} title="No inspections yet" body="The timeline starts with the move-in capture." action={<Link href="/capture" className="btn-primary">Start capture</Link>} />;
+    return <Empty icon={<Camera className="size-5" />} title="No visits yet" body="The timeline starts with the move-in capture." action={<Link href="/capture" className="btn-primary">Start capture</Link>} />;
   }
   // Span: first inspection → today (or the last inspection, if later).
   const first = new Date(inspections[0].captured_at).getTime();
