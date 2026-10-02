@@ -146,8 +146,45 @@ export function StudioProvider({
   }, []);
 
   const loadSnapshot = useCallback(async (pid: string) => {
-    const snap = await api(`/api/properties/${encodeURIComponent(pid)}/snapshot`);
-    applyView(toView(snap, userRef.current, propsRef.current));
+    const isReview = typeof window !== "undefined" && window.location.pathname === "/review";
+    if (isReview) {
+      const summary = await api(`/api/properties/${encodeURIComponent(pid)}/summary`);
+      const before = hasView() ? getView() : null;
+      
+      if (before) {
+        const updated = toView({
+          ...summary,
+          assets: [], observations: [], comparisons: [], activity: [],
+          stances: {}, threads: {}, signatures: {}, share_links: [],
+          meta: { generated_at: new Date().toISOString(), event_store: "supabase" },
+          calibrations: {}, work_orders: {}, coverage: {}
+        }, userRef.current, propsRef.current);
+
+        applyView({
+          ...before,
+          property: updated.property,
+          rooms: updated.rooms,
+          inspections: updated.inspections,
+          report: updated.report,
+          people: { ...before.people, ...updated.people },
+          measures: summary.measures ?? before.measures,
+          assessments: summary.assessments ?? before.assessments,
+        });
+      } else {
+        const shallowSnap = {
+          ...summary,
+          assets: [], observations: [], comparisons: [], activity: [],
+          stances: {}, threads: {}, signatures: {}, share_links: [],
+          meta: { generated_at: new Date().toISOString(), event_store: "supabase" },
+          calibrations: {}, work_orders: {}, coverage: {},
+          measures: summary.measures ?? {}, assessments: summary.assessments ?? {}
+        };
+        applyView(toView(shallowSnap, userRef.current, propsRef.current));
+      }
+    } else {
+      const snap = await api(`/api/properties/${encodeURIComponent(pid)}/snapshot`);
+      applyView(toView(snap, userRef.current, propsRef.current));
+    }
   }, [applyView]);
 
   // Session + properties on mount.

@@ -9,10 +9,12 @@ import { certaintyFor, photoAbstain } from "@/lib/insights";
 import { useStudio } from "@/components/providers";
 import { Parties } from "@/components/parties";
 import { FindingFacts, PhotoTimeChip, RepairPanel } from "@/components/insights";
+import { Loader2 } from "lucide-react";
 import { CATEGORY_META, CategoryBadge, Confidence, Crop, Kbd, Photo, Segmented, StatusBadge } from "@/components/ui";
-import { assetFor, getAsset, getAssets, getRoom, reportPair } from "@/lib/view";
+import { getProperty, getRoom, reportPair } from "@/lib/view";
 import { cn, fmtDate, INSPECTION_LABEL } from "@/lib/utils";
 import type { IssueCategory, Observation } from "@/lib/view-types";
+import { reviewUrl, named } from "@/lib/cloudinary-urls";
 
 type Filter = "all" | "new" | "pre" | "unsure";
 
@@ -25,17 +27,39 @@ export default function ReviewPage() {
 }
 
 function Review() {
-  const { observations, review, toast } = useStudio();
+  const { review, toast, version } = useStudio();
   const { can } = usePermissions();
   const canTriage = can("finding:triage");
   const canEdit = can("finding:edit");
   const params = useSearchParams();
   const [filter, setFilter] = useState<Filter>("all");
   const { baseline: baseInsp, current: curInsp } = reportPair();
+  const prop = getProperty();
+  
+  const [findingsData, setFindingsData] = useState<{ assets: any[], observations: Observation[] } | null>(null);
+
+  useEffect(() => {
+    if (!curInsp) return;
+    fetch(`/api/inspections/${curInsp.id}/findings?propertyId=${prop.id}&limit=1000`)
+      .then(r => r.json())
+      .then(d => {
+        const assets = (d.assets || []).map((a: any) => ({
+          ...a,
+          src: reviewUrl(a.cloudinary_public_id || a.secure_url),
+          thumb: named(a.cloudinary_public_id || a.secure_url, "rm_thumb"),
+        }));
+        setFindingsData({ ...d, assets });
+      });
+  }, [curInsp?.id, prop.id, version]);
+
+  const observations = findingsData?.observations || [];
+  const assets = findingsData?.assets || [];
+
   const all = useMemo(() => {
-    const currentIds = new Set(getAssets().filter((a) => a.inspection_id === curInsp?.id).map((a) => a.id));
+    const currentIds = new Set(assets.filter((a) => a.inspection_id === curInsp?.id).map((a) => a.id));
     return observations.filter((o) => currentIds.has(o.asset_id));
-  }, [observations, curInsp?.id]);
+  }, [observations, curInsp?.id, assets]);
+
   const queue = useMemo(
     () =>
       all
@@ -44,7 +68,14 @@ function Review() {
         .sort((a, b) => Number(a.review_status !== "pending") - Number(b.review_status !== "pending") || Number(certaintyFor(a).unsure) - Number(certaintyFor(b).unsure) || Number(!!a.pre_existing) - Number(!!b.pre_existing)),
     [all, filter]
   );
-  const [selId, setSelId] = useState<string>(params.get("o") ?? queue.find((o) => o.review_status === "pending")?.id ?? queue[0]?.id);
+  
+  const [selId, setSelId] = useState<string | null>(params.get("o"));
+  // Auto-select first item when queue loads
+  useEffect(() => {
+    if (!selId && queue.length > 0) {
+      setSelId(queue.find((o) => o.review_status === "pending")?.id ?? queue[0]?.id);
+    }
+  }, [queue, selId]);
   const [editing, setEditing] = useState(false);
   const [zoom, setZoom] = useState(false);
   const [draft, setDraft] = useState<{ category: IssueCategory; description: string; note: string }>({ category: "other", description: "", note: "" });
@@ -73,12 +104,28 @@ function Review() {
       if ((status === "accepted" || status === "rejected") && !canTriage) return;
       const prev: Observation = { ...sel };
       const patch = status === "edited" ? { category: draft.category, description: draft.description, reviewer_note: draft.note || undefined } : { reviewer_note: draft.note || undefined };
-      review(sel.id, status, patch);
+      
+      // Optimistic update for local state
+      setFindingsData(pd => {
+        if (!pd) return pd;
+        return {
+          ...pd,
+          observations: pd.observations.map(o => o.id === sel.id ? { ...o, ...patch, review_status: status } : o)
+        };
+      });
+      
+      review(sel.id, status, patch).catch(() => {
+        setFindingsData(pd => pd ? { ...pd, observations: pd.observations.map(o => o.id === prev.id ? prev : o) } : pd);
+      });
       toast({
         title: status === "accepted" ? "Accepted" : status === "rejected" ? "Rejected — kept out of the report" : "Saved with your edits",
         detail: `metadata.review_status=${status} → Cloudinary`,
         tone: status === "accepted" ? "ok" : "neutral",
-        undo: () => { review(prev.id, prev.review_status, prev); setSelId(prev.id); },
+        undo: () => { 
+          review(prev.id, prev.review_status, prev); 
+          setSelId(prev.id); 
+          setFindingsData(pd => pd ? { ...pd, observations: pd.observations.map(o => o.id === prev.id ? prev : o) } : pd);
+        },
       });
       setEditing(false);
       const n = nextPending(sel.id);
@@ -121,10 +168,15 @@ function Review() {
     return () => window.removeEventListener("keydown", onKey);
   }, [queue, sel, decide, editing, canTriage, canEdit]);
 
+  if (!findingsData) {
+    return <div className="p-8 text-center"><Loader2 className="mx-auto size-6 animate-spin text-ink-3" /></div>;
+  }
+  
   if (!sel) return null;
-  const asset = getAsset(sel.asset_id);
+  const asset = assets.find(a => a.id === sel.asset_id);
+  if (!asset) return null;
   const room = getRoom(asset.room_id);
-  const baseline = baseInsp ? assetFor(room.id, baseInsp.id) : undefined;
+  const baseline = baseInsp ? assets.find((a) => a.room_id === room.id && a.inspection_id === baseInsp.id) : undefined;
   const siblings = observations.filter((o) => o.asset_id === asset.id);
   const done = decided === all.length;
 
@@ -164,7 +216,7 @@ function Review() {
           </div>
           <div className="flex-1 overflow-y-auto p-1.5">
             {queue.map((o) => {
-              const a = getAsset(o.asset_id);
+              const a = assets.find(x => x.id === o.asset_id)!;
               return (
                 <button key={o.id} onClick={() => setSelId(o.id)} className={cn("flex w-full gap-2.5 rounded-lg p-2 text-left transition", o.id === sel.id ? "bg-surface-2" : "hover:bg-surface-2/60", o.review_status !== "pending" && "opacity-60")}>
                   <Crop src={a.thumb} bbox={o.bbox} imgW={a.width} imgH={a.height} className="w-11 shrink-0 rounded-md" outline={false} />
