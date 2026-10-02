@@ -69,10 +69,11 @@ export function iou(
 
 /** Evaluates whether two findings represent the same physical spot. */
 export function isSameSpot(
-  bboxA: [number, number, number, number],
-  bboxB: [number, number, number, number],
+  bboxA: [number, number, number, number] | null,
+  bboxB: [number, number, number, number] | null,
   config = getMatchingConfig()
 ): boolean {
+  if (!bboxA || !bboxB) return false;
   if (iou(bboxA, bboxB) >= config.sameSpotIou) return true;
   if (centreDist(bboxA, bboxB) <= config.sameSpotDist) return true;
   return false;

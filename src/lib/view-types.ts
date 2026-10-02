@@ -89,6 +89,8 @@ export interface Observation {
   bbox: BBox;
   review_status: ReviewStatus;
   reviewer_note?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
   pre_existing?: boolean;
   matches?: string | null;
   source: "ai" | "human";

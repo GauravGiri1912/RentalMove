@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { hasView, setView, toView, type View } from "@/lib/view";
+import { hasView, setView, toView, getView, type View } from "@/lib/view";
 import type { Observation, ReviewStatus, Stance, ThreadComment, SignatureRecord, User } from "@/lib/view-types";
 
 type Toast = { id: number; title: string; detail?: string; tone?: "ok" | "signal" | "neutral" | "danger"; undo?: () => void };
@@ -46,6 +46,8 @@ interface Studio {
   addComment: (obsId: string, text: string, voice?: { public_id: string; url: string; duration: number; lang: string; transcribed: boolean }) => Promise<void>;
   sign: (hash: string) => Promise<void>;
   unsign: () => Promise<void>;
+  createManualFinding: (assetId: string) => Promise<Observation>;
+  injectFindings: (assets: any[], observations: Observation[]) => void;
   // ui
   theme: "light" | "dark";
   toggleTheme: () => void;
@@ -145,6 +147,17 @@ export function StudioProvider({
     setVersion((n) => n + 1);
   }, []);
 
+  const injectFindings = useCallback((assets: any[], observations: Observation[]) => {
+    if (!hasView()) return;
+    const current = getView();
+    if (!current) return;
+    applyView({
+      ...current,
+      assets: [...current.assets.filter((a: any) => !assets.some(newA => newA.id === a.id)), ...assets],
+      observations: [...current.observations.filter((o: any) => !observations.some(newO => newO.id === o.id)), ...observations]
+    });
+  }, [applyView]);
+
   const loadSnapshot = useCallback(async (pid: string) => {
     const isReview = typeof window !== "undefined" && window.location.pathname === "/review";
     if (isReview) {
@@ -155,7 +168,7 @@ export function StudioProvider({
         const updated = toView({
           ...summary,
           assets: [], observations: [], comparisons: [], activity: [],
-          stances: {}, threads: {}, signatures: {}, share_links: [],
+          stances: summary.stances ?? {}, threads: summary.threads ?? {}, signatures: {}, share_links: [],
           meta: { generated_at: new Date().toISOString(), event_store: "supabase" },
           calibrations: {}, work_orders: {}, coverage: {}
         }, userRef.current, propsRef.current);
@@ -166,7 +179,8 @@ export function StudioProvider({
           rooms: updated.rooms,
           inspections: updated.inspections,
           report: updated.report,
-          people: { ...before.people, ...updated.people },
+          stances: { ...before.stances, ...updated.stances },
+          threads: { ...before.threads, ...updated.threads },
           measures: summary.measures ?? before.measures,
           assessments: summary.assessments ?? before.assessments,
         });
@@ -174,7 +188,7 @@ export function StudioProvider({
         const shallowSnap = {
           ...summary,
           assets: [], observations: [], comparisons: [], activity: [],
-          stances: {}, threads: {}, signatures: {}, share_links: [],
+          stances: summary.stances ?? {}, threads: summary.threads ?? {}, signatures: {}, share_links: [],
           meta: { generated_at: new Date().toISOString(), event_store: "supabase" },
           calibrations: {}, work_orders: {}, coverage: {},
           measures: summary.measures ?? {}, assessments: summary.assessments ?? {}
@@ -349,13 +363,16 @@ export function StudioProvider({
       "Review not saved"
     );
     // Reconcile server truth into in-memory view without refetching snapshot
-    if (updated && hasView() && view) {
-      applyView({
-        ...view,
-        observations: view.observations.map((o) => (o.id === id ? { ...o, ...updated } : o)),
-      });
+    if (updated && hasView()) {
+      const current = getView();
+      if (current) {
+        applyView({
+          ...current,
+          observations: current.observations.map((o) => (o.id === id ? { ...o, ...updated } : o)),
+        });
+      }
     }
-  }, [optimistic, view, applyView]);
+  }, [optimistic, applyView]);
 
   const setStance = useCallback(async (obsId: string, s: Stance | null) => {
     const role = sessionUser?.role ?? "tenant";
@@ -378,6 +395,21 @@ export function StudioProvider({
       "Comment not posted"
     );
   }, [optimistic, sessionUser]);
+
+  const createManualFinding = useCallback(async (assetId: string) => {
+    // The server returns the new observation
+    const newObs = await api(`/api/assets/${encodeURIComponent(assetId)}/observations`, { method: "POST", json: {} });
+    if (hasView()) {
+      const current = getView();
+      if (current) {
+        applyView({
+          ...current,
+          observations: [...current.observations, newObs],
+        });
+      }
+    }
+    return newObs;
+  }, [applyView]);
 
   const sign = useCallback(async (hash: string) => {
     if (!view) return;
@@ -406,9 +438,9 @@ export function StudioProvider({
     stances: view?.stances ?? {},
     threads: view?.threads ?? {},
     signatures: view?.signatures ?? {},
-    review, setStance, addComment, sign, unsign,
+    review, setStance, addComment, sign, unsign, createManualFinding, injectFindings,
     theme, toggleTheme, toast, toasts, dismissToast, paletteOpen, setPaletteOpen, hoodOpen, setHoodOpen, askOpen, setAskOpen, tour, setTour, live,
-  }), [status, error, sessionUser, view, version, refresh, selectProperty, signOut, review, setStance, addComment, sign, unsign, theme, toggleTheme, toast, toasts, dismissToast, paletteOpen, hoodOpen, askOpen, tour, setTour, live]);
+  }), [status, error, sessionUser, view, version, refresh, selectProperty, signOut, review, setStance, addComment, sign, unsign, createManualFinding, injectFindings, theme, toggleTheme, toast, toasts, dismissToast, paletteOpen, hoodOpen, askOpen, tour, setTour, live]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

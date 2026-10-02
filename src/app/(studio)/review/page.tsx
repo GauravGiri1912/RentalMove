@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check, FileText, Pencil, X, ZoomIn, ZoomOut, PartyPopper, History, HelpCircle, ScanLine, CameraOff } from "lucide-react";
+import { Check, FileText, Pencil, X, ZoomIn, ZoomOut, PartyPopper, History, HelpCircle, ScanLine, CameraOff, Plus } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { certaintyFor, photoAbstain } from "@/lib/insights";
 import { useStudio } from "@/components/providers";
@@ -16,7 +16,7 @@ import { cn, fmtDate, INSPECTION_LABEL } from "@/lib/utils";
 import type { IssueCategory, Observation } from "@/lib/view-types";
 import { reviewUrl, named } from "@/lib/cloudinary-urls";
 
-type Filter = "all" | "new" | "pre" | "unsure";
+type Tab = "active" | "history";
 
 export default function ReviewPage() {
   return (
@@ -27,53 +27,69 @@ export default function ReviewPage() {
 }
 
 function Review() {
-  const { review, toast, version } = useStudio();
+  const { review, toast, version, injectFindings, view, observations, createManualFinding, user } = useStudio();
   const { can } = usePermissions();
   const canTriage = can("finding:triage");
   const canEdit = can("finding:edit");
   const params = useSearchParams();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [tab, setTab] = useState<Tab>("active");
   const { baseline: baseInsp, current: curInsp } = reportPair();
   const prop = getProperty();
+  const [loading, setLoading] = useState(true);
   
-  const [findingsData, setFindingsData] = useState<{ assets: any[], observations: Observation[] } | null>(null);
-
   useEffect(() => {
     if (!curInsp) return;
     fetch(`/api/inspections/${curInsp.id}/findings?propertyId=${prop.id}&limit=1000`)
       .then(r => r.json())
       .then(d => {
-        const assets = (d.assets || []).map((a: any) => ({
+        const mappedAssets = (d.assets || []).map((a: any) => ({
           ...a,
           src: reviewUrl(a.cloudinary_public_id || a.secure_url),
           thumb: named(a.cloudinary_public_id || a.secure_url, "rm_thumb"),
         }));
-        setFindingsData({ ...d, assets });
+        injectFindings(mappedAssets, d.observations || []);
+        setLoading(false);
       });
-  }, [curInsp?.id, prop.id, version]);
+  }, [curInsp?.id, prop.id, injectFindings]); // Removed version to prevent fetch loop
 
-  const observations = findingsData?.observations || [];
-  const assets = findingsData?.assets || [];
+  const assets = view?.assets || [];
 
   const all = useMemo(() => {
     const currentIds = new Set(assets.filter((a) => a.inspection_id === curInsp?.id).map((a) => a.id));
     return observations.filter((o) => currentIds.has(o.asset_id));
   }, [observations, curInsp?.id, assets]);
 
-  const queue = useMemo(
-    () =>
-      all
-        .filter((o) => filter === "all" || (filter === "new" && !o.pre_existing) || (filter === "pre" && o.pre_existing) || (filter === "unsure" && certaintyFor(o).unsure))
-        // Pending first, then confident findings before "Not sure" ones, then pre-existing.
-        .sort((a, b) => Number(a.review_status !== "pending") - Number(b.review_status !== "pending") || Number(certaintyFor(a).unsure) - Number(certaintyFor(b).unsure) || Number(!!a.pre_existing) - Number(!!b.pre_existing)),
-    [all, filter]
-  );
+  const { activeQueue, historyQueue } = useMemo(() => {
+    const stances = view?.stances || {};
+    const isOwner = user.role === "owner";
+    const active: Observation[] = [];
+    const history: Observation[] = [];
+
+    for (const o of all) {
+      if (isOwner) {
+        if (o.review_status === "pending") active.push(o);
+        else history.push(o);
+      } else {
+        if ((o.review_status === "accepted" || o.review_status === "edited") && !o.pre_existing) {
+          if (stances[o.id]?.tenant) history.push(o);
+          else active.push(o);
+        }
+      }
+    }
+
+    active.sort((a, b) => Number(certaintyFor(a).unsure) - Number(certaintyFor(b).unsure) || Number(!!a.pre_existing) - Number(!!b.pre_existing) || a.id.localeCompare(b.id));
+    history.sort((a, b) => (b.reviewed_at ?? "").localeCompare(a.reviewed_at ?? "") || a.id.localeCompare(b.id));
+
+    return { activeQueue: active, historyQueue: history };
+  }, [all, user.role, view?.stances]);
+
+  const queue = tab === "active" ? activeQueue : historyQueue;
   
   const [selId, setSelId] = useState<string | null>(params.get("o"));
   // Auto-select first item when queue loads
   useEffect(() => {
     if (!selId && queue.length > 0) {
-      setSelId(queue.find((o) => o.review_status === "pending")?.id ?? queue[0]?.id);
+      setSelId(queue[0]?.id);
     }
   }, [queue, selId]);
   const [editing, setEditing] = useState(false);
@@ -105,18 +121,8 @@ function Review() {
       const prev: Observation = { ...sel };
       const patch = status === "edited" ? { category: draft.category, description: draft.description, reviewer_note: draft.note || undefined } : { reviewer_note: draft.note || undefined };
       
-      // Optimistic update for local state
-      setFindingsData(pd => {
-        if (!pd) return pd;
-        return {
-          ...pd,
-          observations: pd.observations.map(o => o.id === sel.id ? { ...o, ...patch, review_status: status } : o)
-        };
-      });
-      
-      review(sel.id, status, patch).catch(() => {
-        setFindingsData(pd => pd ? { ...pd, observations: pd.observations.map(o => o.id === prev.id ? prev : o) } : pd);
-      });
+      // review() handles optimistic update to StudioProvider globally
+      review(sel.id, status, patch).catch(() => {});
       toast({
         title: status === "accepted" ? "Accepted" : status === "rejected" ? "Rejected — kept out of the report" : "Saved with your edits",
         detail: `metadata.review_status=${status} → Cloudinary`,
@@ -124,7 +130,6 @@ function Review() {
         undo: () => { 
           review(prev.id, prev.review_status, prev); 
           setSelId(prev.id); 
-          setFindingsData(pd => pd ? { ...pd, observations: pd.observations.map(o => o.id === prev.id ? prev : o) } : pd);
         },
       });
       setEditing(false);
@@ -158,26 +163,24 @@ function Review() {
         setZoom((z) => !z);
       } else if (k === "j" || e.key === "ArrowDown") {
         e.preventDefault();
-        setSelId(queue[Math.min(idx + 1, queue.length - 1)].id);
+        setSelId(queue[Math.min(idx + 1, queue.length - 1)]?.id);
       } else if (k === "k" || e.key === "ArrowUp") {
         e.preventDefault();
-        setSelId(queue[Math.max(idx - 1, 0)].id);
+        setSelId(queue[Math.max(idx - 1, 0)]?.id);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [queue, sel, decide, editing, canTriage, canEdit]);
 
-  if (!findingsData) {
+  if (loading) {
     return <div className="p-8 text-center"><Loader2 className="mx-auto size-6 animate-spin text-ink-3" /></div>;
   }
   
-  if (!sel) return null;
-  const asset = assets.find(a => a.id === sel.asset_id);
-  if (!asset) return null;
-  const room = getRoom(asset.room_id);
-  const baseline = baseInsp ? assets.find((a) => a.room_id === room.id && a.inspection_id === baseInsp.id) : undefined;
-  const siblings = observations.filter((o) => o.asset_id === asset.id);
+  const asset = sel ? assets.find(a => a.id === sel.asset_id) : undefined;
+  const room = asset ? getRoom(asset.room_id) : undefined;
+  const baseline = baseInsp && room ? assets.find((a) => a.room_id === room.id && a.inspection_id === baseInsp.id) : undefined;
+  const siblings = asset ? observations.filter((o) => o.asset_id === asset.id) : [];
   const done = decided === all.length;
 
   return (
@@ -212,13 +215,28 @@ function Review() {
         {/* Queue */}
         <aside data-tour="rv-queue" className="card flex max-h-[calc(100vh-220px)] flex-col overflow-hidden lg:sticky lg:top-20">
           <div className="border-b border-line p-2">
-            <Segmented size="sm" value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "new", label: "New" }, { value: "pre", label: "Pre-existing" }, { value: "unsure", label: `Not sure · ${all.filter((o) => certaintyFor(o).unsure).length}` }]} />
+            <Segmented
+              size="sm"
+              value={tab}
+              onChange={setTab as (v: string) => void}
+              options={
+                user.role === "owner"
+                  ? [
+                      { value: "active", label: `Needs review · ${activeQueue.length}` },
+                      { value: "history", label: `Reviewed history · ${historyQueue.length}` },
+                    ]
+                  : [
+                      { value: "active", label: `Needs your response · ${activeQueue.length}` },
+                      { value: "history", label: `Response history · ${historyQueue.length}` },
+                    ]
+              }
+            />
           </div>
           <div className="flex-1 overflow-y-auto p-1.5">
             {queue.map((o) => {
               const a = assets.find(x => x.id === o.asset_id)!;
               return (
-                <button key={o.id} onClick={() => setSelId(o.id)} className={cn("flex w-full gap-2.5 rounded-lg p-2 text-left transition", o.id === sel.id ? "bg-surface-2" : "hover:bg-surface-2/60", o.review_status !== "pending" && "opacity-60")}>
+                <button key={o.id} onClick={() => setSelId(o.id)} className={cn("flex w-full gap-2.5 rounded-lg p-2 text-left transition", o.id === sel?.id ? "bg-surface-2" : "hover:bg-surface-2/60", o.review_status !== "pending" && "opacity-60")}>
                   <Crop src={a.thumb} bbox={o.bbox} imgW={a.width} imgH={a.height} className="w-11 shrink-0 rounded-md" outline={false} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
@@ -236,7 +254,7 @@ function Review() {
                 </button>
               );
             })}
-            {queue.length === 0 && <p className="p-4 text-center text-[12px] text-ink-3">Nothing in this filter.</p>}
+            {queue.length === 0 && <p className="p-4 text-center text-[12px] text-ink-3">You're all caught up in this tab.</p>}
           </div>
           <div className="flex items-center justify-center gap-1.5 border-t border-line p-2 text-[11px] text-ink-3">
             <Kbd>J</Kbd><Kbd>K</Kbd> move{canTriage && <> · <Kbd>A</Kbd><Kbd>R</Kbd> decide</>}
@@ -244,9 +262,11 @@ function Review() {
         </aside>
 
         {/* Viewer */}
-        <section className="min-w-0 space-y-3">
-          <div className="card p-2" data-tour="rv-photo">
-            <div className="relative aspect-[1200/896] overflow-hidden rounded-xl">
+        {sel && asset && room ? (
+          <>
+            <section className="min-w-0 space-y-3">
+            <div className="card p-2" data-tour="rv-photo">
+              <div className="relative aspect-[1200/896] overflow-hidden rounded-xl">
               <div
                 className="absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(.2,.7,.2,1)]"
                 style={zoom ? zoomStyle(sel.bbox) : undefined}
@@ -266,6 +286,21 @@ function Review() {
                 {zoom ? <ZoomOut className="size-3.5" /> : <ZoomIn className="size-3.5" />} {zoom ? "Fit" : "Zoom"} <span className="font-mono text-white/60">Z</span>
               </button>
             </div>
+            {canTriage && (
+              <div className="mt-2 flex justify-end">
+                <button 
+                  onClick={async () => {
+                    const o = await createManualFinding(asset.id);
+                    setSelId(o.id);
+                    // Open edit mode directly for new finding
+                    setEditing(true); 
+                  }} 
+                  className="btn-secondary text-[11.5px]"
+                >
+                  <Plus className="size-3.5" /> Add manual finding
+                </button>
+              </div>
+            )}
           </div>
 
           {baseline && baseInsp && curInsp && (
@@ -315,33 +350,33 @@ function Review() {
             <p className="text-[15px] leading-relaxed">{sel.description}</p>
           )}
 
-          <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[12px]">
-            <div><dt className="text-ink-3">Location</dt><dd className="mt-0.5 font-medium">{sel.sub_area}</dd></div>
-            <div><dt className="text-ink-3">Confidence</dt><dd className="mt-1"><Confidence value={sel.confidence} /></dd></div>
-            <div><dt className="text-ink-3">Source</dt><dd className="mt-0.5 font-medium">{sel.source === "ai" ? "Vision model" : "Reviewer"}</dd></div>
-            <div><dt className="text-ink-3">Model</dt><dd className="mt-0.5 font-mono text-[11px]">qwen3.8-27b</dd></div>
-          </dl>
-          {(() => {
-            const c = certaintyFor(sel);
-            if (c.pixel_only) return (
-              <p className="mt-3 flex gap-2 rounded-lg bg-info/[.07] p-2.5 text-[12px] leading-relaxed text-ink-2" data-testid="pixel-only-note">
-                <ScanLine className="mt-0.5 size-3.5 shrink-0 text-info" />
-                <span><span className="font-semibold">Undescribed change.</span> The pixels changed here since move-in, but the vision model did not describe it. The location is reliable; use Edit to say what it is.</span>
-              </p>
-            );
-            if (!c.unsure) return null;
-            return (
-              <div className="mt-3 rounded-lg bg-warn/[.08] p-2.5 text-[12px] leading-relaxed" data-testid="unsure-note">
-                <div className="flex items-center gap-1.5 font-semibold text-warn"><HelpCircle className="size-3.5" /> Not sure — check before accepting</div>
-                <ul className="mt-1 list-disc pl-5 text-ink-2">{c.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-                <p className="mt-1 text-ink-3">The AI flags these instead of presenting them as findings. It may be lighting, texture or something that was already there.</p>
-              </div>
-            );
-          })()}
-
-          {canTriage ? (
+          {sel.review_status === "pending" && user.role === "owner" ? (
             <>
-              <label className="mt-4 block">
+              <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[12px]">
+                <div><dt className="text-ink-3">Location</dt><dd className="mt-0.5 font-medium">{sel.sub_area}</dd></div>
+                <div><dt className="text-ink-3">Confidence</dt><dd className="mt-1"><Confidence value={sel.confidence} /></dd></div>
+                <div><dt className="text-ink-3">Source</dt><dd className="mt-0.5 font-medium">{sel.source === "ai" ? "Vision model" : "Reviewer"}</dd></div>
+                <div><dt className="text-ink-3">Model</dt><dd className="mt-0.5 font-mono text-[11px]">qwen3.8-27b</dd></div>
+              </dl>
+              {(() => {
+                const c = certaintyFor(sel);
+                if (c.pixel_only) return (
+                  <p className="mt-3 flex gap-2 rounded-lg bg-info/[.07] p-2.5 text-[12px] leading-relaxed text-ink-2" data-testid="pixel-only-note">
+                    <ScanLine className="mt-0.5 size-3.5 shrink-0 text-info" />
+                    <span><span className="font-semibold">Undescribed change.</span> The pixels changed here since move-in, but the vision model did not describe it. The location is reliable; use Edit to say what it is.</span>
+                  </p>
+                );
+                if (!c.unsure) return null;
+                return (
+                  <div className="mt-3 rounded-lg bg-warn/[.08] p-2.5 text-[12px] leading-relaxed" data-testid="unsure-note">
+                    <div className="flex items-center gap-1.5 font-semibold text-warn"><HelpCircle className="size-3.5" /> Not sure — check before accepting</div>
+                    <ul className="mt-1 list-disc pl-5 text-ink-2">{c.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+                    <p className="mt-1 text-ink-3">The AI flags these instead of presenting them as findings. It may be lighting, texture or something that was already there.</p>
+                  </div>
+                );
+              })()}
+
+              <label className="mt-4 block border-t border-line pt-4">
                 <span className="eyebrow">Reviewer note</span>
                 <input className="input mt-1" placeholder="Optional — visible in the report" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
               </label>
@@ -362,35 +397,62 @@ function Review() {
               </div>
             </>
           ) : (
-            <div className="mt-4 space-y-3">
-              <div className="rounded-xl border border-line bg-surface-2/40 p-3">
-                <span className="eyebrow block mb-1">Owner decision</span>
-                <div className="flex items-center gap-2">
-                  <StatusBadge s={sel.review_status} />
-                  <span className="text-[12px] text-ink-2 font-medium">
-                    {sel.review_status === "pending"
-                      ? "Awaiting owner review"
-                      : sel.review_status === "accepted"
-                      ? "Accepted for evidence report"
-                      : sel.review_status === "edited"
-                      ? "Edited & accepted for report"
-                      : "Excluded from evidence report"}
-                  </span>
+            <>
+              <div className="mt-4 space-y-3 border-t border-line pt-4">
+                <div className="rounded-xl border border-line bg-surface-2/40 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="eyebrow">Owner decision</span>
+                    {sel.reviewed_at && <span className="text-[10px] text-ink-3 uppercase tracking-wider">{fmtDate(sel.reviewed_at, { hour: "numeric", minute: "numeric" })}</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge s={sel.review_status} />
+                    <span className="text-[12px] text-ink-2 font-medium">
+                      {sel.review_status === "pending"
+                        ? "Awaiting owner review"
+                        : sel.review_status === "accepted"
+                        ? "Accepted for evidence report"
+                        : sel.review_status === "edited"
+                        ? "Edited & accepted for report"
+                        : "Excluded from evidence report"}
+                    </span>
+                  </div>
                 </div>
+                {sel.reviewer_note && (
+                  <div className="rounded-xl border border-line bg-surface-2/25 p-3 text-[12px]">
+                    <span className="eyebrow block mb-1">Owner reviewer note</span>
+                    <p className="text-ink-2 leading-relaxed">{sel.reviewer_note}</p>
+                  </div>
+                )}
               </div>
-              {sel.reviewer_note && (
-                <div className="rounded-xl border border-line bg-surface-2/25 p-3 text-[12px]">
-                  <span className="eyebrow block mb-1">Owner reviewer note</span>
-                  <p className="text-ink-2 leading-relaxed">{sel.reviewer_note}</p>
-                </div>
-              )}
-            </div>
+              
+              <Parties obsId={sel.id} />
+              
+              <div className="mt-5 border-t border-line pt-4">
+                <span className="eyebrow block mb-3">Evidence Details</span>
+                <dl className="grid grid-cols-2 gap-3 text-[12px]">
+                  <div><dt className="text-ink-3">Location</dt><dd className="mt-0.5 font-medium">{sel.sub_area}</dd></div>
+                  <div><dt className="text-ink-3">Confidence</dt><dd className="mt-1"><Confidence value={sel.confidence} /></dd></div>
+                  <div><dt className="text-ink-3">Source</dt><dd className="mt-0.5 font-medium">{sel.source === "ai" ? "Vision model" : "Reviewer"}</dd></div>
+                  <div><dt className="text-ink-3">Model</dt><dd className="mt-0.5 font-mono text-[11px]">qwen3.8-27b</dd></div>
+                </dl>
+              </div>
+            </>
           )}
+
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-3">The system describes what it sees. It never decides who is responsible — that is always a person&apos;s call.</p>
           <FindingFacts obs={sel} />
           {sel.review_status !== "rejected" && <RepairPanel obs={sel} />}
-          <Parties obsId={sel.id} />
         </aside>
+          </>
+        ) : (
+          <div className="col-span-1 lg:col-span-2 2xl:col-span-2 flex h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-line bg-surface/50 p-8 text-center">
+            <Check className="mb-4 size-10 text-ok opacity-80" />
+            <h2 className="text-[18px] font-medium">You're all caught up!</h2>
+            <p className="mt-2 max-w-sm text-[14px] text-ink-3">
+              There are no findings that require your attention in this tab.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

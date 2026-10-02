@@ -94,12 +94,18 @@ export async function PATCH(
 
     await appendEvent({
       property_id: found.propertyId,
-      type: "pipeline",
-      resource_id: updated.asset_id,
+      type: "decision",
+      resource_id: updated.id,
       actor_id: user.id,
       actor_name: user.name,
       actor_role: user.role,
-      payload: { stage: "review", label: `Finding ${updated.review_status}`, detail: `${updated.category} · review_status=${updated.review_status} → Cloudinary` },
+      payload: { 
+        status: updated.review_status,
+        category: updated.category,
+        description: updated.description,
+        note: updated.reviewer_note,
+        asset_id: updated.asset_id 
+      },
     }).catch(() => {});
 
     return NextResponse.json(updated);

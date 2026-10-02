@@ -12,7 +12,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import type { Capability } from "@/lib/permissions";
 import { Kbd } from "./ui";
 import { cn } from "@/lib/utils";
-import { getMeta, getProperties, getProperty, getWorkOrders } from "@/lib/view";
+import { getMeta, getProperties, getProperty, getWorkOrders, reportPair } from "@/lib/view";
 import { HoodDrawer } from "./hood";
 
 interface NavItem {
@@ -61,10 +61,25 @@ function Logo() {
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
-  const { observations, user, selectProperty, live } = useStudio();
+  const { observations, user, selectProperty, live, view } = useStudio();
   const { can } = usePermissions();
   const visibleNav = useMemo(() => NAV.filter((n) => can(n.capability)), [can]);
-  const pending = observations.filter((o) => o.review_status === "pending").length;
+  
+  const pending = useMemo(() => {
+    const { current } = reportPair();
+    return observations.filter((o) => {
+      if (!current) return true;
+      const a = view?.assets.find((x) => x.id === o.asset_id);
+      if (!a) return true;
+      if (a.inspection_id !== current.id) return false;
+
+      if (user.role === "tenant") {
+        return (o.review_status === "accepted" || o.review_status === "edited") && !o.pre_existing && !view?.stances[o.id]?.tenant;
+      }
+      return o.review_status === "pending";
+    }).length;
+  }, [observations, view?.assets, view?.stances, user.role]);
+
   const openRepairs = getWorkOrders().filter((w) => w.status !== "done").length;
   const prop = getProperty();
   const all = getProperties();

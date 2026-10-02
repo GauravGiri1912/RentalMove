@@ -29,7 +29,8 @@ export type EventType =
   | "workorder" // resource = observation; payload: { action: create|status|photo, ... }
   | "coverage" // resource = asset; payload: { areas: string[] }
   | "translation" // payload: { lang, entries: { [sha1 of English text]: translated } }
-  | "assessment"; // resource = asset; payload: { can_assess, note, unsure: observation ids the model was unsure about }
+  | "assessment" // resource = asset; payload: { can_assess, note, unsure: observation ids the model was unsure about }
+  | "decision"; // resource = observation; payload: { status, category?, description?, note? }
 
 export type ActorRole = "tenant" | "owner" | "system";
 
