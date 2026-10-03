@@ -404,17 +404,12 @@ RentalMove/
 <details>
 <summary><b>Click to expand — what we tell you upfront</b></summary>
 
-- **Timestamps** use server clock + EXIF — not an independent third-party source
-- **RentalMove proves this account controls this record**, not that this person owns the building
-- **Alignment** handles shift and zoom; rotation and perspective are out of scope
-- **Sizes are approximate** — one reference line, no perspective correction
-- **Growth needs 3+ visits** — first follow-up only shows *new since move-in*
-- **Groq quota** — free tier is 200K tokens/day; failures are surfaced, never fabricated
-- **Hindi** is machine translation — a native speaker should review before relying on it
-- **Voice transcription** uses browser speech service (Chrome sends audio to Google)
-- **"Not sure" thresholds** were tuned on 15 staged findings
-- **Private item detection** without Cloudinary OCR add-on relies on the vision model, which can miss small items
-- **Move-in kit** links are bearer secrets — there is no account, the link holder controls the kit
+## Known Constraints
+
+- Image-derived measurements are approximate and depend on capture quality and available visual references.
+- AI-generated observations should be reviewed before being used for final decisions.
+- Translation and voice features depend on the underlying browser/model services.
+- Some AI features have usage limits depending on the configured provider.
 
 </details>
 
