@@ -5,7 +5,7 @@
 > Photograph a home at move-in. Photograph it again at move-out. RentalMove lines the two up,
 > shows exactly what changed, and gives tenant and owner the same sealed, signed evidence.
 
-**Live demo:** _add URL_ · **Video:** _add URL_ · **Demo logins:** one click on the sign-in page —
+**Live demo:** [https://rental-move.vercel.app](https://rental-move.vercel.app) · **Demo logins:** one click on the sign-in page —
 tenant *Alex Chen* (`alex.tenant@rentalmove.demo`) or owner *Sarah Jenkins* (`sarah.owner@rentalmove.demo`), password `DemoPassword123!`.
 Guided tour: open `/welcome?present=1`.
 
@@ -56,6 +56,7 @@ changes detected, located and reviewed by people — never decided by the AI.
 | **Right photo, right room** | Every upload is checked against earlier photos of the room it was filed under (aligned pixel match + Cloudinary perceptual hash, no model call): *matches*, *doesn't match* (kept as a record, but out of review, comparisons, the report and share links), or *unclear — please confirm*. All photos of a room per visit are shown; the best match is used for comparison. A **visit completeness** panel lists missing rooms, unmatched photos, time warnings and checklist gaps, each linking to the room. |
 | **Who decides** | Only the person who ran an inspection accepts, rejects or edits its findings; the other party agrees or disputes — so neither side can remove the other's evidence from the report. |
 | **Free move-in kit** | A tenant with **no account** opens `/kit`, picks the home's rooms, and the phone walks them through a **shot list per room** (whole room, then ceiling / floor / sink… with *why it matters*) plus optional close-ups of existing damage. Photos go straight to Cloudinary; each is fingerprinted (SHA-256) on the phone **and re-checked on the server**; one file cannot fill two shots. Sealing fingerprints the whole kit and freezes it; the tenant gets a **read-only report link** to send by WhatsApp or email (or print as PDF) and can delete the kit and its photos at any time. Move-in photos are not sent to the vision model — the shot list already says what each photo shows. |
+| **"Film a room" video pipeline** | Instead of taking 40 photos, tenants can film a 30–45s continuous video walk per room. Videos upload signed directly to Cloudinary. Serverless frame sampling uses Cloudinary `so_<sec>` transformations on the edge (no FFmpeg needed), filters out blur and dark frames, deduplicates near-identical angles via perceptual hashing, and auto-assigns the sharpest frames to room checklist items. |
 | **Verify** | Public page: drop any photo — it is hashed in the browser (never uploaded) and checked against the record. |
 | **Memory · Map · Timeline · Room time machine** | Every room × every visit; a floor plan with camera pins; a scrubber that ages a room from move-in to move-out. |
 | **Ask RentalMove** | Plain questions answered only from the property's records, each answer citing the exact photo crops. |
