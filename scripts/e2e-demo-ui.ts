@@ -38,13 +38,19 @@ async function main() {
   const body = (p: Page) => p.evaluate(() => document.body.innerText);
 
   try {
-    // ---- 1. A new real account
+    // ---- 1. A new real account. Sign-up now needs an emailed confirmation link a test cannot open, so the
+    //         account is created already confirmed with the service key and signed in through the real form.
+    const password = "E2e-Demo-Pass-1!";
+    const { data: made, error: mkErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name: "Real Newcomer" } });
+    if (mkErr) throw mkErr;
+    await admin.from("users").upsert({ id: made.user.id, name: "Real Newcomer", email, role: "tenant", created_at: new Date().toISOString() });
     const a = await open();
-    await a.goto(BASE + "/signup", { waitUntil: "networkidle2" });
-    await a.type("[data-testid=signup-name]", "Real Newcomer");
-    await a.type("[data-testid=signup-email]", email);
-    await a.type("[data-testid=signup-password]", "E2e-Demo-Pass-1!");
-    await a.evaluate(() => (document.querySelector("[data-testid=signup-submit]") as HTMLElement).click());
+    await a.goto(BASE + "/login", { waitUntil: "networkidle2" });
+    await a.type("input[type=email]", email);
+    await a.type("input[type=password]", password);
+    const nav = a.waitForNavigation({ waitUntil: "networkidle2", timeout: 120000 }).catch(() => null);
+    await a.evaluate(() => (document.querySelector("form button[type=submit]") as HTMLElement | null)?.click());
+    await nav;
     check("a new account starts on its own empty first-property screen", await until(async () => (await a.$("[data-testid=onboarding]")) !== null, 45000));
     const t = await body(a);
     check("…showing none of the demo data (no 381 Elmwood Ave, no demo mark)", !/381 Elmwood/i.test(t) && !/DEMO/.test(t) && (await a.$("[data-testid=demo-banner]")) === null && (await a.$("[data-testid=demo-chip]")) === null);
@@ -68,6 +74,15 @@ async function main() {
     await until(async () => (await d.$("[data-testid=demo-banner]")) !== null, 45000);
     check("the demo workspace does not show the first-run guide", (await d.$("[data-testid=getting-started]")) === null);
     check("the banner is on every studio page", await until(async () => (await d.$("[data-testid=demo-banner]")) !== null, 45000));
+    // The landing page must point a tenant at their invitation rather than at sign-up.
+    const w = await open();
+    await w.goto(BASE + "/welcome", { waitUntil: "networkidle2" });
+    const wt = await body(w);
+    check("the landing page has separate doors for owners, tenants and the free kit", (await w.$("[data-testid=door-owner]")) !== null && (await w.$("[data-testid=door-tenant]")) !== null && (await w.$("[data-testid=door-kit]")) !== null);
+    check("…and tells a tenant they cannot sign up on their own", /cannot sign up on your own/i.test(wt) && /invitation link/i.test(wt));
+    await w.screenshot({ path: path.join(OUT, "03-landing-doors.png"), fullPage: true });
+    await w.close();
+
     check("no page errors", problems.length === 0, problems.slice(0, 2).join(" | "));
   } finally {
     await browser.close().catch(() => {});

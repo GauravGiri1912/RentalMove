@@ -28,7 +28,7 @@ export function TenantInvites() {
   const create = async () => {
     setBusy(true);
     try {
-      await api(`/api/properties/${prop.id}/invites`, { method: "POST", json: email.trim() ? { email: email.trim() } : {} });
+      await api(`/api/properties/${prop.id}/invites`, { method: "POST", json: { email: email.trim() } });
       setEmail(""); await load();
     } catch (e: any) { toast({ title: "Could not create the invitation", detail: e?.message, tone: "danger" }); } finally { setBusy(false); }
   };
@@ -43,13 +43,13 @@ export function TenantInvites() {
   return (
     <section className="card p-5" data-testid="tenant-invites">
       <div className="flex items-center gap-2 text-[14px] font-semibold"><UserPlus className="size-4" /> {joined.length ? "Your tenant" : "Invite your tenant"}</div>
-      <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">A tenant can only join through a link you send. Each link works once, for 14 days. They get the tenant role on this property only: they can add photos and agree or dispute findings, and you decide what goes into the report.</p>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">A tenant can only join through a link you send. Enter their email address: only that address can accept, so a forwarded link is useless to anyone else. Each link works once, for 14 days. They get the tenant role on this property only: they can add photos and agree or dispute findings, and you decide what goes into the report.</p>
 
       {joined.map((i) => <div key={i.id} className="mt-3 rounded-lg bg-ok/[.06] px-3 py-2 text-[13px]" data-testid="tenant-joined"><span className="font-medium">{i.accepted_by}</span> joined on {fmtDate(i.accepted_at!)}</div>)}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Tenant's email (optional)" aria-label="Tenant email" className="input h-10 min-w-[220px] flex-1" data-testid="invite-email" />
-        <button className="btn-primary h-10" onClick={create} disabled={busy} data-testid="invite-create">{busy ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />} Create invitation link</button>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="Tenant's email address" aria-label="Tenant email" className="input h-10 min-w-[220px] flex-1" data-testid="invite-email" />
+        <button className="btn-primary h-10" onClick={create} disabled={busy || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())} data-testid="invite-create">{busy ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />} Create invitation link</button>
       </div>
 
       {(invites ?? []).filter((i) => i.status !== "accepted").length > 0 && (

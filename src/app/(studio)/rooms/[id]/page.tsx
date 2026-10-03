@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, GitCompareArrows, MessageSquare, Pause, Play, Ta
 import { useStudio } from "@/components/providers";
 import { FloorPlan } from "@/components/floor-plan";
 import { CategoryBadge, Confidence, StatusBadge, DemoMark } from "@/components/ui";
-import { assetFor, getInspections, getRoomMatch, getRooms } from "@/lib/view";
+import { assetFor, assetsFor, getInspections, getRoomMatch, getRooms } from "@/lib/view";
 import { MATCH_LABEL } from "@/lib/roommatch";
 import { PLAN_ROOMS } from "@/lib/floorplan";
 import { roomCoverage, sizeOf, trendLabel, trendOf, workOrderOf } from "@/lib/insights";
@@ -24,6 +24,8 @@ export default function RoomPage() {
   const inspections = getInspections();
   const frames = inspections.map((i) => ({ insp: i, asset: assetFor(room.id, i.id) })).filter((f) => f.asset);
   const max = frames.length - 1;
+  // Visits that have photos but none RentalMove can use for this room: every one was flagged "doesn't match this room".
+  const excluded = inspections.filter((i) => !assetFor(room.id, i.id) && assetsFor(room.id, i.id).length > 0);
   const [t, setT] = useState(max);
   const [playing, setPlaying] = useState(false);
   const [view, setView] = useState<"chart" | "table">("chart");
@@ -76,7 +78,9 @@ export default function RoomPage() {
   const tDate = new Date(new Date(frames[lo].insp.captured_at).getTime() + (tc - lo) * (new Date(frames[hi].insp.captured_at).getTime() - new Date(frames[lo].insp.captured_at).getTime()));
 
   const history = frames.map((f) => {
-    const obs = observations.filter((o) => o.asset_id === f.asset!.id && o.review_status !== "rejected");
+    // Collect observations from ALL photos of this room at this visit, not just the primary.
+    const allRoomAssetIds = new Set(assetsFor(room.id, f.insp.id).map((a) => a.id));
+    const obs = observations.filter((o) => allRoomAssetIds.has(o.asset_id) && o.review_status !== "rejected");
     return { f, pre: obs.filter((o) => o.pre_existing || f.insp.type === "move_in").length, fresh: obs.filter((o) => !o.pre_existing && f.insp.type !== "move_in").length, obs };
   });
 
@@ -129,21 +133,34 @@ export default function RoomPage() {
         </div>
 
         <div className="flex items-center gap-4 px-3 pb-2 pt-4">
-          <button onClick={() => (playing ? stop() : play())} className="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-bg transition hover:scale-105" aria-label={playing ? "Pause" : "Play through time"}>
+          <button
+            onClick={() => (playing ? stop() : play())}
+            disabled={max < 1}
+            title={max < 1 ? "Only one photo of this room can be played through" : undefined}
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-bg transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
+            aria-label={playing ? "Pause" : "Play through time"}
+            data-testid="room-play"
+          >
             {playing ? <Pause className="size-4" /> : <Play className="ml-0.5 size-4" />}
           </button>
           <div className="relative flex-1 pb-6 pt-1">
             <input type="range" min={0} max={max} step={0.001} value={t} onChange={(e) => { stop(); setT(+e.target.value); }} className="w-full accent-[rgb(var(--signal))]" aria-label="Time" />
             {frames.map((f, i) => {
               return (
-                <button key={f.insp.id} onClick={() => { stop(); setT(i); }} className={cn("absolute top-7 whitespace-nowrap text-[11px] transition", i === 0 ? "" : i === max ? "-translate-x-full" : "-translate-x-1/2", nearest === i ? "font-medium text-ink" : "text-ink-3 hover:text-ink")} style={{ left: `${(i / max) * 100}%` }}>
+                <button key={f.insp.id} onClick={() => { stop(); setT(i); }} className={cn("absolute top-7 whitespace-nowrap text-[11px] transition", i === 0 ? "" : i === max ? "-translate-x-full" : "-translate-x-1/2", nearest === i ? "font-medium text-ink" : "text-ink-3 hover:text-ink")} style={{ left: max > 0 ? `${(i / max) * 100}%` : "0%" }}>
                   {INSPECTION_LABEL[f.insp.type]} {new Date(f.insp.captured_at).getFullYear()}
                 </button>
               );
             })}
           </div>
-          <Link href={`/compare?room=${room.id}`} className="btn-outline hidden sm:inline-flex"><GitCompareArrows className="size-4" /> Compare</Link>
+          <Link href={`/compare?room=${room.id}`} className="btn-outline hidden sm:inline-flex" data-testid="room-compare-link"><GitCompareArrows className="size-4" /> Compare</Link>
         </div>
+        {max < 1 && (
+          <p className="px-3 pb-3 text-[12px] leading-relaxed text-ink-3" data-testid="room-single-frame">
+            Only one photo of {room.name.toLowerCase()} can be shown here, so there is nothing to play through.
+            {excluded.length > 0 ? <> The {excluded.map((i) => INSPECTION_LABEL[i.type].toLowerCase()).join(" and ")} photo{excluded.length === 1 ? " was" : "s were"} flagged as <span className="text-warn">not matching this room</span> and left out — open <Link href={`/capture?room=${room.id}`} className="underline">Capture</Link> to look, and confirm it if the flag is wrong.</> : <> Photograph it again at the next visit and the two can be compared.</>}
+          </p>
+        )}
       </section>
 
       {/* The room's visits in order: each photo says which visit it belongs to. */}

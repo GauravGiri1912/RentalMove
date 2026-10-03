@@ -226,6 +226,8 @@ if (pObs) {
   await page.$eval("[data-testid=privacy-label]", (el) => { el.value = ""; });
   await page.type("[data-testid=privacy-label]", "e2e test area");
   await page.click("[data-testid=privacy-save]");
+  // Wait for the draw modal to close (API call + refresh + re-render).
+  await page.waitForFunction(() => !document.querySelector("[data-testid=privacy-draw-modal]"), { timeout: 20000 }).catch(() => {});
   await expectText("drawn area is added", new RegExp(`${before + 1} hidden in shared copies`));
   // Remove the test area again (no test data left behind).
   await page.evaluate(() => { const li = [...document.querySelectorAll("[data-testid=privacy-region]")].find((l) => l.textContent.includes("e2e test area")); li?.querySelector("button")?.click(); });

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, Camera, Check, ChevronDown, Copy, Loader2, Plus, RotateCcw, Send, ShieldCheck, SkipForward, Trash2 } from "lucide-react";
+import { AlertTriangle, Camera, Check, ChevronDown, Copy, Film, Loader2, Plus, RotateCcw, Send, ShieldCheck, SkipForward, Trash2, Video } from "lucide-react";
 import { measureQuality, type Quality } from "@/lib/quality";
 import { sha256Hex, cn, fmtDate } from "@/lib/utils";
 
@@ -31,6 +31,10 @@ export default function KitWalk() {
   const [confirm, setConfirm] = useState(false);
   const [sealing, setSealing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [videoWork, setVideoWork] = useState<Record<string, { phase: "uploading" | "extracting"; progress: number }>>({});
+  const [videoProblem, setVideoProblem] = useState<Record<string, string>>({});
+  const videoInput = useRef<HTMLInputElement>(null);
+  const videoTarget = useRef<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const target = useRef<{ roomId: string; shotId: string } | null>(null);
   const opened = useRef(false);
@@ -123,6 +127,47 @@ export default function KitWalk() {
       setConfirm(false);
       setError(e?.message || String(e));
       setSealing(false);
+    }
+  }
+
+  async function uploadVideo(roomId: string, file: File) {
+    setVideoProblem((p) => { const { [roomId]: _x, ...rest } = p; return rest; });
+    if (!file.type.startsWith("video/")) { setVideoProblem((p) => ({ ...p, [roomId]: "Please choose a video file." })); return; }
+    if (file.size > 200 * 1024 * 1024) { setVideoProblem((p) => ({ ...p, [roomId]: "That video is too large (over 200 MB). Trim it to under 60 seconds." })); return; }
+    setVideoWork((w) => ({ ...w, [roomId]: { phase: "uploading", progress: 0 } }));
+    try {
+      const sr = await fetch(`/api/kit/${token}/video-sign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ room_id: roomId }) });
+      const sig = await sr.json();
+      if (!sr.ok) throw new Error(sig.error || "Could not prepare the upload.");
+      const up = await new Promise<any>((resolve, reject) => {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("api_key", String(sig.apiKey));
+        form.append("timestamp", String(sig.timestamp));
+        form.append("signature", sig.signature);
+        form.append("folder", sig.folder);
+        form.append("tags", sig.tags);
+        form.append("allowed_formats", sig.allowed_formats);
+        form.append("max_duration", String(sig.max_duration));
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `https://api.cloudinary.com/v1_1/${sig.cloudName}/video/upload`);
+        xhr.upload.onprogress = (e) => e.lengthComputable && setVideoWork((w) => ({ ...w, [roomId]: { phase: "uploading", progress: Math.round((e.loaded / e.total) * 100) } }));
+        xhr.onload = () => { try { const b = JSON.parse(xhr.responseText); xhr.status < 300 ? resolve(b) : reject(new Error(b?.error?.message || "Upload failed.")); } catch { reject(new Error("Upload failed.")); } };
+        xhr.onerror = () => reject(new Error("No connection. Check your internet and try again."));
+        xhr.send(form);
+      });
+      setVideoWork((w) => ({ ...w, [roomId]: { phase: "extracting", progress: 0 } }));
+      const pr = await fetch(`/api/kit/${token}/video-process`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room_id: roomId, cloudinary_public_id: up.public_id, duration_seconds: up.duration ?? 30 }),
+      });
+      const pb = await pr.json();
+      if (!pr.ok) throw new Error(pb.error || "Frame extraction failed.");
+      await load();
+    } catch (e: any) {
+      setVideoProblem((p) => ({ ...p, [roomId]: e?.message || String(e) }));
+    } finally {
+      setVideoWork((w) => { const { [roomId]: _x, ...rest } = w; return rest; });
     }
   }
 
@@ -236,6 +281,34 @@ export default function KitWalk() {
                     </div>
                     {Object.entries(problem).filter(([k]) => k.startsWith(`${room.id}:damage-`)).map(([k, m]) => <p key={k} className="mt-1.5 text-[12px] text-danger" role="alert">{m}</p>)}
                   </div>
+
+                  {/* ── Film a room (alternative to individual photos) ── */}
+                  <div className="mt-3 rounded-xl border border-dashed border-line p-3">
+                    <div className="flex items-center gap-2">
+                      <Film className="size-4 shrink-0 text-ink-3" />
+                      <div className="text-[13px] font-medium">Film a room instead</div>
+                    </div>
+                    <p className="mt-1 text-[12px] leading-snug text-ink-3">
+                      Film a slow 30–45 s walk around the room. We&apos;ll extract the best frame for each checklist item automatically.
+                    </p>
+                    {videoWork[room.id] ? (
+                      <p className="mt-2 flex items-center gap-1.5 text-[12px] text-ink-2">
+                        <Loader2 className="size-3.5 animate-spin" />
+                        {videoWork[room.id].phase === "uploading"
+                          ? `Uploading… ${videoWork[room.id].progress}%`
+                          : "Extracting frames — this takes up to 25 s…"}
+                      </p>
+                    ) : (
+                      <button
+                        className="btn-outline mt-2 h-9 px-3 text-[12.5px]"
+                        data-testid={`film-${room.id}`}
+                        onClick={() => { videoTarget.current = room.id; videoInput.current?.click(); }}
+                      >
+                        <Video className="size-3.5" /> Film this room
+                      </button>
+                    )}
+                    {videoProblem[room.id] && <p className="mt-1.5 text-[12px] text-danger" role="alert">{videoProblem[room.id]}</p>}
+                  </div>
                 </div>
               )}
             </li>
@@ -244,6 +317,7 @@ export default function KitWalk() {
       </ul>
 
       <input ref={input} type="file" accept="image/*" capture="environment" hidden data-testid="kit-file" onChange={(e) => { const f = e.target.files?.[0]; const t = target.current; e.target.value = ""; if (f && t) void upload(t.roomId, t.shotId, f); }} />
+      <input ref={videoInput} type="file" accept="video/*" capture="environment" hidden data-testid="kit-video-file" onChange={(e) => { const f = e.target.files?.[0]; const r = videoTarget.current; e.target.value = ""; if (f && r) void uploadVideo(r, f); }} />
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 p-3 backdrop-blur">
         <div className="mx-auto flex max-w-xl items-center gap-3">

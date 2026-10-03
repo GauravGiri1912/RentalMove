@@ -3,6 +3,7 @@
 import { VisitCompleteness } from "@/components/visit";
 import { TenantInvites } from "@/components/invites";
 import { GettingStarted } from "@/components/getting-started";
+import { MessageSquareWarning } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -149,6 +150,16 @@ export default function Overview() {
         )}
       </header>
 
+      {user.role === "tenant" && (
+        <Link href="/claim" className="card flex items-center gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-lift" data-testid="claim-cta">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-signal/10 text-signal"><MessageSquareWarning className="size-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold">Your landlord says you broke something?</span>
+            <span className="block text-[12.5px] text-ink-3">Paste their message. See whether it was already there at move-in, and get a reply ready to send.</span>
+          </span>
+          <ArrowRight className="size-4 shrink-0 text-ink-3" />
+        </Link>
+      )}
       <GettingStarted />
       {user.role === "owner" && <div id="tenant-invites"><TenantInvites /></div>}
 

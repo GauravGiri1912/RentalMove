@@ -5,16 +5,24 @@ import { createSupabaseAdminClient } from "@/lib/supabase-server";
 import { appendEvent, deriveInvites, listEvents } from "@/lib/events";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyInvite } from "@/lib/invite-crypto";
+import { z } from "zod";
+
+const Body = z.object({ confirms_landlord: z.literal(true) });
 
 /**
  * POST /api/invites/:token/accept — the signed-in person joins the property as a TENANT. The role is not
  * chosen by them: it follows from the invitation. Single use: the first acceptance wins.
+ *
+ * The tenant must confirm that the person who invited them really is their landlord. RentalMove cannot check who
+ * owns a building; the tenant is the one person who knows, so their confirmation is recorded with the acceptance.
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const rl = await rateLimit(req, { limit: 20, windowMs: 3_600_000, prefix: "invite-accept" });
   if (!rl.success) return rl.response;
   try {
     const user = await getAuthenticatedUserOrThrow(req);
+    const body = Body.safeParse(await req.json().catch(() => null));
+    if (!body.success) return NextResponse.json({ error: "Please confirm that this is the person you rent from." }, { status: 400 });
     const { token } = await params;
     const claims = verifyInvite(token);
     if (!claims) return NextResponse.json({ error: "This invitation link is not valid or has expired." }, { status: 404 });
@@ -34,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     const row = { id: `pt-${crypto.randomBytes(6).toString("hex")}`, property_id: claims.p, tenant_id: user.id };
     const { error: insErr } = await admin.from("property_tenants").insert(row);
     if (insErr && !/duplicate|unique/i.test(insErr.message)) throw new Error(insErr.message);
-    await appendEvent({ property_id: claims.p, type: "invite", resource_id: null, actor_id: user.id, actor_name: user.name, actor_role: "tenant", payload: { action: "accept", id: claims.id } });
+    await appendEvent({ property_id: claims.p, type: "invite", resource_id: null, actor_id: user.id, actor_name: user.name, actor_role: "tenant", payload: { action: "accept", id: claims.id, confirms_landlord: true } });
 
     // Two people opening the same link at once: only the first recorded acceptance keeps the place.
     const after = deriveInvites(await listEvents(claims.p, ["invite"])).find((i) => i.id === claims.id);

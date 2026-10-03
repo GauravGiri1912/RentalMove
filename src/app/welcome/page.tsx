@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Camera, EyeOff, Fingerprint, GitCompareArrows, ScanSearch, Search, ShieldCheck, UserCheck, Moon, Sun, Map as MapIcon, History, ScanLine, Sparkles, PenLine, Wand2, Play } from "lucide-react";
+import { ArrowRight, Camera, EyeOff, Fingerprint, GitCompareArrows, ScanSearch, Search, ShieldCheck, UserCheck, Moon, Sun, Map as MapIcon, History, ScanLine, Sparkles, PenLine, Wand2, Play, Building2, KeyRound } from "lucide-react";
 import { useStudio } from "@/components/providers";
 import { UrlExplain } from "@/components/hood";
 import { presetUrl } from "@/lib/cld";
@@ -54,6 +54,24 @@ export default function Welcome() {
               )}
             </div>
             <p className="mt-3 text-[12.5px] text-ink-3">The kit is free and needs no account: photograph each room on move-in day and get a sealed record to send to your landlord.</p>
+
+            <div className="mt-8 grid gap-2.5 sm:grid-cols-3" data-testid="welcome-doors">
+              <div className="card p-4" data-testid="door-owner">
+                <div className="flex items-center gap-1.5 text-[12.5px] font-semibold"><Building2 className="size-4" /> I manage a property</div>
+                <p className="mt-1 text-[12px] leading-snug text-ink-3">Create an owner account, add the home, then invite your tenant.</p>
+                <Link href={signedIn ? "/" : "/signup"} className="btn-outline mt-3 h-9 w-full text-[12.5px]" data-testid="door-owner-cta">{signedIn ? "Open the studio" : "Create an owner account"}</Link>
+              </div>
+              <div className="card p-4" data-testid="door-tenant">
+                <div className="flex items-center gap-1.5 text-[12.5px] font-semibold"><KeyRound className="size-4" /> I am a tenant</div>
+                <p className="mt-1 text-[12px] leading-snug text-ink-3">You cannot sign up on your own. Your landlord sends you an invitation link — open that link to join.</p>
+                <Link href="/login" className="btn-ghost mt-3 h-9 w-full text-[12.5px]" data-testid="door-tenant-cta">I already have an account</Link>
+              </div>
+              <div className="card p-4" data-testid="door-kit">
+                <div className="flex items-center gap-1.5 text-[12.5px] font-semibold"><Camera className="size-4" /> No landlord account?</div>
+                <p className="mt-1 text-[12px] leading-snug text-ink-3">Record the home yourself with the free move-in kit. No sign-up at all.</p>
+                <Link href="/kit" className="btn-ghost mt-3 h-9 w-full text-[12.5px]" data-testid="door-kit-cta">Start a free kit</Link>
+              </div>
+            </div>
           </div>
 
           <div className="relative animate-fade-up [animation-delay:120ms]">

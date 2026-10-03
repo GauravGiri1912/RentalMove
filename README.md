@@ -11,6 +11,21 @@ Guided tour: open `/welcome?present=1`.
 
 ---
 
+## In 30 seconds
+
+**At move-out the landlord says the damage is yours. RentalMove proves it was already there.**
+
+Three things to try, each takes under a minute:
+
+0. **"Your landlord says you broke it? Paste their message."** Sign in as the tenant (*Alex Chen*, one click), open **Landlord claim**, tap *"Shower glass is damaged, deducting ₹4,000..."*. RentalMove reads the message (English or Hinglish), finds that part of the bathroom in the move-in and move-out photos, answers **"Already there at move-in, 1 Jun 2024"** with both photos side by side, and drafts a polite reply you can edit, with an optional read-only link to the sealed record. If the damage is *new*, or there is no move-in photo, it says that instead of taking the tenant's side.
+1. **"It was already there."** Sign in as the owner, open **Review**, pick the bathroom shower-screen finding: the move-out photo sits next to the same spot at move-in, marked *Matches move-in — already recorded at an earlier visit and not noticeably larger now.*
+2. **"You can't fake it."** Open **`/verify`** (no login) and drop in `demo-assets/kitchen-move-out-ORIGINAL.jpg`: *Matches the photo on record.* Drop in `demo-assets/kitchen-move-out-EDITED.jpg`, where the damaged door was softened in an editor: *No record of this exact file.* Each photo's SHA-256 is taken on the phone before upload and checked again on the server.
+3. **"Nothing private leaves the app, and nothing is invented."** Faces and private items are pixelated by Cloudinary in every copy that leaves the app; generative AI is confined to rental listings and never touches evidence.
+
+And for a tenant with no landlord account: **`/kit`** records a home on move-in day with a guided shot list, no sign-up, and produces a sealed record they choose when to share.
+
+---
+
 ## Why
 
 Deposit disputes are among the most common fights between tenants and landlords, and they are
@@ -168,6 +183,7 @@ npx tsx --env-file=.env scripts/backfill-roommatch.ts  # run the room-match chec
 - **Photos can be removed or retaken while a visit is a draft:** a studio photo can be removed only while its visit is in progress and not submitted, and only if no finding from it has been reviewed; an audit entry (who, when, the photo's fingerprint) is kept, not the image, and the submission summary lists removals. Retake captures the same checklist item again and then deletes the earlier photo. In move-in kits a photo can be removed or retaken until sealing, and a retake now deletes the earlier file (it used to be left behind).
 - **Demo data is kept apart:** the demo home (`prop-381`) is reachable only by the demo accounts; a new account sees only its own empty start. Wherever the demo home is on screen there is a banner, a DEMO mark on photos and "(demo)" in the property picker. Public share pages for the demo are not marked.
 - **First-run guide and plain wording:** new owners and tenants get a short "getting started" list (each step says why), a "what happens next" line before submitting, and the UI says "visit" instead of "inspection".
+- **Landlord claim (`/claim`):** the tenant pastes the landlord's message. Word lists and patterns (no AI call, so it is free, instant and reproducible; English plus common Hinglish such as "shishe", "daag", "rupees") read the room, the part, the kind of damage and the amount, then the claim is looked up in the record: *already there*, *there but larger*, *new since move-in*, *not found*, *no move-in photo*, or *unclear*. It shows the move-in and move-out photos side by side with the matching findings boxed, and drafts an editable reply that states only what the record shows. It does **not** take the tenant's side by default (a new finding is reported as new), it never guesses when the message names no part, the message is not stored anywhere, and the page and the reply say plainly that this is a draft, not legal advice, and that RentalMove does not decide who is responsible. Limits: it reads the message with word lists, so unusual wording or a language it does not know is missed (and it says it is unsure); it matches recorded findings, so a mark the photos do not show may still exist; the optional link is the existing watermarked read-only share link for the whole report (14 days, cancellable), not a link to just that room.
 - **Comparisons say what they cannot say:** the compare page labels Then/Now with dates, shows the room-check verdict with its reason ("Check now" runs it for free), and lists the checklist areas that are not in both visits' photos. Where coverage was never recorded it says so instead of implying completeness. A room page lists the room's visits in order.
 - **Demo photos are staged.** 2025/2026 photos are the real 2024 photos with marks composited in and a simulated re-capture (`seed/make_staged.py`); they are tagged `staged-demo` in Cloudinary and labelled in the UI.
 - **Groq quota.** The free tier allows 200,000 tokens/day for `qwen/qwen3.8-27b`; one analysis ≈ 2.7k tokens, one comparison ≈ 4.7k. When it runs out, analysis fails with a clear "daily token limit" error, the photo is marked `failed`, and nothing is fabricated. Retry from the Compare page, `POST /api/assets/:id/analyze`, or `scripts/finish-reseed.ts`.

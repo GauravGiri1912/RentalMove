@@ -18,6 +18,8 @@ export default function JoinPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // RentalMove cannot check who owns a building. The tenant can, so joining requires them to say so.
+  const [confirms, setConfirms] = useState(false);
 
   useEffect(() => {
     fetch(`/api/invites/${token}`, { cache: "no-store" }).then(async (r) => setPv(await r.json())).catch(() => setPv({ valid: false, reason: "Could not reach the server." }));
@@ -26,7 +28,7 @@ export default function JoinPage() {
 
   async function accept() {
     setBusy(true); setError(null);
-    const r = await fetch(`/api/invites/${token}/accept`, { method: "POST" });
+    const r = await fetch(`/api/invites/${token}/accept`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirms_landlord: true }) });
     const b = await r.json().catch(() => ({}));
     if (r.ok) { setDone(true); setTimeout(() => { window.location.href = "/"; }, 1200); } else { setError(b.error || "Could not accept the invitation."); setBusy(false); }
   }
@@ -56,7 +58,11 @@ export default function JoinPage() {
           {signedIn ? (
             <div className="mt-4">
               <p className="mb-2 text-[12.5px] text-ink-2">Signed in as <span className="font-medium">{me?.name}</span>.</p>
-              <button className="btn-primary h-10 w-full" onClick={accept} disabled={busy} data-testid="join-accept">{busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />} Join as tenant</button>
+              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-line p-3 text-[12.5px]" data-testid="join-confirm-label">
+                <input type="checkbox" checked={confirms} onChange={(e) => setConfirms(e.target.checked)} className="mt-0.5 accent-[rgb(var(--signal))]" data-testid="join-confirm" />
+                <span>I rent this home from <span className="font-medium">{pv.invited_by ?? "the person who invited me"}</span>, and they manage it.<span className="mt-0.5 block text-ink-3">RentalMove does not check who owns a building. Your confirmation is what records that this is really your landlord, and it is kept with your joining.</span></span>
+              </label>
+              <button className="btn-primary mt-3 h-10 w-full" onClick={accept} disabled={busy || !confirms} data-testid="join-accept">{busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />} Join as tenant</button>
             </div>
           ) : (
             <div className="mt-4 grid gap-2">

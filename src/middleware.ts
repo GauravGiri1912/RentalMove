@@ -16,6 +16,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 /** App routes that require authentication. Public: /welcome, /login, /signup, /verify, /kit, /k/:token, /r/:token, /h/:token. */
 const PROTECTED_ROUTES = [
   "/capture",
+  "/claim",
   "/submission",
   "/review",
   "/timeline",

@@ -5,8 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight, Camera, Check, Command, FileText, FlaskConical, GitCompareArrows, History, LayoutGrid, Menu, Moon,
-  ScanSearch, Search, Sun, Hammer, Undo2, X, Grid3x3, Cpu, Sparkles, Map as MapIcon, Wand2, Play, LogOut, Loader2, AlertTriangle, Radio, ShieldCheck,
-} from "lucide-react";
+  ScanSearch, Search, Sun, Hammer, Undo2, X, Grid3x3, Cpu, Sparkles, Map as MapIcon, Wand2, Play, LogOut, Loader2, AlertTriangle, Radio, ShieldCheck, MessageSquareWarning } from "lucide-react";
 import { useStudio, NO_PROPERTY } from "./providers";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Capability } from "@/lib/permissions";
@@ -36,6 +35,7 @@ const NAV: NavItem[] = [
   { href: "/capture", label: "Capture", icon: Camera, key: "G C", capability: "capture:use" },
   { href: "/review", label: "Review", ownerLabel: "Review", tenantLabel: "Findings", icon: ScanSearch, key: "G R", badge: true, capability: "finding:view" },
   { href: "/compare", label: "Compare", icon: GitCompareArrows, key: "G D", capability: "finding:view" },
+  { href: "/claim", label: "Landlord claim", icon: MessageSquareWarning, key: "G K", capability: "finding:view" },
   { href: "/repairs", label: "Repairs", icon: Hammer, key: "G W", repairs: true, capability: "repair:view" },
   { href: "/timeline", label: "Timeline", icon: History, key: "G T", capability: "property:view" },
   { href: "/search", label: "Search", icon: Search, key: "/", capability: "property:view" },

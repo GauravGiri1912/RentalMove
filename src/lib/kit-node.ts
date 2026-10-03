@@ -332,3 +332,130 @@ export async function deleteKit(ctx: KitContext) {
   }
   await getDatabase().deleteProperty?.(ctx.claims.p);
 }
+
+// ---------------------------------------------------------------------------
+// Video pipeline (Film a room)
+// ---------------------------------------------------------------------------
+
+import { scanVideo, frameContentHash } from "./video-frames";
+
+/**
+ * Generates a Cloudinary signed-upload for a VIDEO (resource_type=video).
+ * The upload goes to the same folder/tags as photos but uses the video endpoint.
+ * max_duration=60 restricts clips to 60 seconds server-side.
+ */
+export function signKitVideoUpload(ctx: KitContext, roomId: string) {
+  assertOpen(ctx);
+  const room = roomOf(ctx, roomId);
+  if (!isCloudinaryConfigured()) throw new KitError(503, "Video uploads are not configured on this server.");
+  ensureCloudinaryConfig();
+  const timestamp = Math.round(Date.now() / 1000);
+  const folder = `properties/${ctx.claims.p}/${ctx.claims.i}/${room.category}`;
+  const tags = `rentalmove,kit,${room.category},move_in,video`;
+  const allowed_formats = "mp4,mov,webm";
+  const max_duration = 60;          // Cloudinary rejects uploads longer than this
+  const transformation = "q_auto";  // Cloudinary recompresses on ingest
+  const signature = cloudinary.utils.api_sign_request(
+    { folder, tags, timestamp, allowed_formats, max_duration, transformation },
+    process.env.CLOUDINARY_API_SECRET!,
+  );
+  return {
+    signature, timestamp,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    folder, tags,
+    allowed_formats, max_duration,
+    resourceType: "video" as const,
+  };
+}
+
+export interface VideoProcessResult {
+  room_id: string;
+  sampled: number;
+  usable: number;
+  survivors: number;
+  registered: number;
+  missing: string[];
+  frames: { shot_id: string; asset_id: string; thumb: string; sha256: string }[];
+}
+
+/**
+ * POST-upload hook: extract frames from the uploaded Cloudinary video, filter them,
+ * deduplicate, and register the best frame per shot-list item as a kit photo.
+ */
+export async function processKitVideo(
+  ctx: KitContext,
+  roomId: string,
+  cloudinaryPublicId: string,
+  durationSeconds: number,
+): Promise<VideoProcessResult> {
+  assertOpen(ctx);
+  const room = roomOf(ctx, roomId);
+  const { p, i } = ctx.claims;
+
+  if (!cloudinaryPublicId.startsWith(`properties/${p}/${i}/`)) {
+    throw new KitError(403, "That video does not belong to this kit.");
+  }
+  if (durationSeconds <= 0 || durationSeconds > 65) {
+    throw new KitError(400, "Clip must be between 1 and 65 seconds.");
+  }
+
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME!;
+  const scan = await scanVideo(cloudName, cloudinaryPublicId, durationSeconds, room.category);
+  const db = getDatabase();
+  const registered: VideoProcessResult["frames"] = [];
+
+  for (const { shot_id, frame } of scan.assignments) {
+    try {
+      if (!isValidShot(room.category, shot_id)) continue;
+      const sha256 = frameContentHash(cloudinaryPublicId, frame.secondOffset);
+      // Frame URL: video/upload/so_<n>,f_jpg/.../video.jpg — stored as a "image" asset.
+      const framePublicId = `${cloudinaryPublicId}/frame_${frame.secondOffset}`;
+      const asset = await db.upsertAsset({
+        inspection_id: i,
+        room_id: room.id,
+        cloudinary_public_id: framePublicId,
+        secure_url: frame.url,
+        resource_type: "image",
+        etag: undefined,
+        sha256,
+        width: 800,
+        height: undefined,
+        captured_at: new Date().toISOString(),
+        analysis_status: "done",
+        analysis_error: null,
+      });
+      const actor = { actor_id: null, actor_name: ctx.kit.name, actor_role: "tenant" as const };
+      await appendEvent({
+        property_id: p, type: "kit", resource_id: asset.id, ...actor,
+        payload: { action: "shot", room_id: room.id, shot_id, asset_id: asset.id, sha256, client_sha256: sha256, server_verified: false, match: true },
+      });
+      await appendEvent({
+        property_id: p, type: "pipeline", resource_id: asset.id,
+        actor_id: null, actor_name: "RentalMove", actor_role: "system",
+        payload: { stage: "upload", label: "Frame extracted from room video", detail: `${room.name} · ${shotLabel(room.category, shot_id)} · t=${frame.secondOffset}s` },
+      }).catch(() => {});
+      const areas = shotListFor(room.category).find((s) => s.id === shot_id)?.areas ?? [];
+      if (areas.length) {
+        await appendEvent({
+          property_id: p, type: "coverage", resource_id: asset.id,
+          actor_id: null, actor_name: "RentalMove", actor_role: "system",
+          payload: { areas },
+        }).catch(() => {});
+      }
+      registered.push({ shot_id, asset_id: asset.id, thumb: named(framePublicId, "rm_thumb"), sha256 });
+    } catch (e) {
+      console.warn("[Kit Video] frame registration failed for shot", shot_id, e);
+    }
+  }
+
+  return {
+    room_id: room.id,
+    sampled: scan.sampled,
+    usable: scan.usableCount,
+    survivors: scan.survivorCount,
+    registered: registered.length,
+    missing: scan.missing,
+    frames: registered,
+  };
+}

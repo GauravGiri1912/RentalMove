@@ -25,22 +25,39 @@ async function call(h: Record<string, string> | null, method: string, path: stri
   return { status: r.status, body: (await r.json().catch(() => null)) as any };
 }
 
-/** Real signup endpoint, claiming to be an owner, then a real login. */
+/**
+ * A confirmed account, made with the service key. Real sign-up now requires the person to click a link in an
+ * email, which a test cannot do; what is under test here is who may do what, so the accounts start confirmed.
+ * The sign-up flow itself (unconfirmed, cannot sign in) is checked separately below.
+ */
 async function newAccount(label: string) {
   const email = `e2e-roles-${stamp}-${label}@example.test`, password = "E2e-Roles-Pass-1!";
-  const r = await call(null, "POST", "/api/auth/signup", { name: `Roles ${label.toUpperCase()}`, email, password, role: "owner" });
-  if (r.status !== 200) throw new Error(`signup ${label}: ${r.status} ${JSON.stringify(r.body)}`);
-  created.push(r.body.userId);
+  const { data: made, error: mkErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name: `Roles ${label.toUpperCase()}` } });
+  if (mkErr) throw mkErr;
+  created.push(made.user.id);
+  await admin.from("users").upsert({ id: made.user.id, name: `Roles ${label.toUpperCase()}`, email, role: "tenant", created_at: new Date().toISOString() });
   const sb = createClient(URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) throw error;
-  return { id: r.body.userId as string, email, h: { Authorization: `Bearer ${data.session.access_token}` } as Record<string, string> };
+  return { id: made.user.id, email, h: { Authorization: `Bearer ${data.session.access_token}` } as Record<string, string> };
 }
 const me = async (h: Record<string, string>) => (await call(h, "GET", "/api/auth/session")).body?.user;
 
 async function main() {
   const A = await newAccount("a"), B = await newAccount("b"), C = await newAccount("c");
   try {
+    // 0. Signing up really does leave the address unconfirmed, and an unconfirmed account cannot sign in.
+    // No real sign-up here: it would send email through the real SMTP provider. An unconfirmed account is made with the
+    // service key (no mail), which is exactly the state a new sign-up is in until the link is clicked.
+    const freshEmail = `e2e-roles-${stamp}-unconfirmed@example.test`;
+    const { data: unc, error: uncErr } = await admin.auth.admin.createUser({ email: freshEmail, password: "E2e-Roles-Pass-1!", email_confirm: false });
+    if (uncErr) throw uncErr;
+    created.push(unc.user.id);
+    const sb2 = createClient(URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
+    const si = await sb2.auth.signInWithPassword({ email: freshEmail, password: "E2e-Roles-Pass-1!" });
+    check("an unconfirmed account cannot sign in", !!si.error && /not confirmed/i.test(si.error.message), si.error?.message);
+    check("signing up with an address that already exists is refused (409), before any email is sent", (await call(null, "POST", "/api/auth/signup", { name: "x", email: A.email, password: "E2e-Roles-Pass-1!" })).status === 409);
+
     // 1. Claiming a role does nothing.
     check("signup accepts a legacy 'role' field but ignores it: the account is not an owner", (await me(A.h))?.role === "tenant" && (await me(B.h))?.role === "tenant");
     check("a self-declared owner cannot read someone else's property (403)", (await call(A.h, "GET", "/api/properties/prop-381/snapshot")).status === 403);
@@ -59,7 +76,8 @@ async function main() {
     // 3. Invitations.
     check("an invitation needs a login to create (401)", (await call(null, "POST", `/api/properties/${pid}/invites`, {})).status === 401);
     check("an invalid email is refused (400)", (await call(A.h, "POST", `/api/properties/${pid}/invites`, { email: "not-an-email" })).status === 400);
-    const inv = await call(A.h, "POST", `/api/properties/${pid}/invites`, {});
+    check("an invitation with no email at all is refused (400)", (await call(A.h, "POST", `/api/properties/${pid}/invites`, {})).status === 400);
+    const inv = await call(A.h, "POST", `/api/properties/${pid}/invites`, { email: B.email });
     check("the owner creates an invitation link", inv.status === 201 && /^\/join\/.+\..+$/.test(inv.body?.path ?? ""), inv.body?.expires_at?.slice(0, 10));
     const token = (inv.body.path as string).replace("/join/", "");
     const listed = (await call(A.h, "GET", `/api/properties/${pid}/invites`)).body.invites;
@@ -68,23 +86,24 @@ async function main() {
     const prev = await call(null, "GET", `/api/invites/${token}`);
     check("anyone with the link can see what it is for, without logging in", prev.status === 200 && prev.body.valid === true && prev.body.property === "E2E Roles Test Flat" && !!prev.body.invited_by, `${prev.body?.property} · from ${prev.body?.invited_by}`);
     check("a tampered link is refused (404)", (await call(null, "GET", `/api/invites/${token.slice(0, -4)}AAAA`)).status === 404);
-    check("accepting needs a login (401)", (await call(null, "POST", `/api/invites/${token}/accept`)).status === 401);
-    check("the owner cannot join their own property as a tenant (409)", (await call(A.h, "POST", `/api/invites/${token}/accept`)).status === 409);
+    check("accepting needs a login (401)", (await call(null, "POST", `/api/invites/${token}/accept`, { confirms_landlord: true })).status === 401);
+    check("accepting without confirming the landlord is refused (400)", (await call(B.h, "POST", `/api/invites/${token}/accept`, {})).status === 400);
+    check("the owner cannot join their own property as a tenant (409)", (await call(A.h, "POST", `/api/invites/${token}/accept`, { confirms_landlord: true })).status === 409);
     check("an account that manages its own property cannot become a tenant (409)", await (async () => {
       const own = await call(C.h, "POST", "/api/properties", { address_label: "C's own flat", unit_label: "1", rooms: [{ name: "Kitchen", category: "kitchen" }] });
-      return own.status === 201 && (await call(C.h, "POST", `/api/invites/${token}/accept`)).status === 409;
+      return own.status === 201 && (await call(C.h, "POST", `/api/invites/${token}/accept`, { confirms_landlord: true })).status === 409;
     })());
 
     // 4. B joins as a tenant.
-    const acc = await call(B.h, "POST", `/api/invites/${token}/accept`);
+    const acc = await call(B.h, "POST", `/api/invites/${token}/accept`, { confirms_landlord: true });
     check("B accepts and joins as a tenant", acc.status === 200 && acc.body.property_id === pid, acc.body?.error);
     const bUser = await me(B.h);
     check("B's role is tenant, assigned to that property only", bUser?.role === "tenant" && bUser?.assigned_property_id === pid);
     check("B can now read the property (200)", (await call(B.h, "GET", `/api/properties/${pid}/snapshot`)).status === 200);
-    check("B still cannot invite anyone (403)", (await call(B.h, "POST", `/api/properties/${pid}/invites`, {})).status === 403);
+    check("B still cannot invite anyone (403)", (await call(B.h, "POST", `/api/properties/${pid}/invites`, { email: "x@example.test" })).status === 403);
     check("B cannot start a property while a tenant (403)", (await call(B.h, "POST", "/api/properties", { address_label: "x", unit_label: "1" })).status === 403);
     check("B cannot read the demo property either (403)", (await call(B.h, "GET", "/api/properties/prop-381/snapshot")).status === 403);
-    check("accepting the same invitation again is harmless", (await call(B.h, "POST", `/api/invites/${token}/accept`)).body?.already === true);
+    check("accepting the same invitation again is harmless", (await call(B.h, "POST", `/api/invites/${token}/accept`, { confirms_landlord: true })).body?.already === true);
     const after = (await call(A.h, "GET", `/api/properties/${pid}/invites`)).body.invites;
     check("the owner sees who accepted", after[0].status === "accepted" && after[0].accepted_by === "Roles B" && after[0].path === null);
     check("the link is single-use: now reported as used", (await call(null, "GET", `/api/invites/${token}`)).body?.valid === false);
@@ -92,18 +111,18 @@ async function main() {
     // 5. Used, revoked and wrongly-addressed invitations.
     // (A third, fresh account is needed for each refusal: C already manages a property.)
     const D = await newAccount("d");
-    check("a used invitation is refused for anyone else (409)", (await call(D.h, "POST", `/api/invites/${token}/accept`)).status === 409);
+    check("a used invitation is refused for anyone else (409)", (await call(D.h, "POST", `/api/invites/${token}/accept`, { confirms_landlord: true })).status === 409);
     const forD = await call(A.h, "POST", `/api/properties/${pid}/invites`, { email: "someone.else@example.test" });
     const t2 = (forD.body.path as string).replace("/join/", "");
-    check("an invitation addressed to another email refuses a different account (403)", (await call(D.h, "POST", `/api/invites/${t2}/accept`)).status === 403);
+    check("an invitation addressed to another email refuses a different account (403)", (await call(D.h, "POST", `/api/invites/${t2}/accept`, { confirms_landlord: true })).status === 403);
     const rev = await call(A.h, "DELETE", `/api/properties/${pid}/invites/${forD.body.id}`);
     check("the owner can revoke a pending invitation", rev.status === 200);
-    check("a revoked invitation is refused (409) and reported as cancelled", (await call(D.h, "POST", `/api/invites/${t2}/accept`)).status === 409 && /cancelled/.test((await call(null, "GET", `/api/invites/${t2}`)).body?.reason ?? ""));
+    check("a revoked invitation is refused (409) and reported as cancelled", (await call(D.h, "POST", `/api/invites/${t2}/accept`, { confirms_landlord: true })).status === 409 && /cancelled/.test((await call(null, "GET", `/api/invites/${t2}`)).body?.reason ?? ""));
     check("revoking again is refused (409); another account cannot revoke (403)", (await call(A.h, "DELETE", `/api/properties/${pid}/invites/${forD.body.id}`)).status === 409 && (await call(B.h, "DELETE", `/api/properties/${pid}/invites/${inv.body.id}`)).status === 403);
 
     // 6. Limits.
     let pending = 0, last = 0;
-    for (let i = 0; i < 6; i++) { const r = await call(A.h, "POST", `/api/properties/${pid}/invites`, {}); last = r.status; if (r.status === 201) pending++; }
+    for (let i = 0; i < 6; i++) { const r = await call(A.h, "POST", `/api/properties/${pid}/invites`, { email: `cap${i}@example.test` }); last = r.status; if (r.status === 201) pending++; }
     check("at most 5 open invitations at a time (409 after that)", pending === 5 && last === 409, `${pending} created`);
     const D2 = await call(D.h, "POST", "/api/properties", { address_label: "D1", unit_label: "1", rooms: [{ name: "Kitchen", category: "kitchen" }] });
     await call(D.h, "POST", "/api/properties", { address_label: "D2", unit_label: "1", rooms: [{ name: "Kitchen", category: "kitchen" }] });

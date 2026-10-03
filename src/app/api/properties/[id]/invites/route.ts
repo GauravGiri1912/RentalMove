@@ -6,7 +6,8 @@ import { appendEvent, deriveInvites, listEvents } from "@/lib/events";
 import { rateLimit } from "@/lib/rate-limit";
 import { INVITE_TTL_MS, signInvite } from "@/lib/invite-crypto";
 
-const Body = z.object({ email: z.string().email().max(200).optional() });
+// The address is required: an invitation only that one address can accept cannot be forwarded or stolen from a group chat.
+const Body = z.object({ email: z.string().email("Enter the tenant's email address.").max(200) });
 const MAX_PENDING = 5;
 
 async function asOwner(req: NextRequest, propertyId: string) {
@@ -42,12 +43,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { user, ok } = await asOwner(req, id);
     if (!ok) return forbiddenResponse("Only the owner of this property can invite a tenant.");
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
-    if (!parsed.success) return NextResponse.json({ error: "That email address does not look right." }, { status: 400 });
+    if (!parsed.success) return NextResponse.json({ error: "Enter your tenant's email address: only that address can accept the invitation." }, { status: 400 });
     const existing = deriveInvites(await listEvents(id, ["invite"]));
     if (existing.filter((i) => i.status === "pending").length >= MAX_PENDING) return NextResponse.json({ error: `You already have ${MAX_PENDING} open invitations. Revoke one first.` }, { status: 409 });
     const inviteId = crypto.randomBytes(5).toString("hex");
     const exp = Date.now() + INVITE_TTL_MS;
-    const email = parsed.data.email?.trim().toLowerCase() ?? null;
+    const email = parsed.data.email.trim().toLowerCase();
     await appendEvent({ property_id: id, type: "invite", resource_id: null, actor_id: user.id, actor_name: user.name, actor_role: "owner", payload: { action: "create", id: inviteId, email, expires_at: new Date(exp).toISOString() } });
     return NextResponse.json({ id: inviteId, email, expires_at: new Date(exp).toISOString(), path: `/join/${signInvite({ p: id, id: inviteId, exp })}` }, { status: 201 });
   } catch (err: any) {
